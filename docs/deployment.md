@@ -22,9 +22,14 @@ Vercel handles continuous deployment automatically once connected to GitHub (pre
 ## Step 1 — Supabase cloud project
 
 1. Create a new project at supabase.com. Note the region (choose closest to Vercel deployment region).
-2. Once provisioned, go to **Project Settings → Database** and collect:
-   - **Transaction pooler URL** (port 6543) — this is `DATABASE_URL` for the app at runtime
-   - **Direct connection URL** (port 5432) — this is `DATABASE_URL_DIRECT` for running migrations
+2. Once provisioned, go to **Project Settings → Database → Connection string** and collect:
+   - **Transaction mode URL** (port 6543) — this is `DATABASE_URL` for the app at runtime
+   - **Session mode URL** (port 5432) — this is `DATABASE_URL_DIRECT` for running migrations
+
+   Note: new Supabase projects no longer expose a `db.[project-ref].supabase.co` direct
+   connection hostname. Use Session mode (port 5432) through the pooler instead — it supports
+   DDL statements that Drizzle migrations require. The username on pooler URLs is
+   `postgres.[project-ref]`, not just `postgres`.
 3. Go to **Project Settings → API** and collect:
    - **Project URL** — `NEXT_PUBLIC_SUPABASE_URL`
    - **anon / public key** — `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
@@ -36,9 +41,9 @@ There are two sets of migrations — both must be applied.
 
 **Drizzle migrations** (tables, indexes, RLS policies — `drizzle/` folder):
 
-Add the direct connection URL to `.env.local` temporarily:
+Add the session pooler URL to `.env.local` temporarily:
 ```
-DATABASE_URL_DIRECT=<direct connection URL from step 2>
+DATABASE_URL_DIRECT=<session pooler URL from step 2>
 ```
 
 Then run:
@@ -65,10 +70,10 @@ In the Supabase dashboard:
 
 ---
 
-## Step 2 — Anthropic API key
+## Step 2 — Vercel AI Gateway API key
 
-1. Go to [console.anthropic.com](https://console.anthropic.com) → API Keys → create a key.
-2. Copy it — this is `ANTHROPIC_API_KEY`.
+1. Go to vercel.com → Account Settings → Tokens → create a token.
+2. Copy it — this is `AI_GATEWAY_API_KEY`.
 
 ---
 
@@ -108,7 +113,7 @@ If setting up Sentry:
 | `DATABASE_URL` | Transaction pooler URL (port 6543) | Runtime DB connection |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | anon key | |
-| `ANTHROPIC_API_KEY` | Anthropic API key | AI extraction |
+| `AI_GATEWAY_API_KEY` | Vercel API token | AI extraction via Vercel AI Gateway |
 | `SENTRY_DSN` | Sentry DSN | Optional — skip if not using Sentry |
 | `NEXT_PUBLIC_SENTRY_DSN` | Same Sentry DSN | Optional |
 | `SENTRY_AUTH_TOKEN` | Sentry auth token | Only if source maps configured |
@@ -133,7 +138,7 @@ If setting up Sentry:
 4. Upload a PM statement PDF — verify it reaches the extraction pipeline and returns entries.
 5. Check **Reports** for the current or last month.
 
-If the AI extraction fails, check Vercel logs (`vercel logs` or the dashboard) — the most likely cause is a missing or incorrect `ANTHROPIC_API_KEY`.
+If the AI extraction fails, check Vercel logs (`vercel logs` or the dashboard) — the most likely cause is a missing or incorrect `AI_GATEWAY_API_KEY`.
 
 ---
 

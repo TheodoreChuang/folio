@@ -25,7 +25,7 @@ export async function extractStatementData(
   assignedMonth: string
 ): Promise<ExtractionResult> {
   const { object } = await generateObject({
-    model: gateway('anthropic/claude-sonnet-4-5'),
+    model: gateway('anthropic/claude-haiku-4-5'),
     schema: extractionResultSchema,
     system: `You are extracting structured financial data from Australian property management statements.
 Rules:
