@@ -77,22 +77,19 @@ In the Supabase dashboard:
 
 ---
 
-## Step 3 — Sentry project (optional)
+## Step 3 — Sentry project
 
-If skipping Sentry for now: the app functions without it — the SDK silently no-ops when `SENTRY_DSN` is unset.
-
-If setting up Sentry:
 1. Create a new project at sentry.io, platform = **Next.js**.
 2. Copy the DSN — set as both `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` in Vercel.
 3. For source maps (readable stack traces in Sentry):
-   - Go to sentry.io → Settings → Auth Tokens → create an internal integration token with `project:releases` and `org:read` scopes.
+   - Go to sentry.io → Settings → Developer Settings → create an Organization Token
    - Note your org slug and project slug.
    - Update `next.config.ts` (uncomment the source map block):
      ```ts
      export default withSentryConfig(nextConfig, {
        silent: true,
        tunnelRoute: '/monitoring',
-       org: '<your-sentry-org-slug>',
+       org: 'reiko-chuang',
        project: 'folio',
        authToken: process.env.SENTRY_AUTH_TOKEN,
        widenClientFileUpload: true,

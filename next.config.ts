@@ -10,9 +10,8 @@ const nextConfig: NextConfig = {
 export default withSentryConfig(nextConfig, {
   silent: true,
   tunnelRoute: '/monitoring',
-  // Populate for source map uploads in CI:
-  // org: 'your-sentry-org',
-  // project: 'folio',
-  // authToken: process.env.SENTRY_AUTH_TOKEN,
-  // widenClientFileUpload: true,
+  org: 'reiko-chuang',
+  project: 'folio',
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  widenClientFileUpload: true,
 })
