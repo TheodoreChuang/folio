@@ -1,5 +1,5 @@
 import { generateObject, createGateway } from 'ai'
-import { PDFParse } from 'pdf-parse'
+import { extractText } from 'unpdf'
 import type { ExtractionResult } from './schema'
 import { extractionResultSchema } from './schema'
 
@@ -8,16 +8,15 @@ const gateway = createGateway()
 const MIN_EXTRACTABLE_TEXT_LENGTH = 50
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  const parser = new PDFParse({ data: buffer })
-  const result = await parser.getText()
+  const { text } = await extractText(new Uint8Array(buffer), { mergePages: true })
 
-  if (!result.text || result.text.trim().length < MIN_EXTRACTABLE_TEXT_LENGTH) {
+  if (!text || text.trim().length < MIN_EXTRACTABLE_TEXT_LENGTH) {
     throw new Error(
       'PDF appears to be scanned or image-only — no extractable text found'
     )
   }
 
-  return result.text.trim()
+  return text.trim()
 }
 
 export async function extractStatementData(
@@ -25,7 +24,7 @@ export async function extractStatementData(
   assignedMonth: string
 ): Promise<ExtractionResult> {
   const { object } = await generateObject({
-    model: gateway('anthropic/claude-sonnet-4-5'),
+    model: gateway('anthropic/claude-haiku-4-5'),
     schema: extractionResultSchema,
     system: `You are extracting structured financial data from Australian property management statements.
 Rules:

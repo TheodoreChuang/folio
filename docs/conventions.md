@@ -161,6 +161,19 @@ new tables, but does **not** add a policy — omitting the policy means deny-all
 via PostgREST, which is inconsistent and will break if direct Supabase client
 queries are ever added.
 
+**PostgreSQL identifier limit (63 chars):** Drizzle auto-generates FK constraint names
+as `{table}_{column}_{referenced_table}_{referenced_column}_fk`. For long table names
+this can silently exceed Postgres's 63-char limit and get truncated. If adding a FK where
+the auto-generated name would exceed 63 chars, supply an explicit name:
+```ts
+sourceDocumentId: uuid('source_document_id')
+  .references(() => sourceDocuments.id, { onDelete: 'set null' }),
+// If auto-name is >63 chars, use foreignKey() builder with an explicit name instead
+```
+The existing `property_ledger_entries_source_document_id_source_documents_id_fk` (66 chars)
+was truncated on first cloud migration — the constraint works but the name is shorter than
+in the schema definition. Not worth a corrective migration.
+
 ---
 
 ## 5. Type Safety
@@ -212,7 +225,7 @@ No comments by default. Add a comment only when:
 - A constraint could be silently violated by a future reader
   (e.g. `// always filter deleted_at IS NULL except staleness MAX query`)
 - A config choice works around a specific platform bug or limitation
-  (e.g. Turbopack + pdf-parse worker path, Supabase Transaction pooler `prepare: false`)
+  (e.g. Turbopack + unpdf worker path, Supabase Transaction pooler `prepare: false`)
 - A storage decision is non-obvious from the column name alone
   (e.g. `// SHA-256 for dedup`, `// always positive — category determines income vs expense`)
 
