@@ -1,7 +1,9 @@
+// TODO: loan queries move to lib/borrowings in Phase 2
 import { and, desc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { properties, loanAccounts, loanBalances } from '@/db/schema'
+import { loanAccounts, loanBalances } from '@/db/schema'
+import { findPropertyById } from '@/lib/property'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -21,12 +23,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid property ID' }, { status: 400 })
     }
 
-    const [property] = await db
-      .select()
-      .from(properties)
-      .where(and(eq(properties.id, id), eq(properties.userId, user.id)))
-      .limit(1)
-
+    const property = await findPropertyById(user.id, id)
     if (!property) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
@@ -108,12 +105,7 @@ export async function POST(
       return NextResponse.json({ error: 'endDate cannot be before startDate' }, { status: 400 })
     }
 
-    const [property] = await db
-      .select()
-      .from(properties)
-      .where(and(eq(properties.id, id), eq(properties.userId, user.id)))
-      .limit(1)
-
+    const property = await findPropertyById(user.id, id)
     if (!property) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

@@ -79,7 +79,7 @@ export const loanAccounts = pgTable('loan_accounts', {
   index('idx_loan_accounts_property').on(t.propertyId),
 ])
 
-export const propertyLedgerEntries = pgTable('property_ledger_entries', {
+export const propertyLedger = pgTable('property_ledger', {
   id:               uuid('id').primaryKey().defaultRandom(),
   userId:           uuid('user_id').notNull(),
   propertyId:       uuid('property_id').notNull()
@@ -153,7 +153,7 @@ export const loanBalances = pgTable('loan_balances', {
 export type Property            = typeof properties.$inferSelect
 export type SourceDocument      = typeof sourceDocuments.$inferSelect
 export type LoanAccount         = typeof loanAccounts.$inferSelect
-export type PropertyLedgerEntry = typeof propertyLedgerEntries.$inferSelect
+export type PropertyLedger = typeof propertyLedger.$inferSelect
 export type PortfolioReport     = typeof portfolioReports.$inferSelect
 export type LedgerCategory      = typeof ledgerCategoryEnum.enumValues[number]
 export type PropertyValuation   = typeof propertyValuations.$inferSelect

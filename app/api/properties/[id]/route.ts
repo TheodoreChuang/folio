@@ -1,7 +1,5 @@
-import { and, desc, eq, gte, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { properties, propertyLedgerEntries, propertyValuations } from '@/db/schema'
+import { getPropertyWithStats, updateProperty, deleteProperty } from '@/lib/property'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -21,70 +19,22 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid property ID' }, { status: 400 })
     }
 
-    const [property] = await db
-      .select()
-      .from(properties)
-      .where(and(eq(properties.id, id), eq(properties.userId, user.id)))
-      .limit(1)
-
-    if (!property) {
+    const result = await getPropertyWithStats(user.id, id)
+    if (!result) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const [latestValuationRow] = await db
-      .select()
-      .from(propertyValuations)
-      .where(and(eq(propertyValuations.propertyId, id), eq(propertyValuations.userId, user.id)))
-      .orderBy(desc(propertyValuations.valuedAt))
-      .limit(1)
-
-    const latestValuation = latestValuationRow
-      ? { valueCents: latestValuationRow.valueCents, valuedAt: latestValuationRow.valuedAt, source: latestValuationRow.source }
-      : null
-
-    const twelveMonthsAgo = new Date()
-    twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1)
-    const cutoff = twelveMonthsAgo.toISOString().slice(0, 10)
-
-    const ledgerEntries = await db
-      .select()
-      .from(propertyLedgerEntries)
-      .where(
-        and(
-          eq(propertyLedgerEntries.userId, user.id),
-          eq(propertyLedgerEntries.propertyId, id),
-          gte(propertyLedgerEntries.lineItemDate, cutoff),
-          isNull(propertyLedgerEntries.deletedAt)
-        )
-      )
-
-    let yieldStats: { grossPercent: number; netPercent: number; periodLabel: string } | null = null
-    if (latestValuation) {
-      let trailing12mRent = 0
-      let trailing12mExpenses = 0
-      for (const e of ledgerEntries) {
-        if (e.category === 'rent') {
-          trailing12mRent += e.amountCents
-        } else if (e.category !== 'loan_payment') {
-          trailing12mExpenses += e.amountCents
-        }
-      }
-      const val = latestValuation.valueCents
-      yieldStats = {
-        grossPercent: Math.round((trailing12mRent / val) * 10000) / 100,
-        netPercent: Math.round(((trailing12mRent - trailing12mExpenses) / val) * 10000) / 100,
-        periodLabel: 'trailing 12m',
-      }
-    }
-
-    return NextResponse.json({ property, latestValuation, yield: yieldStats })
+    return NextResponse.json({
+      property: result.property,
+      latestValuation: result.latestValuation,
+      yield: result.yield,
+    })
   } catch (err) {
     captureError(err, { route: 'GET /api/properties/[id]' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-// PUT /api/properties/[id] — update a property
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -149,12 +99,7 @@ export async function PUT(
       return NextResponse.json({ error: 'endDate cannot be before startDate' }, { status: 400 })
     }
 
-    const [updated] = await db
-      .update(properties)
-      .set(updates)
-      .where(and(eq(properties.id, id), eq(properties.userId, user.id)))
-      .returning()
-
+    const updated = await updateProperty(user.id, id, updates)
     if (!updated) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
@@ -180,11 +125,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid property ID' }, { status: 400 })
     }
 
-    const [deleted] = await db
-      .delete(properties)
-      .where(and(eq(properties.id, id), eq(properties.userId, user.id)))
-      .returning()
-
+    const deleted = await deleteProperty(user.id, id)
     if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

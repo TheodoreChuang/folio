@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray, isNull, lte } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { propertyLedgerEntries, properties, loanAccounts } from '@/db/schema'
+import { propertyLedger, properties, loanAccounts } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import { computeReport } from '@/lib/reports/compute'
@@ -52,16 +52,16 @@ export async function GET(request: Request) {
     const filteredPropertyIds = props.map(p => p.id)
 
     const entriesWhere = [
-      eq(propertyLedgerEntries.userId, user.id),
-      gte(propertyLedgerEntries.lineItemDate, from),
-      lte(propertyLedgerEntries.lineItemDate, to),
-      isNull(propertyLedgerEntries.deletedAt),
-      ...(filteredPropertyIds.length > 0 ? [inArray(propertyLedgerEntries.propertyId, filteredPropertyIds)] : []),
+      eq(propertyLedger.userId, user.id),
+      gte(propertyLedger.lineItemDate, from),
+      lte(propertyLedger.lineItemDate, to),
+      isNull(propertyLedger.deletedAt),
+      ...(filteredPropertyIds.length > 0 ? [inArray(propertyLedger.propertyId, filteredPropertyIds)] : []),
     ]
 
     const entries = filteredPropertyIds.length === 0 && (propertyId || entityId)
       ? []
-      : await db.select().from(propertyLedgerEntries).where(and(...entriesWhere))
+      : await db.select().from(propertyLedger).where(and(...entriesWhere))
 
     const { totals, flags } = computeReport(entries, props, loans)
 

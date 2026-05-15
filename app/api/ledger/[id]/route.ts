@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { propertyLedgerEntries } from '@/db/schema'
+import { propertyLedger } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -27,8 +27,8 @@ export async function DELETE(
 
     const [entry] = await db
       .select()
-      .from(propertyLedgerEntries)
-      .where(and(eq(propertyLedgerEntries.id, id), eq(propertyLedgerEntries.userId, user.id)))
+      .from(propertyLedger)
+      .where(and(eq(propertyLedger.id, id), eq(propertyLedger.userId, user.id)))
       .limit(1)
 
     if (!entry) {
@@ -43,9 +43,9 @@ export async function DELETE(
     }
 
     const [updated] = await db
-      .update(propertyLedgerEntries)
+      .update(propertyLedger)
       .set({ deletedAt: new Date() })
-      .where(eq(propertyLedgerEntries.id, id))
+      .where(eq(propertyLedger.id, id))
       .returning()
 
     return NextResponse.json({ entry: updated })

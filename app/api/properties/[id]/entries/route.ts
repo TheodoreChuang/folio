@@ -1,8 +1,6 @@
-import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { properties, propertyLedgerEntries } from '@/db/schema'
+import { findPropertyById, createLedgerEntry } from '@/lib/property'
 import type { LedgerCategory } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
@@ -41,29 +39,19 @@ export async function POST(
     }
     const { lineItemDate, amountCents, category, description } = parsed.data
 
-    const [property] = await db
-      .select()
-      .from(properties)
-      .where(and(eq(properties.id, id), eq(properties.userId, user.id)))
-      .limit(1)
-
+    const property = await findPropertyById(user.id, id)
     if (!property) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const [entry] = await db
-      .insert(propertyLedgerEntries)
-      .values({
-        userId: user.id,
-        propertyId: id,
-        sourceDocumentId: null,
-        loanAccountId: null,
-        lineItemDate,
-        amountCents,
-        category: category as LedgerCategory,
-        description,
-      })
-      .returning()
+    const entry = await createLedgerEntry({
+      userId: user.id,
+      propertyId: id,
+      lineItemDate,
+      amountCents,
+      category: category as LedgerCategory,
+      description,
+    })
 
     return NextResponse.json({ entry }, { status: 201 })
   } catch (err) {

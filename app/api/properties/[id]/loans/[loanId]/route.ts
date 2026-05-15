@@ -1,3 +1,4 @@
+// TODO: loan queries move to lib/borrowings in Phase 2
 import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
@@ -78,15 +79,8 @@ export async function PATCH(
     const [updated] = await db
       .update(loanAccounts)
       .set(updates)
-      .where(
-        and(
-          eq(loanAccounts.id, loanId),
-          eq(loanAccounts.propertyId, id),
-          eq(loanAccounts.userId, user.id),
-        )
-      )
+      .where(and(eq(loanAccounts.id, loanId), eq(loanAccounts.propertyId, id), eq(loanAccounts.userId, user.id)))
       .returning()
-
     if (!updated) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
@@ -113,19 +107,11 @@ export async function DELETE(
     }
 
     const today = new Date().toISOString().slice(0, 10)
-
     const [updated] = await db
       .update(loanAccounts)
       .set({ endDate: today })
-      .where(
-        and(
-          eq(loanAccounts.id, loanId),
-          eq(loanAccounts.propertyId, id),
-          eq(loanAccounts.userId, user.id),
-        )
-      )
+      .where(and(eq(loanAccounts.id, loanId), eq(loanAccounts.propertyId, id), eq(loanAccounts.userId, user.id)))
       .returning()
-
     if (!updated) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

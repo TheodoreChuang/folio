@@ -1,7 +1,5 @@
-import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { propertyValuations } from '@/db/schema'
+import { deleteValuation } from '@/lib/property'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -24,17 +22,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid valuation ID' }, { status: 400 })
     }
 
-    const [deleted] = await db
-      .delete(propertyValuations)
-      .where(
-        and(
-          eq(propertyValuations.id, valuationId),
-          eq(propertyValuations.propertyId, id),
-          eq(propertyValuations.userId, user.id)
-        )
-      )
-      .returning()
-
+    const deleted = await deleteValuation(user.id, id, valuationId)
     if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

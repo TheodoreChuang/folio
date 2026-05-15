@@ -175,7 +175,7 @@ describe('POST /api/reports', () => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
     mocks.mockSelectOrderBy.mockResolvedValue([]) // safe default; POST doesn't use orderBy
-    // First select: propertyLedgerEntries, second: properties, third: loanAccounts
+    // First select: propertyLedger, second: properties, third: loanAccounts
     mocks.mockSelectWhere
       .mockResolvedValueOnce([entryRow])
       .mockResolvedValueOnce([propRow])

@@ -1,3 +1,4 @@
+// TODO: balance queries move to lib/borrowings in Phase 2
 import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
@@ -29,15 +30,8 @@ export async function DELETE(
 
     const [deleted] = await db
       .delete(loanBalances)
-      .where(
-        and(
-          eq(loanBalances.id, balanceId),
-          eq(loanBalances.loanAccountId, loanId),
-          eq(loanBalances.userId, user.id)
-        )
-      )
+      .where(and(eq(loanBalances.id, balanceId), eq(loanBalances.loanAccountId, loanId), eq(loanBalances.userId, user.id)))
       .returning()
-
     if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

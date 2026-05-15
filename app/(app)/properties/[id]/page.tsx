@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { formatMonth, formatCents, recentMonths } from '@/lib/format'
-import type { Property, PropertyLedgerEntry, PropertyValuation, LoanBalance, Entity } from '@/db/schema'
+import type { Property, PropertyLedger, PropertyValuation, LoanBalance, Entity } from '@/db/schema'
 
 type LatestBalance = { balanceCents: number; recordedAt: string } | null
 type LoanRow = { id: string; lender: string; nickname: string | null; startDate: string; endDate: string; entityId: string | null; latestBalance: LatestBalance }
@@ -63,7 +63,7 @@ export default function EditPropertyPage() {
   const [newLoanEndDate, setNewLoanEndDate] = useState('')
   const [addingLoan, setAddingLoan] = useState(false)
   const [txMonth, setTxMonth] = useState(() => recentMonths(1)[0])
-  const [entries, setEntries] = useState<PropertyLedgerEntry[]>([])
+  const [entries, setEntries] = useState<PropertyLedger[]>([])
   const [entriesLoading, setEntriesLoading] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [entryDate, setEntryDate] = useState('')
@@ -71,7 +71,7 @@ export default function EditPropertyPage() {
   const [entryCategory, setEntryCategory] = useState('')
   const [entryDesc, setEntryDesc] = useState('')
   const [savingEntry, setSavingEntry] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState<PropertyLedgerEntry | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<PropertyLedger | null>(null)
   const [latestValuation, setLatestValuation] = useState<LatestValuation>(null)
   const [yieldStats, setYieldStats] = useState<YieldStats>(null)
   const [valuations, setValuations] = useState<PropertyValuation[]>([])
@@ -161,7 +161,7 @@ export default function EditPropertyPage() {
     setShowAddForm(false)
   }
 
-  async function handleDeleteEntry(entry: PropertyLedgerEntry) {
+  async function handleDeleteEntry(entry: PropertyLedger) {
     const res = await fetch(`/api/ledger/${entry.id}`, { method: 'DELETE' })
     if (!res.ok) { toast.error('Failed to delete transaction'); return }
     setEntries(prev => prev.filter(e => e.id !== entry.id))

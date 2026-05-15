@@ -14,7 +14,7 @@ import { config } from 'dotenv'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { like, inArray } from 'drizzle-orm'
 import postgres from 'postgres'
-import { propertyLedgerEntries, sourceDocuments } from '../db/schema'
+import { propertyLedger, sourceDocuments } from '../db/schema'
 
 config({ path: '.env.local' })
 
@@ -52,9 +52,9 @@ async function main() {
 
   // ── 3. Delete property_ledger_entries that came from these uploads ────────────────────
   const deleted = await db
-    .delete(propertyLedgerEntries)
-    .where(inArray(propertyLedgerEntries.sourceDocumentId, docIds))
-    .returning({ id: propertyLedgerEntries.id })
+    .delete(propertyLedger)
+    .where(inArray(propertyLedger.sourceDocumentId, docIds))
+    .returning({ id: propertyLedger.id })
   console.log(`  ✓ ${deleted.length} ledger entr${deleted.length === 1 ? 'y' : 'ies'} removed`)
 
   // ── 4. Delete the source_document rows themselves ────────────────────────────

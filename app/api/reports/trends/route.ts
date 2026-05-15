@@ -1,7 +1,7 @@
 import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { propertyLedgerEntries } from '@/db/schema'
+import { propertyLedger } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import { lastDayOfMonth } from '@/lib/format'
@@ -58,22 +58,22 @@ export async function GET(request: Request) {
 
     const rows = await db
       .select({
-        month: sql<string>`to_char(date_trunc('month', ${propertyLedgerEntries.lineItemDate}), 'YYYY-MM')`,
-        category: propertyLedgerEntries.category,
-        totalCents: sql<number>`SUM(${propertyLedgerEntries.amountCents})::int`,
+        month: sql<string>`to_char(date_trunc('month', ${propertyLedger.lineItemDate}), 'YYYY-MM')`,
+        category: propertyLedger.category,
+        totalCents: sql<number>`SUM(${propertyLedger.amountCents})::int`,
       })
-      .from(propertyLedgerEntries)
+      .from(propertyLedger)
       .where(
         and(
-          eq(propertyLedgerEntries.userId, user.id),
-          gte(propertyLedgerEntries.lineItemDate, from),
-          lte(propertyLedgerEntries.lineItemDate, to),
-          isNull(propertyLedgerEntries.deletedAt),
+          eq(propertyLedger.userId, user.id),
+          gte(propertyLedger.lineItemDate, from),
+          lte(propertyLedger.lineItemDate, to),
+          isNull(propertyLedger.deletedAt),
         )
       )
       .groupBy(
-        sql`date_trunc('month', ${propertyLedgerEntries.lineItemDate})`,
-        propertyLedgerEntries.category,
+        sql`date_trunc('month', ${propertyLedger.lineItemDate})`,
+        propertyLedger.category,
       )
 
     type MonthBucket = { rent: number; expenses: number; mortgage: number }

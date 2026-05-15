@@ -1,3 +1,4 @@
+// TODO: loan/balance queries move to lib/borrowings in Phase 2
 import { and, desc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
@@ -30,7 +31,6 @@ export async function GET(
       .from(loanAccounts)
       .where(and(eq(loanAccounts.id, loanId), eq(loanAccounts.propertyId, id), eq(loanAccounts.userId, user.id)))
       .limit(1)
-
     if (!loan) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
@@ -40,7 +40,6 @@ export async function GET(
       .from(loanBalances)
       .where(and(eq(loanBalances.loanAccountId, loanId), eq(loanBalances.userId, user.id)))
       .orderBy(desc(loanBalances.recordedAt))
-
     return NextResponse.json({ balances })
   } catch (err) {
     captureError(err, { route: 'GET /api/properties/[id]/loans/[loanId]/balances' })
@@ -96,20 +95,13 @@ export async function POST(
       .from(loanAccounts)
       .where(and(eq(loanAccounts.id, loanId), eq(loanAccounts.propertyId, id), eq(loanAccounts.userId, user.id)))
       .limit(1)
-
     if (!loan) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     const [balance] = await db
       .insert(loanBalances)
-      .values({
-        userId: user.id,
-        loanAccountId: loanId,
-        recordedAt,
-        balanceCents,
-        notes: notes || null,
-      })
+      .values({ userId: user.id, loanAccountId: loanId, recordedAt, balanceCents, notes: notes || null })
       .returning()
 
     return NextResponse.json({ balance }, { status: 201 })

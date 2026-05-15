@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { properties, sourceDocuments, propertyLedgerEntries } from '@/db/schema'
+import { properties, sourceDocuments, propertyLedger } from '@/db/schema'
 
 const refs = vi.hoisted(() => ({
   cookieStore: [] as { name: string; value: string }[],
@@ -77,7 +77,7 @@ describe('GET /api/documents (integration — M-1 soft-delete filter)', () => {
     docId = doc.id
 
     const [entry] = await db
-      .insert(propertyLedgerEntries)
+      .insert(propertyLedger)
       .values({
         userId,
         propertyId,
@@ -92,7 +92,7 @@ describe('GET /api/documents (integration — M-1 soft-delete filter)', () => {
 
   afterAll(async () => {
     if (!hasEnv) return
-    if (entryId) await db.delete(propertyLedgerEntries).where(eq(propertyLedgerEntries.id, entryId))
+    if (entryId) await db.delete(propertyLedger).where(eq(propertyLedger.id, entryId))
     if (docId) await db.delete(sourceDocuments).where(eq(sourceDocuments.id, docId))
     if (propertyId) await db.delete(properties).where(eq(properties.id, propertyId))
   })
@@ -112,18 +112,18 @@ describe('GET /api/documents (integration — M-1 soft-delete filter)', () => {
 
   it('hides doc when ledger entry is soft-deleted (M-1: isNull entry.deletedAt)', async () => {
     if (!hasEnv) return
-    await db.update(propertyLedgerEntries)
+    await db.update(propertyLedger)
       .set({ deletedAt: new Date() })
-      .where(eq(propertyLedgerEntries.id, entryId))
+      .where(eq(propertyLedger.id, entryId))
     try {
       const res = await getDocuments(TEST_MONTH)
       expect(res.status).toBe(200)
       const json = await res.json()
       expect(json.documents.some((d: { id: string }) => d.id === docId)).toBe(false)
     } finally {
-      await db.update(propertyLedgerEntries)
+      await db.update(propertyLedger)
         .set({ deletedAt: null })
-        .where(eq(propertyLedgerEntries.id, entryId))
+        .where(eq(propertyLedger.id, entryId))
     }
   })
 

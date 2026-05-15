@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { properties, sourceDocuments, propertyLedgerEntries } from '@/db/schema'
+import { properties, sourceDocuments, propertyLedger } from '@/db/schema'
 
 const refs = vi.hoisted(() => ({
   cookieStore: [] as { name: string; value: string }[],
@@ -166,13 +166,13 @@ describe('POST /api/statements (integration)', () => {
     // Delete property ledger entries first (FK constraints)
     if (sourceDocumentId) {
       await db
-        .delete(propertyLedgerEntries)
-        .where(eq(propertyLedgerEntries.sourceDocumentId, sourceDocumentId))
+        .delete(propertyLedger)
+        .where(eq(propertyLedger.sourceDocumentId, sourceDocumentId))
     }
     if (sourceDocumentBId) {
       await db
-        .delete(propertyLedgerEntries)
-        .where(eq(propertyLedgerEntries.sourceDocumentId, sourceDocumentBId))
+        .delete(propertyLedger)
+        .where(eq(propertyLedger.sourceDocumentId, sourceDocumentBId))
     }
     if (sourceDocumentId) {
       await db
@@ -218,8 +218,8 @@ describe('POST /api/statements (integration)', () => {
     // Verify rows in DB
     const rows = await db
       .select()
-      .from(propertyLedgerEntries)
-      .where(eq(propertyLedgerEntries.sourceDocumentId, sourceDocumentId))
+      .from(propertyLedger)
+      .where(eq(propertyLedger.sourceDocumentId, sourceDocumentId))
     expect(rows).toHaveLength(sampleResult.lineItems.length)
     expect(rows.every((r) => r.userId === userId)).toBe(true)
     expect(rows.every((r) => r.propertyId === propertyId)).toBe(true)
@@ -243,10 +243,10 @@ describe('POST /api/statements (integration)', () => {
     // Confirm no duplicates (exclude soft-deleted rows)
     const rows = await db
       .select()
-      .from(propertyLedgerEntries)
+      .from(propertyLedger)
       .where(and(
-        eq(propertyLedgerEntries.sourceDocumentId, sourceDocumentId),
-        isNull(propertyLedgerEntries.deletedAt),
+        eq(propertyLedger.sourceDocumentId, sourceDocumentId),
+        isNull(propertyLedger.deletedAt),
       ))
     expect(rows).toHaveLength(sampleResult.lineItems.length)
   })
@@ -256,8 +256,8 @@ describe('POST /api/statements (integration)', () => {
 
     const rows = await db
       .select()
-      .from(propertyLedgerEntries)
-      .where(eq(propertyLedgerEntries.sourceDocumentId, sourceDocumentId))
+      .from(propertyLedger)
+      .where(eq(propertyLedger.sourceDocumentId, sourceDocumentId))
     for (const row of rows) {
       expect(row.userId).toBe(userId)
       expect(row.propertyId).toBe(propertyId)
@@ -299,8 +299,8 @@ describe('POST /api/statements (integration)', () => {
     // Confirm no property ledger entries were inserted for user B's doc
     const rows = await db
       .select()
-      .from(propertyLedgerEntries)
-      .where(eq(propertyLedgerEntries.sourceDocumentId, sourceDocumentBId))
+      .from(propertyLedger)
+      .where(eq(propertyLedger.sourceDocumentId, sourceDocumentBId))
     expect(rows).toHaveLength(0)
   })
 })
