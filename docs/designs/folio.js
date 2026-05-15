@@ -10,10 +10,20 @@
   const screens = document.querySelectorAll('.screen');
   const navItems = document.querySelectorAll('[data-goto]');
 
-  function goTo(screen) {
+  function goTo(screen, sourceEl) {
     screens.forEach(s => s.classList.toggle('is-active', s.dataset.screen === screen));
+    // Find which sidebar nav item to highlight. If multiple share the same
+    // data-goto (e.g. several loan rows all going to "loan"), prefer the
+    // one the user actually clicked; otherwise fall back to the first match.
+    const sidebarMatches = document.querySelectorAll(`.sidebar .nav-item[data-goto="${screen}"]`);
+    let activeNav = null;
+    if (sourceEl && sourceEl.closest && sourceEl.closest('.sidebar')) {
+      activeNav = sourceEl.closest('.nav-item');
+    } else if (sidebarMatches.length === 1) {
+      activeNav = sidebarMatches[0];
+    }
     document.querySelectorAll('.sidebar .nav-item').forEach(n => {
-      n.classList.toggle('is-active', n.dataset.goto === screen);
+      n.classList.toggle('is-active', n === activeNav);
     });
     if (location.hash !== '#' + screen) {
       history.replaceState(null, '', '#' + screen);
@@ -24,7 +34,7 @@
   navItems.forEach(n => {
     n.addEventListener('click', e => {
       e.preventDefault();
-      goTo(n.dataset.goto);
+      goTo(n.dataset.goto, n);
     });
   });
 
@@ -111,6 +121,16 @@
         r.classList.toggle('expanded');
         next.style.display = r.classList.contains('expanded') ? '' : 'none';
       }
+    });
+  });
+  // --- Plan: scroll to a calculator from the lede CTA -------------
+  document.querySelectorAll('[data-jump]').forEach(b => {
+    b.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.getElementById(b.dataset.jump);
+      if (!target) return;
+      const top = target.getBoundingClientRect().top + window.scrollY - 24;
+      window.scrollTo({ top, behavior: 'smooth' });
     });
   });
 })();
