@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
-import { AppNav } from '@/components/app-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -81,7 +80,6 @@ export default function EntitiesPage() {
 
   return (
     <div className="min-h-screen bg-screen-bg">
-      <AppNav />
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-serif text-2xl">Entities</h1>

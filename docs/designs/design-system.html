@@ -1,0 +1,1827 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Folio — Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,30..100&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* =====================================================================
+     FOLIO DESIGN TOKENS
+     Every value in this system is a variable.
+     HSL channels are stored unwrapped so Tailwind's hsl(var(--token) / α)
+     pattern works without modification.
+     ===================================================================== */
+  :root {
+    /* ── Color: surfaces ────────────────────────────────────────────── */
+    --background:        40  30% 97%;   /* warm off-white, app canvas    */
+    --surface:           40  35% 99%;   /* cards, panels                 */
+    --surface-sunken:    38  22% 94%;   /* pill backgrounds, table heads */
+    --surface-raised:    0    0% 100%;  /* modals, popovers              */
+
+    /* ── Color: ink (text) ──────────────────────────────────────────── */
+    --foreground:        30  10% 12%;   /* primary text                  */
+    --foreground-muted:  32   6% 38%;   /* secondary text, labels        */
+    --foreground-subtle: 34   5% 56%;   /* tertiary, placeholders        */
+    --foreground-faint:  36   8% 72%;   /* disabled, chart gridlines     */
+
+    /* ── Color: lines ───────────────────────────────────────────────── */
+    --border:            36  12% 86%;   /* default borders               */
+    --border-strong:     34  10% 74%;   /* focused inputs, hover         */
+    --rule:              36  14% 90%;   /* row dividers ("ruled paper")  */
+
+    /* ── Color: accent (teal-slate) ─────────────────────────────────── */
+    --accent:            188 32% 32%;   /* primary actions, links        */
+    --accent-hover:      188 36% 26%;
+    --accent-soft:       186 28% 92%;   /* hover fills, active nav       */
+    --accent-foreground:   0   0% 100%;
+
+    /* ── Color: semantic ────────────────────────────────────────────── */
+    --positive:          152 38% 30%;   /* up arrows, healthy            */
+    --positive-soft:     148 30% 92%;
+    --negative:           14 58% 42%;   /* down, attention               */
+    --negative-soft:      18 58% 94%;
+    --warning:            34 70% 42%;   /* heads-up                      */
+    --warning-soft:       38 76% 93%;
+
+    /* ── Type: families ─────────────────────────────────────────────── */
+    --font-display: "Fraunces", "Lora", ui-serif, Georgia, serif;
+    --font-data:    "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+    /* Micro-labels (section markers, timestamps, token names) reuse --font-data
+       at 11px / uppercase / 0.10–0.14em tracking. No third face.
+       --font-mono is kept as an alias so component rules don't all need to change;
+       it now resolves to Inter with tabular numerics applied at the use site. */
+    --font-micro:   var(--font-data);
+    --font-mono:    var(--font-data);
+
+    /* ── Type: scale (px → rem at 16px root) ────────────────────────── */
+    --text-2xs: 0.6875rem;   /* 11px — micro labels, all-caps  */
+    --text-xs:  0.75rem;     /* 12px — table cells, badges     */
+    --text-sm:  0.8125rem;   /* 13px — secondary body          */
+    --text-md:  0.875rem;    /* 14px — primary body, controls  */
+    --text-lg:  1rem;        /* 16px — emphasised body         */
+    --text-xl:  1.25rem;     /* 20px — section titles          */
+    --text-2xl: 1.5rem;      /* 24px — card metric value       */
+    --text-3xl: 1.875rem;    /* 30px — page title              */
+    --text-4xl: 2.5rem;      /* 40px — hero metric             */
+    --text-5xl: 3.5rem;      /* 56px — display only            */
+
+    /* ── Type: line-height ──────────────────────────────────────────── */
+    --leading-tight:  1.15;
+    --leading-snug:   1.3;
+    --leading-normal: 1.5;
+    --leading-loose:  1.65;
+
+    /* ── Spacing (4px base) ─────────────────────────────────────────── */
+    --space-0:   0;
+    --space-px:  1px;
+    --space-1:   0.25rem;   /* 4px  */
+    --space-2:   0.375rem;  /* 6px  */
+    --space-3:   0.5rem;    /* 8px  */
+    --space-4:   0.75rem;   /* 12px */
+    --space-5:   1rem;      /* 16px */
+    --space-6:   1.25rem;   /* 20px */
+    --space-7:   1.5rem;    /* 24px */
+    --space-8:   2rem;      /* 32px */
+    --space-9:   2.5rem;    /* 40px */
+    --space-10:  3rem;      /* 48px */
+
+    /* ── Density (component heights) ────────────────────────────────── */
+    --density-row:    34px;  /* table row, nav item                   */
+    --density-control:36px;  /* inputs, secondary buttons             */
+    --density-cta:    40px;  /* primary CTA                           */
+    --density-tile:  104px;  /* metric card minimum height            */
+
+    /* ── Radius ─────────────────────────────────────────────────────── */
+    --radius-xs: 3px;
+    --radius-sm: 5px;
+    --radius:    7px;        /* default (cards, inputs, buttons)      */
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-pill: 999px;
+
+    /* ── Shadow (used sparingly) ────────────────────────────────────── */
+    --shadow-flat:   0 0 0 1px hsl(var(--border));
+    --shadow-rest:   0 1px 0 hsl(36 12% 90%);
+    --shadow-pop:    0 1px 2px hsl(30 10% 12% / 0.06),
+                     0 4px 12px hsl(30 10% 12% / 0.04);
+    --shadow-focus:  0 0 0 3px hsl(var(--accent) / 0.18);
+  }
+
+  /* =====================================================================
+     RESET / BASE
+     ===================================================================== */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: var(--font-data);
+    font-size: var(--text-md);
+    line-height: var(--leading-normal);
+    color: hsl(var(--foreground));
+    background: hsl(var(--background));
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "ss01", "cv11";
+  }
+  h1, h2, h3, h4, p { margin: 0; }
+  button { font: inherit; color: inherit; }
+
+  /* =====================================================================
+     PAGE FRAME
+     ===================================================================== */
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: var(--space-10) var(--space-8) var(--space-10);
+  }
+  .masthead {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: var(--space-7);
+    padding-bottom: var(--space-7);
+    border-bottom: 1px solid hsl(var(--border));
+    margin-bottom: var(--space-9);
+  }
+  .masthead .wordmark {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: var(--text-3xl);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .masthead .wordmark em {
+    font-style: italic;
+    font-weight: 300;
+    color: hsl(var(--foreground-muted));
+  }
+  .masthead .tag {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: hsl(var(--foreground-subtle));
+    margin-top: var(--space-3);
+  }
+  .masthead .blurb {
+    font-family: var(--font-display);
+    font-weight: 350;
+    font-size: var(--text-lg);
+    line-height: var(--leading-snug);
+    color: hsl(var(--foreground-muted));
+    max-width: 36ch;
+    text-align: right;
+    text-wrap: pretty;
+  }
+
+  /* =====================================================================
+     SECTION SCAFFOLDING
+     ===================================================================== */
+  section.sys { margin-bottom: var(--space-10); }
+  .sys-head {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: var(--space-7);
+    margin-bottom: var(--space-6);
+  }
+  .sys-head .label {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: hsl(var(--foreground-subtle));
+    padding-top: 4px;
+  }
+  .sys-head h2 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: var(--text-2xl);
+    letter-spacing: -0.015em;
+    line-height: var(--leading-tight);
+  }
+  .sys-head h2 + p {
+    margin-top: var(--space-3);
+    color: hsl(var(--foreground-muted));
+    font-size: var(--text-md);
+    max-width: 64ch;
+    text-wrap: pretty;
+  }
+  .sys-body {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: var(--space-7);
+  }
+  .sys-body .aside {
+    font-size: var(--text-sm);
+    color: hsl(var(--foreground-muted));
+    line-height: var(--leading-snug);
+  }
+  .sys-body .aside dt {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: hsl(var(--foreground-subtle));
+    margin-top: var(--space-5);
+  }
+  .sys-body .aside dt:first-child { margin-top: 0; }
+  .sys-body .aside dd { margin: var(--space-1) 0 0; }
+
+  /* =====================================================================
+     COLOR — SWATCH GRID
+     ===================================================================== */
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-3);
+  }
+  .swatch {
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .swatch .chip {
+    height: 88px;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  .swatch .meta {
+    padding: var(--space-4) var(--space-4) var(--space-4);
+  }
+  .swatch .name {
+    font-family: var(--font-data);
+    font-weight: 600;
+    font-size: var(--text-sm);
+  }
+  .swatch .role {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: hsl(var(--foreground-subtle));
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .swatch .hsl {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-muted));
+    margin-top: var(--space-3);
+  }
+  .swatch.has-ring .chip { box-shadow: inset 0 0 0 1px hsl(var(--border)); }
+
+  .grouped-swatches {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-7);
+  }
+  .group-title {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: hsl(var(--foreground-subtle));
+    margin-bottom: var(--space-4);
+  }
+
+  /* =====================================================================
+     TYPE SPECIMENS
+     ===================================================================== */
+  .type-rows {
+    border-top: 1px solid hsl(var(--rule));
+  }
+  .type-row {
+    display: grid;
+    grid-template-columns: 200px 1fr 180px;
+    gap: var(--space-6);
+    padding: var(--space-6) 0;
+    border-bottom: 1px solid hsl(var(--rule));
+    align-items: baseline;
+  }
+  .type-row .role {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: hsl(var(--foreground-subtle));
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    line-height: var(--leading-snug);
+  }
+  .type-row .role .face {
+    color: hsl(var(--foreground));
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: var(--text-sm);
+    display: block;
+    font-family: var(--font-data);
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+  .type-row .specimen { line-height: 1; }
+  .type-row .meta {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-muted));
+    text-align: right;
+  }
+  .specimen.display { font-family: var(--font-display); letter-spacing: -0.015em; }
+  .specimen.data    { font-family: var(--font-data); }
+  .specimen.mono    { font-family: var(--font-mono); }
+  .specimen .num    { font-feature-settings: "tnum" 1, "ss01" 1; }
+
+  .voice-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-5);
+    margin-top: var(--space-5);
+  }
+  .voice-card {
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: var(--space-6);
+  }
+  .voice-card .voice-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: hsl(var(--foreground-subtle));
+    margin-bottom: var(--space-3);
+  }
+  .voice-card.folio .voice-text {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: var(--text-xl);
+    line-height: var(--leading-snug);
+    letter-spacing: -0.005em;
+    text-wrap: balance;
+  }
+  .voice-card.user .voice-text {
+    font-family: var(--font-data);
+    font-weight: 500;
+    font-size: var(--text-md);
+    color: hsl(var(--foreground));
+  }
+  .voice-card.user .voice-text .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* =====================================================================
+     SPACING SCALE
+     ===================================================================== */
+  .spacing-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0 var(--space-8);
+  }
+  .spacing-row {
+    display: grid;
+    grid-template-columns: 64px 1fr 80px;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid hsl(var(--rule));
+  }
+  .spacing-row .token {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground));
+  }
+  .spacing-row .bar { height: 8px; background: hsl(var(--accent) / 0.85); border-radius: 2px; }
+  .spacing-row .px {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-muted));
+    text-align: right;
+  }
+
+  .density-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+  }
+  .density-card {
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: var(--space-5);
+  }
+  .density-card .name {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: hsl(var(--foreground-subtle));
+  }
+  .density-card .px {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-muted));
+    margin-top: 2px;
+  }
+  .density-card .preview {
+    margin-top: var(--space-4);
+    background: hsl(var(--surface-sunken));
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--space-4);
+    color: hsl(var(--foreground-muted));
+    font-size: var(--text-sm);
+  }
+  .density-card[data-h="row"]     .preview { height: var(--density-row); }
+  .density-card[data-h="control"] .preview { height: var(--density-control); }
+  .density-card[data-h="cta"]     .preview { height: var(--density-cta); }
+  .density-card[data-h="tile"]    .preview { height: var(--density-tile); align-items: flex-end; padding: var(--space-4); }
+
+  /* =====================================================================
+     COMPONENT BASE STYLES — these are the actual primitives, not just
+     visual examples. They consume tokens directly.
+     ===================================================================== */
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    height: var(--density-control);
+    padding: 0 var(--space-5);
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    font-family: var(--font-data);
+    font-weight: 500;
+    font-size: var(--text-md);
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+    white-space: nowrap;
+  }
+  .btn--primary   { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+  .btn--primary:hover { background: hsl(var(--accent-hover)); }
+  .btn--secondary { background: hsl(var(--surface)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
+  .btn--secondary:hover { background: hsl(var(--surface-sunken)); border-color: hsl(var(--border-strong)); }
+  .btn--ghost     { background: transparent; color: hsl(var(--foreground-muted)); }
+  .btn--ghost:hover { background: hsl(var(--surface-sunken)); color: hsl(var(--foreground)); }
+  .btn--danger    { background: hsl(var(--negative-soft)); color: hsl(var(--negative)); border-color: hsl(var(--negative) / 0.25); }
+  .btn--danger:hover { background: hsl(var(--negative) / 0.12); }
+  .btn--sm { height: 28px; padding: 0 var(--space-4); font-size: var(--text-sm); border-radius: var(--radius-sm); }
+  .btn--lg { height: var(--density-cta); padding: 0 var(--space-6); }
+  .btn:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+
+  /* Inputs */
+  .input,
+  .select,
+  .textarea {
+    width: 100%;
+    height: var(--density-control);
+    padding: 0 var(--space-4);
+    background: hsl(var(--surface-raised));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    font-family: var(--font-data);
+    font-size: var(--text-md);
+    color: hsl(var(--foreground));
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .textarea { height: auto; padding: var(--space-3) var(--space-4); min-height: 80px; resize: vertical; }
+  .input::placeholder, .textarea::placeholder { color: hsl(var(--foreground-subtle)); }
+  .input:focus, .select:focus, .textarea:focus {
+    outline: none;
+    border-color: hsl(var(--accent));
+    box-shadow: var(--shadow-focus);
+  }
+  .input-label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    margin-bottom: var(--space-2);
+  }
+  .input-help {
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-muted));
+    margin-top: var(--space-2);
+  }
+  .input-prefix {
+    position: relative;
+  }
+  .input-prefix > .glyph {
+    position: absolute;
+    left: var(--space-4);
+    top: 50%;
+    transform: translateY(-50%);
+    color: hsl(var(--foreground-subtle));
+    font-family: var(--font-mono);
+    font-size: var(--text-md);
+    pointer-events: none;
+  }
+  .input-prefix > .input { padding-left: 28px; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 22px;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-pill);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: hsl(var(--surface-sunken));
+    color: hsl(var(--foreground-muted));
+    border: 1px solid hsl(var(--border));
+    white-space: nowrap;
+  }
+  .badge .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: hsl(var(--foreground-subtle));
+  }
+  .badge--complete { background: hsl(var(--positive-soft)); color: hsl(var(--positive)); border-color: hsl(var(--positive) / 0.2); }
+  .badge--complete .dot { background: hsl(var(--positive)); }
+  .badge--partial  { background: hsl(var(--warning-soft)); color: hsl(var(--warning)); border-color: hsl(var(--warning) / 0.25); }
+  .badge--partial .dot { background: hsl(var(--warning)); }
+  .badge--missing  { background: hsl(var(--negative-soft)); color: hsl(var(--negative)); border-color: hsl(var(--negative) / 0.25); }
+  .badge--missing .dot { background: hsl(var(--negative)); }
+  .badge--estimated{ background: hsl(var(--accent-soft)); color: hsl(var(--accent)); border-color: hsl(var(--accent) / 0.2); }
+  .badge--estimated .dot { background: hsl(var(--accent)); }
+
+  /* Cards (generic) */
+  .card {
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+  }
+
+  /* Metric card */
+  .metric {
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-height: var(--density-tile);
+  }
+  .metric .label {
+    font-family: var(--font-data);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: hsl(var(--foreground-muted));
+    letter-spacing: 0;
+  }
+  .metric .value {
+    font-family: var(--font-data);
+    font-weight: 600;
+    font-size: var(--text-2xl);
+    letter-spacing: -0.01em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--foreground));
+  }
+  .metric .value .unit {
+    font-weight: 500;
+    font-size: var(--text-md);
+    color: hsl(var(--foreground-muted));
+    margin-right: 2px;
+  }
+  .metric .footrow {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-muted));
+  }
+  .trend {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--font-data);
+    font-weight: 600;
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+  }
+  .trend--up   { color: hsl(var(--positive)); }
+  .trend--down { color: hsl(var(--negative)); }
+  .trend--flat { color: hsl(var(--foreground-muted)); }
+  .trend svg   { width: 10px; height: 10px; }
+
+  /* Sparkline placeholder */
+  .spark { width: 56px; height: 18px; }
+
+  /* Property card */
+  .prop-card {
+    display: grid;
+    grid-template-columns: 1.1fr 0.8fr 0.8fr 0.8fr 28px;
+    align-items: center;
+    gap: var(--space-5);
+    padding: var(--space-5);
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+  }
+  .prop-card + .prop-card { margin-top: -1px; border-top-left-radius: 0; border-top-right-radius: 0;}
+  .prop-card:not(:last-child) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .prop-card .addr .street {
+    font-family: var(--font-data);
+    font-weight: 600;
+    font-size: var(--text-md);
+  }
+  .prop-card .addr .sub {
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-muted));
+    margin-top: 2px;
+  }
+  .prop-card .stat {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .prop-card .stat .k {
+    font-family: var(--font-data);
+    font-size: var(--text-2xs);
+    color: hsl(var(--foreground-subtle));
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+  .prop-card .stat .v {
+    font-family: var(--font-data);
+    font-weight: 600;
+    font-size: var(--text-md);
+    font-variant-numeric: tabular-nums;
+  }
+  .prop-card .chev {
+    color: hsl(var(--foreground-subtle));
+    font-family: var(--font-mono);
+  }
+
+  /* Data table */
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-size: var(--text-sm);
+  }
+  .table thead th {
+    text-align: left;
+    font-family: var(--font-data);
+    font-weight: 500;
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--foreground-subtle));
+    background: hsl(var(--surface-sunken));
+    padding: var(--space-3) var(--space-5);
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  .table tbody td {
+    padding: var(--space-3) var(--space-5);
+    border-bottom: 1px solid hsl(var(--rule));
+    height: var(--density-row);
+    color: hsl(var(--foreground));
+  }
+  .table tbody tr:last-child td { border-bottom: none; }
+  .table .num { font-variant-numeric: tabular-nums; text-align: right; }
+  .table .muted { color: hsl(var(--foreground-muted)); }
+  .table tbody tr:hover td { background: hsl(var(--surface-sunken) / 0.6); }
+
+  /* Navigation */
+  .nav {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    overflow: hidden;
+    min-height: 320px;
+  }
+  .nav .rail {
+    background: hsl(var(--surface));
+    border-right: 1px solid hsl(var(--border));
+    padding: var(--space-5) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .nav .brand {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: var(--text-xl);
+    letter-spacing: -0.02em;
+    padding: 0 var(--space-3) var(--space-5);
+    border-bottom: 1px solid hsl(var(--rule));
+    margin-bottom: var(--space-3);
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: var(--space-3);
+    height: var(--density-row);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-md);
+    color: hsl(var(--foreground-muted));
+    cursor: pointer;
+  }
+  .nav-item .ico {
+    width: 14px; height: 14px;
+    color: hsl(var(--foreground-subtle));
+  }
+  .nav-item:hover { background: hsl(var(--surface-sunken)); color: hsl(var(--foreground)); }
+  .nav-item.is-active {
+    background: hsl(var(--accent-soft));
+    color: hsl(var(--accent));
+    font-weight: 500;
+  }
+  .nav-item.is-active .ico { color: hsl(var(--accent)); }
+  .nav-item .count {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: hsl(var(--foreground-subtle));
+  }
+  .nav-section-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: hsl(var(--foreground-subtle));
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: var(--space-4) var(--space-3) var(--space-2);
+  }
+  .nav .canvas {
+    padding: var(--space-7);
+    background: hsl(var(--background));
+  }
+  .nav .canvas h4 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: var(--text-xl);
+    letter-spacing: -0.015em;
+    margin-bottom: var(--space-2);
+  }
+  .nav .canvas p {
+    color: hsl(var(--foreground-muted));
+    font-size: var(--text-sm);
+  }
+
+  /* =====================================================================
+     PROMPT — first-class component
+     ===================================================================== */
+  .prompt-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-5);
+  }
+  .prompt {
+    --prompt-tone: var(--foreground-muted);
+    --prompt-tone-soft: var(--surface-sunken);
+    --prompt-tone-line: var(--border);
+
+    position: relative;
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    overflow: hidden;
+  }
+  .prompt::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: hsl(var(--prompt-tone));
+  }
+  .prompt[data-tone="action"]   { --prompt-tone: var(--negative); --prompt-tone-soft: var(--negative-soft); --prompt-tone-line: hsl(var(--negative) / 0.18); }
+  .prompt[data-tone="heads-up"] { --prompt-tone: var(--warning);  --prompt-tone-soft: var(--warning-soft);  --prompt-tone-line: hsl(var(--warning) / 0.2); }
+  .prompt[data-tone="complete"] { --prompt-tone: var(--positive); --prompt-tone-soft: var(--positive-soft); --prompt-tone-line: hsl(var(--positive) / 0.2); }
+
+  .prompt .head {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .prompt .severity {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: hsl(var(--prompt-tone));
+  }
+  .prompt .severity .glyph {
+    width: 14px; height: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: hsl(var(--prompt-tone));
+    color: hsl(var(--surface-raised));
+    font-size: 9px; font-weight: 700;
+    font-family: var(--font-data);
+  }
+  .prompt .timestamp {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: hsl(var(--foreground-subtle));
+  }
+  .prompt .message {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: var(--text-xl);
+    line-height: var(--leading-snug);
+    letter-spacing: -0.005em;
+    color: hsl(var(--foreground));
+    text-wrap: pretty;
+  }
+  .prompt .message .num { font-variant-numeric: tabular-nums; }
+  .prompt .context {
+    font-family: var(--font-data);
+    font-size: var(--text-sm);
+    color: hsl(var(--foreground-muted));
+    line-height: var(--leading-snug);
+  }
+  .prompt .context dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px var(--space-4);
+  }
+  .prompt .context dt {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--foreground-subtle));
+    align-self: center;
+  }
+  .prompt .context dd {
+    margin: 0;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    font-variant-numeric: tabular-nums;
+  }
+  .prompt .actions {
+    display: flex; align-items: center; gap: var(--space-3);
+    margin-top: auto;
+    padding-top: var(--space-4);
+    border-top: 1px solid hsl(var(--rule));
+  }
+  .prompt .actions .btn--primary {
+    background: hsl(var(--prompt-tone));
+    color: hsl(var(--surface-raised));
+  }
+  .prompt .actions .btn--primary:hover {
+    background: hsl(var(--prompt-tone) / 0.88);
+  }
+
+  /* =====================================================================
+     UTILITIES
+     ===================================================================== */
+  .row { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+  .stack-3 > * + * { margin-top: var(--space-3); }
+  .stack-5 > * + * { margin-top: var(--space-5); }
+  .stack-7 > * + * { margin-top: var(--space-7); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); }
+
+  .footnote {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: hsl(var(--foreground-subtle));
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .legend {
+    display: flex; gap: var(--space-5); flex-wrap: wrap;
+    font-size: var(--text-xs); color: hsl(var(--foreground-muted));
+  }
+  .legend .key { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .key i {
+    width: 10px; height: 10px; border-radius: 2px; display: inline-block;
+  }
+
+  /* =====================================================================
+     PAGE OUTRO
+     ===================================================================== */
+  .colophon {
+    border-top: 1px solid hsl(var(--border));
+    margin-top: var(--space-10);
+    padding-top: var(--space-7);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-7);
+    align-items: end;
+    color: hsl(var(--foreground-muted));
+    font-size: var(--text-sm);
+  }
+  .colophon .signoff {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 350;
+    font-size: var(--text-lg);
+    color: hsl(var(--foreground-muted));
+    line-height: var(--leading-snug);
+    max-width: 38ch;
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <!-- ================================================================
+         MASTHEAD
+         ================================================================ -->
+    <header class="masthead">
+      <div>
+        <div class="wordmark">Folio<em> · design system</em></div>
+        <div class="tag">v0.1 — Reference · May 2026</div>
+      </div>
+      <p class="blurb">
+        A calm decision surface for residential property investors. Tokens, type,
+        components — the single source of truth for everything Folio shows.
+      </p>
+    </header>
+
+    <!-- ================================================================
+         01 — PRINCIPLES
+         ================================================================ -->
+    <section class="sys" id="principles">
+      <div class="sys-head">
+        <div class="label">01 — Principles</div>
+        <div>
+          <h2>The UI recedes. Data is the focus.</h2>
+          <p>
+            Hierarchy is driven by typography and spacing, not decoration. Color is secondary —
+            it confirms, it doesn't lead. The default state is calm, so when Folio speaks, it
+            stands out.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Tone</dt><dd>Measured, precise, quietly confident.</dd>
+          <dt>Density</dt><dd>Linear-tight. More information per screen, deliberately spaced.</dd>
+          <dt>Hierarchy</dt><dd>Type weight &gt; spacing &gt; color.</dd>
+        </dl>
+        <div class="grid-4">
+          <div class="card" style="padding:var(--space-6)">
+            <div class="footnote" style="margin-bottom:var(--space-3)">Voice</div>
+            <div style="font-family:var(--font-display); font-size: var(--text-xl); line-height: var(--leading-snug); letter-spacing:-0.005em;">Net cashflow is down 8% this month.</div>
+          </div>
+          <div class="card" style="padding:var(--space-6)">
+            <div class="footnote" style="margin-bottom:var(--space-3)">Hierarchy</div>
+            <div style="display:flex; align-items:baseline; gap:var(--space-3);">
+              <div style="font-weight:600; font-size: var(--text-2xl); letter-spacing:-0.01em; font-variant-numeric:tabular-nums;">$4,820</div>
+              <div style="color: hsl(var(--foreground-muted)); font-size: var(--text-xs);">net / mo</div>
+            </div>
+            <div class="footnote" style="margin-top:var(--space-3); color: hsl(var(--positive));">▲ 2.1% vs last mo</div>
+          </div>
+          <div class="card" style="padding:var(--space-6)">
+            <div class="footnote" style="margin-bottom:var(--space-3)">Density</div>
+            <div style="display:flex; flex-direction:column; gap:6px; font-variant-numeric:tabular-nums; font-size: var(--text-sm);">
+              <div style="display:flex; justify-content:space-between"><span>14 Elm St</span><span>$2,150</span></div>
+              <div style="display:flex; justify-content:space-between"><span>9 Randwick Rd</span><span>$1,980</span></div>
+              <div style="display:flex; justify-content:space-between"><span>22A Park Ln</span><span>$1,420</span></div>
+              <div style="display:flex; justify-content:space-between; color: hsl(var(--foreground-muted))"><span>Sutherland Ct</span><span>—</span></div>
+            </div>
+          </div>
+          <div class="card" style="padding:var(--space-6)">
+            <div class="footnote" style="margin-bottom:var(--space-3)">Color is secondary</div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+              <span class="badge badge--complete"><span class="dot"></span>Complete</span>
+              <span class="badge badge--partial"><span class="dot"></span>Partial</span>
+              <span class="badge badge--missing"><span class="dot"></span>Missing</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         02 — COLOR
+         ================================================================ -->
+    <section class="sys" id="color">
+      <div class="sys-head">
+        <div class="label">02 — Color</div>
+        <div>
+          <h2>Warm neutrals first; teal-slate for action.</h2>
+          <p>
+            Stored as unwrapped HSL channels so <code style="font-family:var(--font-mono); font-size: 0.9em;">hsl(var(--token) / α)</code>
+            works directly in Tailwind / shadcn theme. Every UI color is a token — no hex anywhere
+            else in the codebase.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Background</dt><dd>Warm off-white, near the Claude.ai canvas — not pure white.</dd>
+          <dt>Accent</dt><dd>Single teal-slate, used sparingly for primary action and active state.</dd>
+          <dt>Semantic</dt><dd>Green / red / amber tinted to sit on the warm canvas without shouting.</dd>
+        </dl>
+        <div class="stack-7">
+
+          <div>
+            <div class="group-title">Surface</div>
+            <div class="swatch-grid">
+              <div class="swatch has-ring"><div class="chip" style="background: hsl(var(--background))"></div>
+                <div class="meta"><div class="name">background</div><div class="role">App canvas</div><div class="hsl">40 30% 97%</div></div>
+              </div>
+              <div class="swatch has-ring"><div class="chip" style="background: hsl(var(--surface))"></div>
+                <div class="meta"><div class="name">surface</div><div class="role">Cards · panels</div><div class="hsl">40 35% 99%</div></div>
+              </div>
+              <div class="swatch has-ring"><div class="chip" style="background: hsl(var(--surface-sunken))"></div>
+                <div class="meta"><div class="name">surface.sunken</div><div class="role">Pills · tableheads</div><div class="hsl">38 22% 94%</div></div>
+              </div>
+              <div class="swatch has-ring"><div class="chip" style="background: hsl(var(--surface-raised))"></div>
+                <div class="meta"><div class="name">surface.raised</div><div class="role">Modals · popovers</div><div class="hsl">0 0% 100%</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="group-title">Ink &amp; lines</div>
+            <div class="swatch-grid">
+              <div class="swatch"><div class="chip" style="background: hsl(var(--foreground))"></div>
+                <div class="meta"><div class="name">foreground</div><div class="role">Primary text</div><div class="hsl">30 10% 12%</div></div>
+              </div>
+              <div class="swatch"><div class="chip" style="background: hsl(var(--foreground-muted))"></div>
+                <div class="meta"><div class="name">foreground.muted</div><div class="role">Secondary text</div><div class="hsl">32 6% 38%</div></div>
+              </div>
+              <div class="swatch"><div class="chip" style="background: hsl(var(--foreground-subtle))"></div>
+                <div class="meta"><div class="name">foreground.subtle</div><div class="role">Placeholders · labels</div><div class="hsl">34 5% 56%</div></div>
+              </div>
+              <div class="swatch has-ring"><div class="chip" style="background: hsl(var(--border))"></div>
+                <div class="meta"><div class="name">border / rule</div><div class="role">Dividers · cards</div><div class="hsl">36 12% 86%</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grouped-swatches">
+            <div>
+              <div class="group-title">Accent — teal/slate</div>
+              <div class="swatch-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="swatch"><div class="chip" style="background: hsl(var(--accent))"></div>
+                  <div class="meta"><div class="name">accent</div><div class="role">Primary action</div><div class="hsl">188 32% 32%</div></div>
+                </div>
+                <div class="swatch"><div class="chip" style="background: hsl(var(--accent-soft))"></div>
+                  <div class="meta"><div class="name">accent.soft</div><div class="role">Active nav · hover</div><div class="hsl">186 28% 92%</div></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="group-title">Semantic</div>
+              <div class="swatch-grid" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="swatch"><div class="chip" style="background: hsl(var(--positive))"></div>
+                  <div class="meta"><div class="name">positive</div><div class="role">Healthy · up</div><div class="hsl">152 38% 30%</div></div>
+                </div>
+                <div class="swatch"><div class="chip" style="background: hsl(var(--warning))"></div>
+                  <div class="meta"><div class="name">warning</div><div class="role">Heads up</div><div class="hsl">34 70% 42%</div></div>
+                </div>
+                <div class="swatch"><div class="chip" style="background: hsl(var(--negative))"></div>
+                  <div class="meta"><div class="name">negative</div><div class="role">Action needed</div><div class="hsl">14 58% 42%</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         03 — TYPOGRAPHY
+         ================================================================ -->
+    <section class="sys" id="type">
+      <div class="sys-head">
+        <div class="label">03 — Typography</div>
+        <div>
+          <h2>Two faces. Folio speaks in serif; data reads in sans.</h2>
+          <p>
+            <strong>Fraunces</strong> carries Folio's voice — AI summaries, prompts, callouts.
+            <strong>Inter</strong> carries everything the user reads as data — numbers, tables,
+            chrome, and the 11px uppercase micro-labels (no third face needed: tracking and
+            case do the work a monospace would).
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Display</dt><dd>Fraunces · 350–500 · −0.015em tracking</dd>
+          <dt>Data</dt><dd>Inter · 400 / 500 / 600 · tabular numerics on values</dd>
+          <dt>Micro</dt><dd>Inter · 11px · uppercase · 0.10–0.14em tracking — for section labels, timestamps, tokens.</dd>
+          <dt>Rule</dt><dd>What Folio <em>says</em> → display. What the user <em>reads</em> → data.</dd>
+        </dl>
+        <div class="stack-7">
+
+          <div class="type-rows">
+            <!-- Display scale -->
+            <div class="type-row">
+              <div class="role"><span class="face">Display · Fraunces</span>display.hero</div>
+              <div class="specimen display" style="font-size: var(--text-4xl); font-weight: 400;">Am I okay this month?</div>
+              <div class="meta">40 / 1.15 · 400</div>
+            </div>
+            <div class="type-row">
+              <div class="role"><span class="face">Display · Fraunces</span>display.lg</div>
+              <div class="specimen display" style="font-size: var(--text-3xl); font-weight: 400;">Net cashflow is down 8%.</div>
+              <div class="meta">30 / 1.2 · 400</div>
+            </div>
+            <div class="type-row">
+              <div class="role"><span class="face">Display · Fraunces</span>display.md</div>
+              <div class="specimen display" style="font-size: var(--text-2xl); font-weight: 400;">Property 3 has the highest expense ratio.</div>
+              <div class="meta">24 / 1.25 · 400</div>
+            </div>
+            <div class="type-row">
+              <div class="role"><span class="face">Display · Fraunces</span>display.sm</div>
+              <div class="specimen display" style="font-size: var(--text-xl); font-weight: 400;">Lease renewal due in 6 weeks — 14 Elm St.</div>
+              <div class="meta">20 / 1.3 · 400</div>
+            </div>
+            <!-- Data scale -->
+            <div class="type-row">
+              <div class="role"><span class="face">Data · Inter</span>data.value</div>
+              <div class="specimen data num" style="font-size: var(--text-4xl); font-weight: 600; letter-spacing:-0.02em;">$4,820.50</div>
+              <div class="meta">40 / 1 · 600 · tnum</div>
+            </div>
+            <div class="type-row">
+              <div class="role"><span class="face">Data · Inter</span>data.title</div>
+              <div class="specimen data" style="font-size: var(--text-xl); font-weight: 600; letter-spacing:-0.01em;">Portfolio · Apr 2026</div>
+              <div class="meta">20 / 1.3 · 600</div>
+            </div>
+            <div class="type-row">
+              <div class="role"><span class="face">Data · Inter</span>data.body</div>
+              <div class="specimen data" style="font-size: var(--text-md); font-weight: 400;">14 Elm Street · Randwick · NSW 2031</div>
+              <div class="meta">14 / 1.5 · 400</div>
+            </div>
+            <div class="type-row">
+              <div class="role"><span class="face">Data · Inter</span>data.label</div>
+              <div class="specimen data" style="font-size: var(--text-sm); font-weight: 500; color: hsl(var(--foreground-muted));">Net cashflow · trailing 12 months</div>
+              <div class="meta">13 / 1.4 · 500</div>
+            </div>
+            <div class="type-row">
+              <div class="role"><span class="face">Data · Inter</span>data.micro</div>
+              <div class="specimen data" style="font-size: var(--text-2xs); font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: hsl(var(--foreground-subtle));">SECTION 02 — PORTFOLIO TOTALS</div>
+              <div class="meta">11 / 1.3 · 500 · tracked</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="group-title">Voice rule — same statement, two faces</div>
+            <div class="voice-pair">
+              <div class="voice-card folio">
+                <div class="voice-label">Folio speaks · Fraunces</div>
+                <div class="voice-text">Net cashflow is down 8% this month — Property 2 expenses are the cause.</div>
+              </div>
+              <div class="voice-card user">
+                <div class="voice-label">User reads · Inter</div>
+                <div class="voice-text">
+                  <div style="display:flex; justify-content:space-between; padding: 4px 0; border-bottom: 1px solid hsl(var(--rule));"><span style="color:hsl(var(--foreground-muted))">Net cashflow</span><span class="num">$4,820</span></div>
+                  <div style="display:flex; justify-content:space-between; padding: 4px 0; border-bottom: 1px solid hsl(var(--rule));"><span style="color:hsl(var(--foreground-muted))">Δ vs Mar</span><span class="num" style="color:hsl(var(--negative))">−8.0%</span></div>
+                  <div style="display:flex; justify-content:space-between; padding: 4px 0;"><span style="color:hsl(var(--foreground-muted))">Top driver</span><span class="num">Prop 2 · expenses</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         04 — SPACING & DENSITY
+         ================================================================ -->
+    <section class="sys" id="spacing">
+      <div class="sys-head">
+        <div class="label">04 — Spacing &amp; density</div>
+        <div>
+          <h2>A 4-pixel rhythm. Padding is deliberate, not generous.</h2>
+          <p>
+            Eleven scale steps from 0 to 48px. Components consume named density tokens
+            (<code style="font-family:var(--font-mono); font-size:0.9em;">row · control · cta · tile</code>) so the
+            whole system can be tightened or loosened from one place.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Base unit</dt><dd>4px. All spacing is a multiple.</dd>
+          <dt>Card padding</dt><dd>20px (<code>--space-6</code>) default; 16px for dense rows.</dd>
+          <dt>Row gap</dt><dd>34px row height for tables and nav — Linear-tight.</dd>
+        </dl>
+        <div>
+          <div class="spacing-list">
+            <div class="spacing-row"><span class="token">--space-1</span><span class="bar" style="width:4px"></span><span class="px">4 · 0.25rem</span></div>
+            <div class="spacing-row"><span class="token">--space-2</span><span class="bar" style="width:6px"></span><span class="px">6 · 0.375rem</span></div>
+            <div class="spacing-row"><span class="token">--space-3</span><span class="bar" style="width:8px"></span><span class="px">8 · 0.5rem</span></div>
+            <div class="spacing-row"><span class="token">--space-4</span><span class="bar" style="width:12px"></span><span class="px">12 · 0.75rem</span></div>
+            <div class="spacing-row"><span class="token">--space-5</span><span class="bar" style="width:16px"></span><span class="px">16 · 1rem</span></div>
+            <div class="spacing-row"><span class="token">--space-6</span><span class="bar" style="width:20px"></span><span class="px">20 · 1.25rem</span></div>
+            <div class="spacing-row"><span class="token">--space-7</span><span class="bar" style="width:24px"></span><span class="px">24 · 1.5rem</span></div>
+            <div class="spacing-row"><span class="token">--space-8</span><span class="bar" style="width:32px"></span><span class="px">32 · 2rem</span></div>
+            <div class="spacing-row"><span class="token">--space-9</span><span class="bar" style="width:40px"></span><span class="px">40 · 2.5rem</span></div>
+            <div class="spacing-row"><span class="token">--space-10</span><span class="bar" style="width:48px"></span><span class="px">48 · 3rem</span></div>
+          </div>
+
+          <div class="density-grid">
+            <div class="density-card" data-h="row">
+              <div class="name">density.row</div>
+              <div class="px">34px</div>
+              <div class="preview">Table row · nav item</div>
+            </div>
+            <div class="density-card" data-h="control">
+              <div class="name">density.control</div>
+              <div class="px">36px</div>
+              <div class="preview">Input · secondary button</div>
+            </div>
+            <div class="density-card" data-h="cta">
+              <div class="name">density.cta</div>
+              <div class="px">40px</div>
+              <div class="preview">Primary CTA</div>
+            </div>
+            <div class="density-card" data-h="tile">
+              <div class="name">density.tile</div>
+              <div class="px">104px</div>
+              <div class="preview">Metric card min</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top: var(--space-7); gap: var(--space-7);">
+            <div>
+              <div class="footnote" style="margin-bottom: var(--space-3);">Radius</div>
+              <div class="row">
+                <div style="width:48px; height:48px; background:hsl(var(--surface)); border:1px solid hsl(var(--border)); border-radius: var(--radius-xs)"></div>
+                <div style="width:48px; height:48px; background:hsl(var(--surface)); border:1px solid hsl(var(--border)); border-radius: var(--radius-sm)"></div>
+                <div style="width:48px; height:48px; background:hsl(var(--surface)); border:1px solid hsl(var(--border)); border-radius: var(--radius)"></div>
+                <div style="width:48px; height:48px; background:hsl(var(--surface)); border:1px solid hsl(var(--border)); border-radius: var(--radius-md)"></div>
+                <div style="width:48px; height:48px; background:hsl(var(--surface)); border:1px solid hsl(var(--border)); border-radius: var(--radius-lg)"></div>
+                <div style="width:48px; height:48px; background:hsl(var(--surface)); border:1px solid hsl(var(--border)); border-radius: var(--radius-pill)"></div>
+              </div>
+              <div class="footnote" style="margin-top: var(--space-3); display:flex; gap: var(--space-5);">
+                <span>3px</span><span>5px</span><span>7px</span><span>10px</span><span>14px</span><span>pill</span>
+              </div>
+            </div>
+            <div>
+              <div class="footnote" style="margin-bottom: var(--space-3);">Elevation</div>
+              <div class="row">
+                <div style="width:96px; height:48px; background:hsl(var(--surface)); border:1px solid hsl(var(--border)); border-radius: var(--radius);"></div>
+                <div style="width:96px; height:48px; background:hsl(var(--surface)); border-radius: var(--radius); box-shadow: var(--shadow-rest);"></div>
+                <div style="width:96px; height:48px; background:hsl(var(--surface-raised)); border-radius: var(--radius); box-shadow: var(--shadow-pop);"></div>
+              </div>
+              <div class="footnote" style="margin-top: var(--space-3); display:flex; gap: var(--space-7);">
+                <span>flat</span><span>rest</span><span>pop</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         05 — PROMPT (THE HERO COMPONENT)
+         ================================================================ -->
+    <section class="sys" id="prompt">
+      <div class="sys-head">
+        <div class="label">05 — Prompt</div>
+        <div>
+          <h2>The primary intelligence object.</h2>
+          <p>
+            Prompts are first-class. They are how Folio gets the user's attention. The message uses
+            the display face — this is Folio speaking, not data being displayed. Three severities,
+            shown side-by-side so the hierarchy is clear.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Anatomy</dt><dd>Severity tag · timestamp · message (display) · context (data) · actions.</dd>
+          <dt>Severity</dt><dd>Action needed · Heads up · Complete. Carried by a 3px left rule and a tinted tag — the body remains calm.</dd>
+          <dt>Voice</dt><dd>Always declarative, never imperative. State the fact; offer the action.</dd>
+        </dl>
+        <div class="prompt-grid">
+
+          <article class="prompt" data-tone="action">
+            <div class="head">
+              <span class="severity"><span class="glyph">!</span>Action needed</span>
+              <span class="timestamp">2h ago</span>
+            </div>
+            <p class="message">No rent recorded for 14&nbsp;Elm&nbsp;Street in April — the statement hasn't arrived.</p>
+            <div class="context">
+              <dl>
+                <dt>Property</dt><dd>14 Elm St · Randwick</dd>
+                <dt>Expected</dt><dd>$2,150</dd>
+                <dt>Last received</dt><dd>27 Mar 2026</dd>
+              </dl>
+            </div>
+            <div class="actions">
+              <button class="btn btn--primary btn--sm">Upload statement</button>
+              <button class="btn btn--ghost btn--sm">Mark as estimated</button>
+            </div>
+          </article>
+
+          <article class="prompt" data-tone="heads-up">
+            <div class="head">
+              <span class="severity"><span class="glyph">i</span>Heads up</span>
+              <span class="timestamp">Yesterday</span>
+            </div>
+            <p class="message">Lease renewal due in 6&nbsp;weeks at 14&nbsp;Elm&nbsp;Street. Current rent is 4% below market.</p>
+            <div class="context">
+              <dl>
+                <dt>Tenancy</dt><dd>S. Okafor · since Jul 2024</dd>
+                <dt>Rent</dt><dd>$2,150 / wk</dd>
+                <dt>Market est.</dt><dd>$2,240 / wk</dd>
+              </dl>
+            </div>
+            <div class="actions">
+              <button class="btn btn--secondary btn--sm">Open property</button>
+              <button class="btn btn--ghost btn--sm">Snooze</button>
+            </div>
+          </article>
+
+          <article class="prompt" data-tone="complete">
+            <div class="head">
+              <span class="severity"><span class="glyph">✓</span>Complete</span>
+              <span class="timestamp">Just now</span>
+            </div>
+            <p class="message">March statements processed for all 4&nbsp;properties. Net cashflow up 2.1%.</p>
+            <div class="context">
+              <dl>
+                <dt>Statements</dt><dd>4 of 4</dd>
+                <dt>Net</dt><dd>$4,820</dd>
+                <dt>Δ vs Feb</dt><dd>+ $99</dd>
+              </dl>
+            </div>
+            <div class="actions">
+              <button class="btn btn--secondary btn--sm">View report</button>
+              <button class="btn btn--ghost btn--sm">Dismiss</button>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         06 — METRIC CARDS
+         ================================================================ -->
+    <section class="sys" id="metric">
+      <div class="sys-head">
+        <div class="label">06 — Metric card</div>
+        <div>
+          <h2>One number, one label, a quiet trend.</h2>
+          <p>
+            The atom of the dashboard. Sentence-case label on top; the value carries weight, not
+            color. The trend indicator only borrows semantic color when there is genuine direction.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Numerals</dt><dd>Inter, tabular numerics, weight 600.</dd>
+          <dt>Trend</dt><dd>Optional. Use only when comparison is meaningful.</dd>
+          <dt>Don't</dt><dd>Don't add icons or large color blocks. Numbers are the focus.</dd>
+        </dl>
+        <div class="grid-4">
+
+          <div class="metric">
+            <div class="label">Net cashflow · Apr</div>
+            <div class="value"><span class="unit">$</span>4,820</div>
+            <div class="footrow">
+              <span class="trend trend--up">
+                <svg viewBox="0 0 10 10"><polyline points="1,7 4,4 6,6 9,2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                +2.1%
+              </span>
+              <svg class="spark" viewBox="0 0 56 18" fill="none" stroke="hsl(var(--accent))" stroke-width="1.2">
+                <polyline points="0,12 8,11 16,13 24,9 32,8 40,6 48,7 56,4"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="metric">
+            <div class="label">Total rent collected</div>
+            <div class="value"><span class="unit">$</span>14,210</div>
+            <div class="footrow">
+              <span class="trend trend--flat">
+                <svg viewBox="0 0 10 10"><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                no change
+              </span>
+              <span style="font-family:var(--font-mono); font-size: var(--text-2xs); color: hsl(var(--foreground-subtle));">3&nbsp;OF&nbsp;4</span>
+            </div>
+          </div>
+
+          <div class="metric">
+            <div class="label">Expense ratio</div>
+            <div class="value">42.6<span class="unit" style="margin-left:2px;">%</span></div>
+            <div class="footrow">
+              <span class="trend trend--down">
+                <svg viewBox="0 0 10 10"><polyline points="1,3 4,6 6,4 9,8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                +3.2pp
+              </span>
+              <svg class="spark" viewBox="0 0 56 18" fill="none" stroke="hsl(var(--negative))" stroke-width="1.2">
+                <polyline points="0,8 8,9 16,7 24,8 32,11 40,12 48,14 56,15"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="metric">
+            <div class="label">Portfolio value</div>
+            <div class="value"><span class="unit">$</span>3.48<span class="unit" style="margin-left:2px;">m</span></div>
+            <div class="footrow">
+              <span class="trend trend--up">
+                <svg viewBox="0 0 10 10"><polyline points="1,7 4,4 6,6 9,2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                +1.4%
+              </span>
+              <span class="badge badge--estimated"><span class="dot"></span>Est.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         07 — PROPERTY CARD + DATA TABLE
+         ================================================================ -->
+    <section class="sys" id="property">
+      <div class="sys-head">
+        <div class="label">07 — Property card &amp; table</div>
+        <div>
+          <h2>Compact rows. One property per row. One row per truth.</h2>
+          <p>
+            Property cards stack flush — borders collapse so a list of four reads as a single
+            ledger. Numbers are tabular; status sits at the right edge.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Stack</dt><dd>Four cards = one ledger. Borders collapse between rows.</dd>
+          <dt>Status</dt><dd>Right-aligned badge — read direction = importance.</dd>
+          <dt>Hover</dt><dd>Color shift only. No lift, no shadow, no scale.</dd>
+        </dl>
+        <div class="stack-7">
+
+          <div>
+            <div class="prop-card">
+              <div class="addr">
+                <div class="street">14 Elm Street</div>
+                <div class="sub">Randwick · NSW 2031 · 3-bed terrace</div>
+              </div>
+              <div class="stat"><span class="k">Rent / wk</span><span class="v">$2,150</span></div>
+              <div class="stat"><span class="k">Net / mo</span><span class="v" style="color:hsl(var(--positive))">+ $1,420</span></div>
+              <div class="stat"><span class="k">Status</span><span class="v"><span class="badge badge--missing"><span class="dot"></span>Statement missing</span></span></div>
+              <div class="chev">›</div>
+            </div>
+            <div class="prop-card">
+              <div class="addr">
+                <div class="street">9 Randwick Road</div>
+                <div class="sub">Coogee · NSW 2034 · 2-bed unit</div>
+              </div>
+              <div class="stat"><span class="k">Rent / wk</span><span class="v">$1,980</span></div>
+              <div class="stat"><span class="k">Net / mo</span><span class="v" style="color:hsl(var(--positive))">+ $920</span></div>
+              <div class="stat"><span class="k">Status</span><span class="v"><span class="badge badge--complete"><span class="dot"></span>Complete</span></span></div>
+              <div class="chev">›</div>
+            </div>
+            <div class="prop-card">
+              <div class="addr">
+                <div class="street">22A Park Lane</div>
+                <div class="sub">Bondi · NSW 2026 · 1-bed studio</div>
+              </div>
+              <div class="stat"><span class="k">Rent / wk</span><span class="v">$1,420</span></div>
+              <div class="stat"><span class="k">Net / mo</span><span class="v" style="color:hsl(var(--negative))">− $180</span></div>
+              <div class="stat"><span class="k">Status</span><span class="v"><span class="badge badge--partial"><span class="dot"></span>Partial</span></span></div>
+              <div class="chev">›</div>
+            </div>
+            <div class="prop-card">
+              <div class="addr">
+                <div class="street">Sutherland Court</div>
+                <div class="sub">Manly · NSW 2095 · 4-bed house</div>
+              </div>
+              <div class="stat"><span class="k">Rent / wk</span><span class="v" style="color:hsl(var(--foreground-muted))">—</span></div>
+              <div class="stat"><span class="k">Net / mo</span><span class="v" style="color:hsl(var(--foreground-muted))">—</span></div>
+              <div class="stat"><span class="k">Status</span><span class="v"><span class="badge badge--estimated"><span class="dot"></span>Estimated</span></span></div>
+              <div class="chev">›</div>
+            </div>
+          </div>
+
+          <div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Property</th>
+                  <th>Description</th>
+                  <th class="num">Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="muted">02 Apr 2026</td>
+                  <td>14 Elm St</td>
+                  <td>Rent — week 14</td>
+                  <td class="num">$2,150.00</td>
+                  <td><span class="badge badge--complete"><span class="dot"></span>Cleared</span></td>
+                </tr>
+                <tr>
+                  <td class="muted">04 Apr 2026</td>
+                  <td>9 Randwick Rd</td>
+                  <td>Strata levy — Q2</td>
+                  <td class="num" style="color:hsl(var(--negative))">− $814.20</td>
+                  <td><span class="badge badge--complete"><span class="dot"></span>Cleared</span></td>
+                </tr>
+                <tr>
+                  <td class="muted">11 Apr 2026</td>
+                  <td>22A Park Ln</td>
+                  <td>Plumbing — emergency callout</td>
+                  <td class="num" style="color:hsl(var(--negative))">− $1,240.00</td>
+                  <td><span class="badge badge--partial"><span class="dot"></span>Unmatched</span></td>
+                </tr>
+                <tr>
+                  <td class="muted">15 Apr 2026</td>
+                  <td>Sutherland Ct</td>
+                  <td>Rent — week 15 <span class="muted">· estimated</span></td>
+                  <td class="num">$1,640.00</td>
+                  <td><span class="badge badge--estimated"><span class="dot"></span>Estimated</span></td>
+                </tr>
+                <tr>
+                  <td class="muted">22 Apr 2026</td>
+                  <td>14 Elm St</td>
+                  <td>Insurance — annual premium</td>
+                  <td class="num" style="color:hsl(var(--negative))">− $1,485.00</td>
+                  <td><span class="badge badge--complete"><span class="dot"></span>Cleared</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         08 — NAVIGATION
+         ================================================================ -->
+    <section class="sys" id="nav">
+      <div class="sys-head">
+        <div class="label">08 — Navigation</div>
+        <div>
+          <h2>Left rail. Calm by default; the active item is the only place the accent appears.</h2>
+          <p>
+            A sidebar fits Folio's density better than a top nav — properties, reports, and
+            statements all benefit from being one click from anywhere. The brand wordmark sits
+            in the rail; the accent is reserved for the active route.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Width</dt><dd>220px fixed.</dd>
+          <dt>Item</dt><dd>34px (density.row). 14px label, 14px icon.</dd>
+          <dt>Active</dt><dd>accent.soft fill · accent text.</dd>
+        </dl>
+        <div class="nav">
+          <aside class="rail">
+            <div class="brand">Folio</div>
+            <div class="nav-section-label">Overview</div>
+            <div class="nav-item is-active">
+              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+              Dashboard
+            </div>
+            <div class="nav-item">
+              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 13V7l6-4 6 4v6"/><path d="M6 13V9h4v4"/></svg>
+              Properties <span class="count">4</span>
+            </div>
+            <div class="nav-item">
+              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 2h7l3 3v9H3z"/><path d="M10 2v3h3"/><path d="M5 9h6M5 11h4"/></svg>
+              Reports
+            </div>
+            <div class="nav-item">
+              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 6l6-3 6 3v6l-6 3-6-3z"/><path d="M2 6l6 3 6-3M8 9v6"/></svg>
+              Statements <span class="count">3</span>
+            </div>
+            <div class="nav-section-label">Inbox</div>
+            <div class="nav-item">
+              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              Prompts <span class="count" style="color:hsl(var(--negative))">2</span>
+            </div>
+            <div class="nav-item">
+              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v8H2z"/><path d="M2 4l6 5 6-5"/></svg>
+              Activity
+            </div>
+            <div class="nav-section-label">Account</div>
+            <div class="nav-item">
+              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M2 14a6 6 0 0 1 12 0"/></svg>
+              Settings
+            </div>
+          </aside>
+          <div class="canvas">
+            <div class="footnote" style="margin-bottom: var(--space-3);">DASHBOARD · APR 2026</div>
+            <h4>Am I okay this month?</h4>
+            <p>The active route is the only place the accent appears in the chrome. Everything else recedes.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         09 — BUTTONS
+         ================================================================ -->
+    <section class="sys" id="buttons">
+      <div class="sys-head">
+        <div class="label">09 — Buttons</div>
+        <div>
+          <h2>Three roles, three sizes. The primary is the only filled action on a screen.</h2>
+          <p>
+            Reserve the primary button for the one thing the user came to do. Secondary handles
+            companion actions; ghost handles dismissals and tertiary navigation.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Primary</dt><dd>Accent fill. One per view.</dd>
+          <dt>Secondary</dt><dd>Surface · bordered. Companion actions.</dd>
+          <dt>Ghost</dt><dd>No chrome. Tertiary, dismissals.</dd>
+          <dt>Danger</dt><dd>Soft negative. Destructive only.</dd>
+        </dl>
+        <div class="stack-7">
+          <div>
+            <div class="footnote" style="margin-bottom: var(--space-4);">Variants · default size</div>
+            <div class="row">
+              <button class="btn btn--primary">Generate report</button>
+              <button class="btn btn--secondary">Add property</button>
+              <button class="btn btn--ghost">Cancel</button>
+              <button class="btn btn--danger">Delete</button>
+            </div>
+          </div>
+          <div>
+            <div class="footnote" style="margin-bottom: var(--space-4);">Sizes</div>
+            <div class="row">
+              <button class="btn btn--primary btn--lg">Generate report</button>
+              <button class="btn btn--primary">Generate report</button>
+              <button class="btn btn--primary btn--sm">Generate report</button>
+            </div>
+          </div>
+          <div>
+            <div class="footnote" style="margin-bottom: var(--space-4);">With glyphs</div>
+            <div class="row">
+              <button class="btn btn--secondary">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 8l5-5 5 5"/><path d="M8 3v10"/></svg>
+                Upload statement
+              </button>
+              <button class="btn btn--secondary">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 3h10v10H3z"/><path d="M3 7h10"/></svg>
+                Filter
+              </button>
+              <button class="btn btn--ghost">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2"/><circle cx="3" cy="8" r="1"/><circle cx="13" cy="8" r="1"/></svg>
+                More
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         10 — FORMS
+         ================================================================ -->
+    <section class="sys" id="forms">
+      <div class="sys-head">
+        <div class="label">10 — Form inputs</div>
+        <div>
+          <h2>One height. One radius. One focus ring.</h2>
+          <p>
+            Inputs share dimensions with secondary buttons (36px) so forms align cleanly with
+            their actions. Currency uses a leading glyph; helper text is muted, never color-coded.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Height</dt><dd>36px (density.control)</dd>
+          <dt>Focus</dt><dd>1px accent border + 3px accent glow.</dd>
+          <dt>Validation</dt><dd>Inline, after field — never red borders by default.</dd>
+        </dl>
+        <div class="grid-2">
+          <div>
+            <label class="input-label" for="address">Property address</label>
+            <input id="address" class="input" placeholder="14 Elm Street, Randwick NSW" />
+            <div class="input-help">Used to match incoming statements automatically.</div>
+          </div>
+          <div>
+            <label class="input-label" for="rent">Weekly rent</label>
+            <div class="input-prefix">
+              <span class="glyph">$</span>
+              <input id="rent" class="input" value="2,150.00" />
+            </div>
+            <div class="input-help">Tabular numerics. Decimals always shown.</div>
+          </div>
+          <div>
+            <label class="input-label" for="entity">Ownership entity</label>
+            <select id="entity" class="select">
+              <option>Okafor Family Trust</option>
+              <option>Joint — Sam &amp; Priya</option>
+              <option>Individual — Sam Okafor</option>
+            </select>
+            <div class="input-help">Determines tax treatment in reports.</div>
+          </div>
+          <div>
+            <label class="input-label" for="status">Status</label>
+            <input id="status" class="input" value="Tenanted" disabled style="opacity:0.5; cursor: not-allowed;" />
+            <div class="input-help">Set automatically from the latest statement.</div>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <label class="input-label" for="note">Note to self</label>
+            <textarea id="note" class="textarea" placeholder="e.g. Lease renewal in Sept — review market rent."></textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         11 — STATUS LANGUAGE
+         ================================================================ -->
+    <section class="sys" id="status">
+      <div class="sys-head">
+        <div class="label">11 — Status language</div>
+        <div>
+          <h2>Four states. Always named explicitly.</h2>
+          <p>
+            Folio surfaces data completeness — silence is never an option. A property is
+            <em>missing</em> a statement, not just blank. Numbers based on incomplete data are
+            labelled <em>estimated</em> at the source.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Rule</dt><dd>If a number is shown, its provenance is too.</dd>
+          <dt>Form</dt><dd>Pill · 11px mono · uppercase tracked · semantic dot.</dd>
+        </dl>
+        <div class="grid-2">
+          <div>
+            <div class="footnote" style="margin-bottom: var(--space-4);">Badge tokens</div>
+            <div class="row">
+              <span class="badge badge--complete"><span class="dot"></span>Complete</span>
+              <span class="badge badge--partial"><span class="dot"></span>Partial</span>
+              <span class="badge badge--missing"><span class="dot"></span>Missing</span>
+              <span class="badge badge--estimated"><span class="dot"></span>Estimated</span>
+              <span class="badge"><span class="dot"></span>Default</span>
+            </div>
+            <div class="legend" style="margin-top: var(--space-5);">
+              <span class="key"><i style="background: hsl(var(--positive))"></i>positive</span>
+              <span class="key"><i style="background: hsl(var(--warning))"></i>warning</span>
+              <span class="key"><i style="background: hsl(var(--negative))"></i>negative</span>
+              <span class="key"><i style="background: hsl(var(--accent))"></i>accent</span>
+              <span class="key"><i style="background: hsl(var(--foreground-subtle))"></i>neutral</span>
+            </div>
+          </div>
+          <div>
+            <div class="footnote" style="margin-bottom: var(--space-4);">In context</div>
+            <div class="card" style="padding: var(--space-5);">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding: var(--space-3) 0; border-bottom: 1px solid hsl(var(--rule));">
+                <div>
+                  <div style="font-weight:600; font-size: var(--text-sm);">Mar 2026 statements</div>
+                  <div style="color: hsl(var(--foreground-muted)); font-size: var(--text-xs);">3 of 4 received</div>
+                </div>
+                <span class="badge badge--partial"><span class="dot"></span>Partial</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; padding: var(--space-3) 0; border-bottom: 1px solid hsl(var(--rule));">
+                <div>
+                  <div style="font-weight:600; font-size: var(--text-sm);">Apr 2026 reconciliation</div>
+                  <div style="color: hsl(var(--foreground-muted)); font-size: var(--text-xs);">All transactions matched</div>
+                </div>
+                <span class="badge badge--complete"><span class="dot"></span>Complete</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; padding: var(--space-3) 0;">
+                <div>
+                  <div style="font-weight:600; font-size: var(--text-sm);">Sutherland Ct · Apr rent</div>
+                  <div style="color: hsl(var(--foreground-muted)); font-size: var(--text-xs);">No statement; rolled forward</div>
+                </div>
+                <span class="badge badge--estimated"><span class="dot"></span>Estimated</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         COLOPHON
+         ================================================================ -->
+    <footer class="colophon">
+      <p class="signoff">
+        “The default state is calm. When Folio speaks, it stands out — and it only speaks when
+        there is something worth saying.”
+      </p>
+      <div style="text-align:right;">
+        <div class="footnote">Folio · design system v0.1</div>
+        <div style="font-family: var(--font-mono); font-size: var(--text-2xs); color: hsl(var(--foreground-subtle)); margin-top: 4px;">May 2026 · reference build</div>
+      </div>
+    </footer>
+  </main>
+</body>
+</html>

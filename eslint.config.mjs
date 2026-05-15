@@ -57,7 +57,7 @@ export default tseslint.config(
   // These files use ! after runtime checks that TypeScript cannot statically narrow.
   // Remove this override once the narrowing is fixed in cleanup.
   {
-    files: ['app/api/statements/route.ts', 'app/upload/page.tsx'],
+    files: ['app/api/statements/route.ts', 'app/(app)/upload/page.tsx'],
     rules: {
       '@typescript-eslint/no-non-null-assertion': 'warn',
     },
@@ -71,6 +71,7 @@ export default tseslint.config(
       'playwright-report/**',
       'test-results/**',
       'supabase/.temp/**',
+      'docs/**',
     ],
   },
 )
