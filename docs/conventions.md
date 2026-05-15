@@ -1,7 +1,7 @@
 # Folio — Code Conventions
 
-Agreed conventions for V3.1 and beyond. Read at the start of every session.
-Deviations from these are cleanup tasks (Workstream 5), not blockers.
+Agreed conventions. Read at the start of every session.
+Deviations from these are cleanup tasks, not blockers.
 
 ---
 
@@ -22,8 +22,14 @@ Deviations from these are cleanup tasks (Workstream 5), not blockers.
 app/api/{resource}/route.ts              # collection: GET, POST
 app/api/{resource}/[id]/route.ts         # single resource: GET, PATCH, DELETE
 app/api/{resource}/[id]/{sub}/route.ts   # nested sub-resource
-lib/                                     # shared utilities
-lib/{domain}/                            # grouped when >1 related file
+lib/{domain}/                            # domain module (see docs/architecture.md)
+lib/{domain}/services/                   # business logic — no infrastructure imports
+lib/{domain}/repositories/               # all DB queries for this domain
+lib/{domain}/index.ts                    # public API — the only importable file
+lib/supabase/                            # shared: Supabase client factories
+lib/db.ts                                # shared: Drizzle client
+lib/logger.ts                            # shared: structured logging
+lib/env.ts                               # shared: environment variable access
 db/schema.ts                             # all Drizzle tables + exported types (single file)
 components/ui/                           # shadcn components only
 components/*.tsx                         # app-specific shared components
@@ -33,9 +39,9 @@ playwright/tests/                        # e2e tests
 scripts/                                 # runnable scripts (seed, migrations)
 ```
 
-Business logic and DB queries live inline in route handlers. No service or repository
-layer. Extract to `lib/{domain}/` only when logic is complex enough to test independently
-or shared across multiple routes (e.g. `lib/reports/compute.ts`).
+Route handlers are thin adapters: authenticate, parse input, call a domain service, return
+a response. No business logic or Drizzle queries in route handlers. See `docs/architecture.md`
+for the full module structure and the rationale.
 
 ---
 
@@ -234,3 +240,87 @@ Do not write:
 - Route summary comments — Zod schemas are the API contract
 - Commented-out code — delete it, git history preserves it
 - TODO comments — use GitHub issues
+
+---
+
+## 8. Table Patterns
+
+Three patterns govern all tables. Every table must clearly belong to one.
+
+### Entity tables — edit in place
+
+Core domain objects with user-editable fields. Any column may be updated.
+
+Examples: `properties`, `loan_accounts`, `bank_accounts`, `entities`,
+`income_sources`, `personal_budget_items`
+
+No naming suffix. The noun is sufficient.
+
+### Ledger tables — append-only (`_ledger` suffix)
+
+Financial event streams. A row records something that happened. Once written,
+the record is permanent — it is part of the audit trail regardless of whether
+it is later marked deleted.
+
+Naming: `_ledger` suffix — `property_ledger`, `loan_ledger`, `bank_ledger`,
+`income_ledger`.
+
+Permitted operations:
+
+| Operation | Allowed |
+|---|---|
+| `INSERT` | Yes |
+| `UPDATE deletedAt` (soft delete) | Yes |
+| `UPDATE` any other field | **No** |
+| Hard `DELETE` | **No** |
+
+Corrections are new rows, not updates to existing rows. If a transaction was
+entered incorrectly, soft-delete the original and insert a corrected entry.
+Never update `amount_cents`, `date`, `category`, or any financial field in place.
+
+### Snapshot tables — append-only (descriptive plural name)
+
+Point-in-time recordings of a value. A new measurement always produces a new
+row — existing rows are never updated.
+
+Examples: `property_valuations`, `loan_balances`
+
+These already carry self-describing names (`_valuations`, `_balances`) that
+imply their append-only nature. No additional suffix needed.
+
+---
+
+**How to decide which pattern applies:**
+
+- Does the user edit this record directly (name, address, rate)? → Entity table
+- Does this record capture a financial event (payment, income, expense)? → Ledger table
+- Does this record capture a value at a point in time (balance, valuation)? → Snapshot table
+
+---
+
+## 9. Testing Strategy
+
+### Backend — TDD
+
+Write the test before the implementation for all route handlers, services, and repositories.
+The test-first loop keeps handlers thin: if a handler is hard to test, it is doing too much
+and logic belongs in a service.
+
+Run the relevant suites before marking any backend work done:
+- `pnpm test` — unit tests (always)
+- `pnpm test:integration` — when the change touches DB queries, migrations, or storage
+
+### Frontend — no unit tests by default
+
+Component-level unit tests add friction without catching the bugs that matter (visual,
+interaction, layout). Don't write them unless a component contains logic complex enough
+to extract into a pure function — at which point the function belongs in the backend anyway.
+
+Playwright e2e tests cover critical user paths. That is the frontend test investment.
+
+### Logic belongs in the backend
+
+Calculations, derivations, and business rules live in backend services — not in components,
+hooks, or utility files on the frontend. The frontend receives computed values from the API
+and renders them. This keeps backend logic testable under TDD and prevents business rules
+from being scattered across the stack.
