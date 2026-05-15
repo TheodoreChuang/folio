@@ -1,7 +1,5 @@
-import { and, desc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { properties, propertyValuations } from '@/db/schema'
+import { findPropertyById, listValuations, createValuation } from '@/lib/property'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -22,22 +20,12 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid property ID' }, { status: 400 })
     }
 
-    const [property] = await db
-      .select()
-      .from(properties)
-      .where(and(eq(properties.id, id), eq(properties.userId, user.id)))
-      .limit(1)
-
+    const property = await findPropertyById(user.id, id)
     if (!property) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const valuations = await db
-      .select()
-      .from(propertyValuations)
-      .where(and(eq(propertyValuations.propertyId, id), eq(propertyValuations.userId, user.id)))
-      .orderBy(desc(propertyValuations.valuedAt))
-
+    const valuations = await listValuations(user.id, id)
     return NextResponse.json({ valuations })
   } catch (err) {
     captureError(err, { route: 'GET /api/properties/[id]/valuations' })
@@ -92,27 +80,19 @@ export async function POST(
       return NextResponse.json({ error: 'notes too long (max 500 characters)' }, { status: 400 })
     }
 
-    const [property] = await db
-      .select()
-      .from(properties)
-      .where(and(eq(properties.id, id), eq(properties.userId, user.id)))
-      .limit(1)
-
+    const property = await findPropertyById(user.id, id)
     if (!property) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const [valuation] = await db
-      .insert(propertyValuations)
-      .values({
-        userId: user.id,
-        propertyId: id,
-        valuedAt,
-        valueCents,
-        source: source || null,
-        notes: notes || null,
-      })
-      .returning()
+    const valuation = await createValuation({
+      userId: user.id,
+      propertyId: id,
+      valuedAt,
+      valueCents,
+      source: source || null,
+      notes: notes || null,
+    })
 
     return NextResponse.json({ valuation }, { status: 201 })
   } catch (err) {

@@ -1,7 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { propertyLedgerEntries, sourceDocuments } from '@/db/schema'
+import { propertyLedger, sourceDocuments } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import { captureError } from '@/lib/api-error'
@@ -38,9 +38,9 @@ export async function DELETE(
     try {
       await db.transaction(async (tx) => {
         const softDeletedEntries = await tx
-          .update(propertyLedgerEntries)
+          .update(propertyLedger)
           .set({ deletedAt: new Date() })
-          .where(eq(propertyLedgerEntries.sourceDocumentId, id))
+          .where(eq(propertyLedger.sourceDocumentId, id))
           .returning()
         entriesDeleted = softDeletedEntries.length
 

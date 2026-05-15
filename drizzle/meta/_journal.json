@@ -64,6 +64,13 @@
       "when": 1746604801000,
       "tag": "0008_idx_properties_user",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1747267200000,
+      "tag": "0009_rename_property_ledger",
+      "breakpoints": true
     }
   ]
 }

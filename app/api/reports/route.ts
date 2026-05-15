@@ -2,7 +2,7 @@ import { and, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { propertyLedgerEntries, portfolioReports, properties, loanAccounts } from '@/db/schema'
+import { propertyLedger, portfolioReports, properties, loanAccounts } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import { computeReport } from '@/lib/reports/compute'
@@ -68,13 +68,13 @@ export async function POST(request: Request) {
 
     const [entries, props, loans] = await Promise.all([
       db.select()
-        .from(propertyLedgerEntries)
+        .from(propertyLedger)
         .where(
           and(
-            eq(propertyLedgerEntries.userId, user.id),
-            gte(propertyLedgerEntries.lineItemDate, startDate),
-            lte(propertyLedgerEntries.lineItemDate, endDate),
-            isNull(propertyLedgerEntries.deletedAt),
+            eq(propertyLedger.userId, user.id),
+            gte(propertyLedger.lineItemDate, startDate),
+            lte(propertyLedger.lineItemDate, endDate),
+            isNull(propertyLedger.deletedAt),
           )
         ),
       db.select()

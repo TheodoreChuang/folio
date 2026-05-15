@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import {
   portfolioReports, properties, loanAccounts,
-  sourceDocuments, propertyLedgerEntries,
+  sourceDocuments, propertyLedger,
 } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
@@ -69,19 +69,19 @@ export async function GET(request: Request) {
         .where(eq(sourceDocuments.userId, user.id)),
       // All entries in range (including deleted) for staleness + payment checks
       db.select({
-        id: propertyLedgerEntries.id,
-        loanAccountId: propertyLedgerEntries.loanAccountId,
-        category: propertyLedgerEntries.category,
-        lineItemDate: propertyLedgerEntries.lineItemDate,
-        updatedAt: propertyLedgerEntries.updatedAt,
-        deletedAt: propertyLedgerEntries.deletedAt,
+        id: propertyLedger.id,
+        loanAccountId: propertyLedger.loanAccountId,
+        category: propertyLedger.category,
+        lineItemDate: propertyLedger.lineItemDate,
+        updatedAt: propertyLedger.updatedAt,
+        deletedAt: propertyLedger.deletedAt,
       })
-        .from(propertyLedgerEntries)
+        .from(propertyLedger)
         .where(
           and(
-            eq(propertyLedgerEntries.userId, user.id),
-            gte(propertyLedgerEntries.lineItemDate, rangeStart),
-            lte(propertyLedgerEntries.lineItemDate, rangeEnd),
+            eq(propertyLedger.userId, user.id),
+            gte(propertyLedger.lineItemDate, rangeStart),
+            lte(propertyLedger.lineItemDate, rangeEnd),
           )
         ),
     ])

@@ -2,8 +2,8 @@ import { and, desc, eq, getTableColumns, gte, isNull, lt, lte, sql } from 'drizz
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { db } from '@/lib/db'
-import { properties, sourceDocuments, propertyLedgerEntries, loanAccounts } from '@/db/schema'
-import type { PropertyLedgerEntry } from '@/db/schema'
+import { properties, sourceDocuments, propertyLedger, loanAccounts } from '@/db/schema'
+import type { PropertyLedger } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import { extractionResultSchema } from '@/lib/extraction/schema'
@@ -28,7 +28,7 @@ function isValidUuid(val: string): boolean {
 //   with loan_accounts so each entry includes lender and loanNickname (null for non-loan
 //   entries). Sorted by category (rent first, loan_payment last) then lineItemDate DESC.
 //   Used by the report drill-down / property detail page Transactions section.
-//   Response: { entries: Array<PropertyLedgerEntry & { lender: string|null, loanNickname: string|null }> }
+//   Response: { entries: Array<PropertyLedger & { lender: string|null, loanNickname: string|null }> }
 export async function GET(request: Request) {
   try {
     const supabase = await createServerSupabaseClient()
@@ -50,18 +50,18 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Invalid loanAccountId' }, { status: 400 })
       }
       const [entry] = await db
-        .select({ amountCents: propertyLedgerEntries.amountCents })
-        .from(propertyLedgerEntries)
+        .select({ amountCents: propertyLedger.amountCents })
+        .from(propertyLedger)
         .where(
           and(
-            eq(propertyLedgerEntries.userId, user.id),
-            eq(propertyLedgerEntries.loanAccountId, loanAccountId),
-            eq(propertyLedgerEntries.category, 'loan_payment'),
-            lt(propertyLedgerEntries.lineItemDate, `${month}-01`),
-            isNull(propertyLedgerEntries.deletedAt),
+            eq(propertyLedger.userId, user.id),
+            eq(propertyLedger.loanAccountId, loanAccountId),
+            eq(propertyLedger.category, 'loan_payment'),
+            lt(propertyLedger.lineItemDate, `${month}-01`),
+            isNull(propertyLedger.deletedAt),
           )
         )
-        .orderBy(desc(propertyLedgerEntries.lineItemDate))
+        .orderBy(desc(propertyLedger.lineItemDate))
         .limit(1)
       return NextResponse.json({ amountCents: entry?.amountCents ?? null })
     }
@@ -73,41 +73,41 @@ export async function GET(request: Request) {
       }
       const entries = await db
         .select({
-          ...getTableColumns(propertyLedgerEntries),
+          ...getTableColumns(propertyLedger),
           lender: loanAccounts.lender,
           loanNickname: loanAccounts.nickname,
         })
-        .from(propertyLedgerEntries)
-        .leftJoin(loanAccounts, eq(propertyLedgerEntries.loanAccountId, loanAccounts.id))
+        .from(propertyLedger)
+        .leftJoin(loanAccounts, eq(propertyLedger.loanAccountId, loanAccounts.id))
         .where(
           and(
-            eq(propertyLedgerEntries.userId, user.id),
-            eq(propertyLedgerEntries.propertyId, propertyId),
-            gte(propertyLedgerEntries.lineItemDate, startDate),
-            lte(propertyLedgerEntries.lineItemDate, endDate),
-            isNull(propertyLedgerEntries.deletedAt),
+            eq(propertyLedger.userId, user.id),
+            eq(propertyLedger.propertyId, propertyId),
+            gte(propertyLedger.lineItemDate, startDate),
+            lte(propertyLedger.lineItemDate, endDate),
+            isNull(propertyLedger.deletedAt),
           )
         )
         .orderBy(
-          sql`CASE ${propertyLedgerEntries.category}
+          sql`CASE ${propertyLedger.category}
             WHEN 'rent' THEN 0
             WHEN 'loan_payment' THEN 2
             ELSE 1
           END`,
-          desc(propertyLedgerEntries.lineItemDate),
+          desc(propertyLedger.lineItemDate),
         )
       return NextResponse.json({ entries })
     }
 
     const entries = await db
       .select()
-      .from(propertyLedgerEntries)
+      .from(propertyLedger)
       .where(
         and(
-          eq(propertyLedgerEntries.userId, user.id),
-          gte(propertyLedgerEntries.lineItemDate, startDate),
-          lte(propertyLedgerEntries.lineItemDate, endDate),
-          isNull(propertyLedgerEntries.deletedAt),
+          eq(propertyLedger.userId, user.id),
+          gte(propertyLedger.lineItemDate, startDate),
+          lte(propertyLedger.lineItemDate, endDate),
+          isNull(propertyLedger.deletedAt),
         )
       )
     return NextResponse.json({ entries })
@@ -286,8 +286,8 @@ export async function POST(request: Request) {
   }
 
   // ── Transaction: soft-delete existing + insert new ───────────────────────
-  let deleted: PropertyLedgerEntry[] = []
-  let inserted: PropertyLedgerEntry[] = []
+  let deleted: PropertyLedger[] = []
+  let inserted: PropertyLedger[] = []
 
   try {
     await db.transaction(async (tx) => {
@@ -298,28 +298,28 @@ export async function POST(request: Request) {
         const endDate = lastDayOfMonth(assignedMonth)
         const manualLoanAccountId = result.lineItems.find(i => i.category === 'loan_payment')?.loanAccountId ?? null
         deleted = await tx
-          .update(propertyLedgerEntries)
+          .update(propertyLedger)
           .set({ deletedAt: new Date() })
           .where(
             and(
-              eq(propertyLedgerEntries.userId, user.id),
-              eq(propertyLedgerEntries.propertyId, property!.id),
-              eq(propertyLedgerEntries.category, 'loan_payment'),
-              manualLoanAccountId ? eq(propertyLedgerEntries.loanAccountId, manualLoanAccountId) : undefined,
-              gte(propertyLedgerEntries.lineItemDate, startDate),
-              lte(propertyLedgerEntries.lineItemDate, endDate),
+              eq(propertyLedger.userId, user.id),
+              eq(propertyLedger.propertyId, property!.id),
+              eq(propertyLedger.category, 'loan_payment'),
+              manualLoanAccountId ? eq(propertyLedger.loanAccountId, manualLoanAccountId) : undefined,
+              gte(propertyLedger.lineItemDate, startDate),
+              lte(propertyLedger.lineItemDate, endDate),
             )
           )
           .returning()
       } else {
         // PDF-backed entries: soft-delete by sourceDocumentId (idempotent re-save)
         deleted = await tx
-          .update(propertyLedgerEntries)
+          .update(propertyLedger)
           .set({ deletedAt: new Date() })
           .where(
             and(
-              eq(propertyLedgerEntries.sourceDocumentId, sourceDocumentIdRaw!),
-              eq(propertyLedgerEntries.userId, user.id)
+              eq(propertyLedger.sourceDocumentId, sourceDocumentIdRaw!),
+              eq(propertyLedger.userId, user.id)
             )
           )
           .returning()
@@ -336,7 +336,7 @@ export async function POST(request: Request) {
         description: item.description,
       }))
 
-      inserted = await tx.insert(propertyLedgerEntries).values(rows).returning()
+      inserted = await tx.insert(propertyLedger).values(rows).returning()
     })
   } catch (err) {
     captureError(err, { route: 'POST /api/statements', phase: 'transaction' })

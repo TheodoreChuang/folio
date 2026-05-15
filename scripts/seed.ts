@@ -15,7 +15,7 @@ import {
   properties,
   sourceDocuments,
   loanAccounts,
-  propertyLedgerEntries,
+  propertyLedger,
   portfolioReports,
   entities,
 } from '../db/schema'
@@ -111,7 +111,7 @@ async function seedOwner(userId: string) {
   // - Riverside: loan payment only (manual entry, no statement) — tests missing-statement UI
   // - George Ave: no loan payment — tests missing-loan UI
   console.log('  → ledger entries')
-  await db.insert(propertyLedgerEntries).values([
+  await db.insert(propertyLedger).values([
 
     // ── Smith St ──────────────────────────────────────────────────────────────
     {

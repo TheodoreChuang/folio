@@ -1,7 +1,5 @@
-import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { properties } from '@/db/schema'
+import { listProperties, createProperty } from '@/lib/property'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -11,7 +9,7 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const rows = await db.select().from(properties).where(eq(properties.userId, user.id))
+    const rows = await listProperties(user.id)
     return NextResponse.json({ properties: rows })
   } catch (err) {
     captureError(err, { route: 'GET /api/properties' })
@@ -56,12 +54,8 @@ export async function POST(request: Request) {
 
     const entityId = typeof raw.entityId === 'string' ? raw.entityId.trim() || null : null
 
-    const [inserted] = await db
-      .insert(properties)
-      .values({ userId: user.id, address, nickname, startDate, endDate, entityId })
-      .returning()
-
-    return NextResponse.json({ property: inserted }, { status: 201 })
+    const property = await createProperty({ userId: user.id, address, nickname, startDate, endDate, entityId })
+    return NextResponse.json({ property }, { status: 201 })
   } catch (err) {
     captureError(err, { route: 'POST /api/properties' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

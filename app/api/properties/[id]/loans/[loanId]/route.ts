@@ -1,7 +1,5 @@
-import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { loanAccounts } from '@/db/schema'
+import { updateLoan, closeLoan } from '@/lib/property'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -75,18 +73,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'endDate cannot be before startDate' }, { status: 400 })
     }
 
-    const [updated] = await db
-      .update(loanAccounts)
-      .set(updates)
-      .where(
-        and(
-          eq(loanAccounts.id, loanId),
-          eq(loanAccounts.propertyId, id),
-          eq(loanAccounts.userId, user.id),
-        )
-      )
-      .returning()
-
+    const updated = await updateLoan(user.id, id, loanId, updates)
     if (!updated) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
@@ -112,20 +99,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
     }
 
-    const today = new Date().toISOString().slice(0, 10)
-
-    const [updated] = await db
-      .update(loanAccounts)
-      .set({ endDate: today })
-      .where(
-        and(
-          eq(loanAccounts.id, loanId),
-          eq(loanAccounts.propertyId, id),
-          eq(loanAccounts.userId, user.id),
-        )
-      )
-      .returning()
-
+    const updated = await closeLoan(user.id, id, loanId)
     if (!updated) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

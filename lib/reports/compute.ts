@@ -1,4 +1,4 @@
-import type { PropertyLedgerEntry, Property, LoanAccount } from '@/db/schema'
+import type { PropertyLedger, Property, LoanAccount } from '@/db/schema'
 
 export type PropertyTotals = {
   propertyId: string
@@ -48,7 +48,7 @@ const EXPENSE_CATEGORIES = new Set([
 ])
 
 export function computeReport(
-  entries: PropertyLedgerEntry[],
+  entries: PropertyLedger[],
   properties: Property[],
   loanAccounts: LoanAccount[] = [],
 ): { totals: ReportTotals; flags: ReportFlags } {

@@ -70,7 +70,7 @@ describe('DELETE /api/documents/[id]', () => {
         update: vi.fn().mockImplementation(() => {
           updateCallCount++
           if (updateCallCount === 1) {
-            // First update: propertyLedgerEntries — has .returning()
+            // First update: propertyLedger — has .returning()
             return {
               set: vi.fn().mockReturnValue({
                 where: vi.fn().mockReturnValue({

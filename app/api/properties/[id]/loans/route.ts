@@ -1,7 +1,5 @@
-import { and, desc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { properties, loanAccounts, loanBalances } from '@/db/schema'
+import { findPropertyById, listLoans, listLatestBalancesForUser, createLoan } from '@/lib/property'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -21,26 +19,15 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid property ID' }, { status: 400 })
     }
 
-    const [property] = await db
-      .select()
-      .from(properties)
-      .where(and(eq(properties.id, id), eq(properties.userId, user.id)))
-      .limit(1)
-
+    const property = await findPropertyById(user.id, id)
     if (!property) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const loans = await db
-      .select()
-      .from(loanAccounts)
-      .where(and(eq(loanAccounts.propertyId, id), eq(loanAccounts.userId, user.id)))
-
-    const balanceRows = await db
-      .select()
-      .from(loanBalances)
-      .where(eq(loanBalances.userId, user.id))
-      .orderBy(loanBalances.loanAccountId, desc(loanBalances.recordedAt))
+    const [loans, balanceRows] = await Promise.all([
+      listLoans(user.id, id),
+      listLatestBalancesForUser(user.id),
+    ])
 
     const latestBalanceMap = new Map<string, { balanceCents: number; recordedAt: string }>()
     for (const row of balanceRows) {
@@ -108,21 +95,12 @@ export async function POST(
       return NextResponse.json({ error: 'endDate cannot be before startDate' }, { status: 400 })
     }
 
-    const [property] = await db
-      .select()
-      .from(properties)
-      .where(and(eq(properties.id, id), eq(properties.userId, user.id)))
-      .limit(1)
-
+    const property = await findPropertyById(user.id, id)
     if (!property) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const [loan] = await db
-      .insert(loanAccounts)
-      .values({ userId: user.id, propertyId: id, lender, nickname, startDate, endDate })
-      .returning()
-
+    const loan = await createLoan({ userId: user.id, propertyId: id, lender, nickname, startDate, endDate })
     return NextResponse.json({ loan }, { status: 201 })
   } catch (err) {
     captureError(err, { route: 'POST /api/properties/[id]/loans' })
