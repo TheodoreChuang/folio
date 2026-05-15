@@ -259,27 +259,24 @@ PRs: 1
 ### Frontend rebuild
 **Goal:** Rebuild the UI on the new design system using stable backend APIs.
 
-This is a single phase, not three. Sub-chunks may land as separate PRs, but they share one
-foundation and one set of API contracts.
-
-Chunks (ordering inside this phase is flexible):
+The following is a rough plan but it might be worth planning this out in further detail.
 
 1. **shadcn init.** `pnpm dlx shadcn@latest init`; resolve `lib/utils.ts` conflict; add base
    components (`Button`, `Card`, `Badge`, `Dialog`, `Input`, `Label`, `Separator`, `Progress`).
    Verify existing pages still build.
 2. **Property pages.** Property list + detail (ledger drill-down, valuations).
 3. **Borrowings surfaces.** Loan list / detail surfaces (currently nested inside property detail).
-4. **Reporting surfaces.** Trends chart on dashboard; ad-hoc range views; any new dashboard
    compositions the new design calls for. No monthly report page.
-5. **Upload page re-skin.** Full re-skin on the new design system; structural changes (multi
+4. **Upload page re-skin.** Full re-skin on the new design system; structural changes (multi
    file type support) remain out of scope until the Ingestion domain is rebuilt.
+5. **Plan surfaces.** New, out of scope for rebuild.
 
 Constraints:
 - Existing fields only; new fields and pages from mockups are out of scope.
-- API contracts are frozen by this point — frontend does not push changes back into the API.
+- API contracts should be stable by this point. Changes need to be discussed.
 - Pages may compose data from multiple domain endpoints (per the not-a-BFF rule).
 
-PRs: ~3–4 depending on chunking.
+Visual designs locatied in `docs/designs/`. These visual designs represent the ideal state. Many features and field are not support by the backend yet. Anything new is out of scope for the rebuild. New features and sections will be iterative added after the rebuild and stabilization of the app.
 
 ---
 
