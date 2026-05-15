@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { AppNav } from '@/components/app-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -322,14 +321,12 @@ export default function EditPropertyPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-screen-bg">
-      <AppNav />
       <div className="max-w-lg mx-auto px-4 py-8 text-center text-sm text-muted">Loading…</div>
     </div>
   )
 
   if (notFound) return (
     <div className="min-h-screen bg-screen-bg">
-      <AppNav />
       <div className="max-w-lg mx-auto px-4 py-8 text-center">
         <p className="text-sm text-muted mb-4">Property not found.</p>
         <Button variant="outline" onClick={() => router.push('/properties')}>← Back to properties</Button>
@@ -341,7 +338,6 @@ export default function EditPropertyPage() {
 
   return (
     <div className="min-h-screen bg-screen-bg">
-      <AppNav />
       <div className="max-w-lg mx-auto px-4 py-8">
         <Button variant="ghost" size="sm" className="mb-6 text-muted" onClick={() => router.back()}>
           ← Back to properties

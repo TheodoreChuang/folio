@@ -15,7 +15,6 @@ type DrillDownEntry = {
 }
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AppNav } from '@/components/app-nav'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -256,14 +255,12 @@ export default function ReportPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-screen-bg">
-      <AppNav />
       <div className="max-w-xl mx-auto px-4 py-16 text-center text-sm text-muted">Loading report…</div>
     </div>
   )
 
   if (notFound || !report || !totals) return (
     <div className="min-h-screen bg-screen-bg">
-      <AppNav />
       <div className="max-w-xl mx-auto px-4 py-16 text-center">
         <p className="text-sm text-muted mb-4">No report found for {formatMonth(month)}.</p>
         <Button variant="outline" onClick={() => router.push('/dashboard')}>← Back to dashboard</Button>
@@ -285,8 +282,6 @@ export default function ReportPage() {
 
   return (
     <div className="min-h-screen bg-screen-bg">
-      <AppNav />
-
       {monthHealth?.status === 'stale' && (
         <div className="bg-warn-light border-b border-warn px-6 py-3 flex items-center justify-between">
           <span className="text-sm text-warn font-medium">

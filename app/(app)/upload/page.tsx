@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { AppNav } from '@/components/app-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -363,7 +362,6 @@ export default function UploadPage() {
   /* ── STEP: SELECT ── */
   if (step === 'select') return (
     <div className="min-h-screen bg-screen-bg">
-      <AppNav />
       <StepBar current="select" />
       <div className="max-w-xl mx-auto px-4 py-8">
         <div className="mb-6">
@@ -442,7 +440,6 @@ export default function UploadPage() {
 
     return (
       <div className="min-h-screen bg-screen-bg">
-        <AppNav />
         <StepBar current="processing" />
         <div className="max-w-xl mx-auto px-4 py-8">
           <p className="text-sm font-semibold mb-1">{formatMonth(selectedMonth)} — Extracting data…</p>
@@ -517,7 +514,6 @@ export default function UploadPage() {
 
     return (
       <div className="min-h-screen bg-screen-bg">
-        <AppNav />
         <StepBar current="matching" />
         <div className="max-w-xl mx-auto px-4 py-8">
           <p className="text-sm font-semibold mb-1">{formatMonth(selectedMonth)} — Match properties</p>
@@ -607,7 +603,6 @@ export default function UploadPage() {
   /* ── STEP: MORTGAGES ── */
   if (step === 'mortgages') return (
     <div className="min-h-screen bg-screen-bg">
-      <AppNav />
       <StepBar current="mortgages" />
       <div className="max-w-xl mx-auto px-4 py-8">
         <p className="text-sm font-semibold mb-1">{formatMonth(selectedMonth)} — Loan repayments</p>
@@ -689,7 +684,6 @@ export default function UploadPage() {
   /* ── STEP: REVIEW ── */
   return (
     <div className="min-h-screen bg-screen-bg">
-      <AppNav />
       <StepBar current="review" />
       <div className="max-w-xl mx-auto px-4 py-8">
         <p className="text-sm font-semibold mb-1">Ready to generate — {formatMonth(selectedMonth)}</p>

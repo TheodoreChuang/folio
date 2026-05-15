@@ -8,7 +8,6 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis,
   CartesianGrid, Cell,
 } from 'recharts'
-import { AppNav } from '@/components/app-nav'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart'
@@ -350,8 +349,6 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen bg-screen-bg">
-      <AppNav />
-
       {/* Month selector (pill nav) */}
       <div className="bg-white border-b border-border px-6 py-3 flex items-center gap-2 overflow-x-auto">
         {loadingList ? (
@@ -502,7 +499,7 @@ function DashboardContent() {
             )}
           </div>
 
-          {/* Sidebar */}
+          {/* Right panel */}
           <div className="bg-white">
             <div className="p-4 border-b border-border space-y-2">
               <Link href="/upload" className="block">
@@ -544,7 +541,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-screen-bg"><AppNav /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-screen-bg" />}>
       <DashboardContent />
     </Suspense>
   )
