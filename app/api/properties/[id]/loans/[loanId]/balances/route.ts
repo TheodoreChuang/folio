@@ -1,5 +1,8 @@
+// TODO: loan/balance queries move to lib/borrowings in Phase 2
+import { and, desc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { findLoanById, listBalances, createBalance } from '@/lib/property'
+import { db } from '@/lib/db'
+import { loanAccounts, loanBalances } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -23,12 +26,20 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid loan ID' }, { status: 400 })
     }
 
-    const loan = await findLoanById(user.id, id, loanId)
+    const [loan] = await db
+      .select()
+      .from(loanAccounts)
+      .where(and(eq(loanAccounts.id, loanId), eq(loanAccounts.propertyId, id), eq(loanAccounts.userId, user.id)))
+      .limit(1)
     if (!loan) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const balances = await listBalances(user.id, loanId)
+    const balances = await db
+      .select()
+      .from(loanBalances)
+      .where(and(eq(loanBalances.loanAccountId, loanId), eq(loanBalances.userId, user.id)))
+      .orderBy(desc(loanBalances.recordedAt))
     return NextResponse.json({ balances })
   } catch (err) {
     captureError(err, { route: 'GET /api/properties/[id]/loans/[loanId]/balances' })
@@ -79,18 +90,19 @@ export async function POST(
       return NextResponse.json({ error: 'notes too long (max 500 characters)' }, { status: 400 })
     }
 
-    const loan = await findLoanById(user.id, id, loanId)
+    const [loan] = await db
+      .select()
+      .from(loanAccounts)
+      .where(and(eq(loanAccounts.id, loanId), eq(loanAccounts.propertyId, id), eq(loanAccounts.userId, user.id)))
+      .limit(1)
     if (!loan) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const balance = await createBalance({
-      userId: user.id,
-      loanAccountId: loanId,
-      recordedAt,
-      balanceCents,
-      notes: notes || null,
-    })
+    const [balance] = await db
+      .insert(loanBalances)
+      .values({ userId: user.id, loanAccountId: loanId, recordedAt, balanceCents, notes: notes || null })
+      .returning()
 
     return NextResponse.json({ balance }, { status: 201 })
   } catch (err) {

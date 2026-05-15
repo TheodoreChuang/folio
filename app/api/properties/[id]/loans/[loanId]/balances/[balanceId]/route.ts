@@ -1,5 +1,8 @@
+// TODO: balance queries move to lib/borrowings in Phase 2
+import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { deleteBalance } from '@/lib/property'
+import { db } from '@/lib/db'
+import { loanBalances } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -25,7 +28,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid balance ID' }, { status: 400 })
     }
 
-    const deleted = await deleteBalance(user.id, loanId, balanceId)
+    const [deleted] = await db
+      .delete(loanBalances)
+      .where(and(eq(loanBalances.id, balanceId), eq(loanBalances.loanAccountId, loanId), eq(loanBalances.userId, user.id)))
+      .returning()
     if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
