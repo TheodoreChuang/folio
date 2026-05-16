@@ -3,7 +3,7 @@
 Stabilise the app in the target architecture before adding new features.
 Two sequential goals: backend restructured to conventions; UI then rebuilt on the new design system.
 
-As the project is matures, we need to be more deberate in our designs. If this in mnind, we created:
+As the project matures, we need to be more deliberate in our designs and maintain high quality. With this in mind, we created:
 - docs/architecture.md
 - docs/data-model.md
 
