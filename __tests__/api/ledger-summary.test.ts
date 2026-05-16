@@ -6,10 +6,9 @@ const LOAN_ID  = 'bbbb0001-0000-4000-b000-000000000001'
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockSelectEntries: vi.fn(),
-  mockSelectProperties: vi.fn(),
-  mockSelectLoans: vi.fn(),
-  callCount: { current: 0 },
+  mockFetchProperties: vi.fn(),
+  mockFetchLoans: vi.fn(),
+  mockFetchEntries: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -18,22 +17,19 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockImplementation(() => {
-          mocks.callCount.current++
-          const n = mocks.callCount.current
-          // New query order: (1) properties, (2) loans [parallel], (3) entries
-          if (n === 1) return mocks.mockSelectProperties()
-          if (n === 2) return mocks.mockSelectLoans()
-          return mocks.mockSelectEntries()
-        }),
-      }),
-    }),
-  },
-}))
+vi.mock('@/lib/reporting', async () => {
+  // importActual targets the pure service file (no db dependency) to avoid
+  // lib/db → lib/env.ts → DATABASE_URL being evaluated in CI unit test env.
+  const { computeReport } = await vi.importActual<typeof import('@/lib/reporting/services/compute')>(
+    '@/lib/reporting/services/compute'
+  )
+  return {
+    fetchPropertiesActiveInRange: mocks.mockFetchProperties,
+    fetchLoansActiveInRange: mocks.mockFetchLoans,
+    fetchLedgerEntriesInRange: mocks.mockFetchEntries,
+    computeReport,
+  }
+})
 
 function makeRequest(params: Record<string, string> = {}) {
   const url = new URL('http://localhost/api/ledger/summary')
@@ -68,6 +64,7 @@ function makeProp() {
     nickname: null,
     startDate: '2020-01-01',
     endDate: null,
+    entityId: null,
     createdAt: new Date(),
   }
 }
@@ -81,6 +78,7 @@ function makeLoan() {
     nickname: 'Investment loan',
     startDate: '2020-01-01',
     endDate: '2050-01-01',
+    entityId: null,
     createdAt: new Date(),
   }
 }
@@ -88,11 +86,10 @@ function makeLoan() {
 describe('GET /api/ledger/summary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.callCount.current = 0
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelectEntries.mockResolvedValue([])
-    mocks.mockSelectProperties.mockResolvedValue([])
-    mocks.mockSelectLoans.mockResolvedValue([])
+    mocks.mockFetchEntries.mockResolvedValue([])
+    mocks.mockFetchProperties.mockResolvedValue([])
+    mocks.mockFetchLoans.mockResolvedValue([])
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -133,7 +130,7 @@ describe('GET /api/ledger/summary', () => {
   })
 
   it('returns zero totals when no entries in range', async () => {
-    mocks.mockSelectProperties.mockResolvedValueOnce([makeProp()])
+    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     expect(res.status).toBe(200)
     const json = await res.json()
@@ -144,13 +141,13 @@ describe('GET /api/ledger/summary', () => {
   })
 
   it('returns correct totals for entries in range', async () => {
-    mocks.mockSelectEntries.mockResolvedValueOnce([
-      makeEntry({ category: 'rent',    amountCents: 400000 }),
-      makeEntry({ category: 'repairs', amountCents: 50000  }),
-      makeEntry({ category: 'loan_payment', amountCents: 200000, installmentLoanId: LOAN_ID }),
+    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
+    mocks.mockFetchLoans.mockResolvedValueOnce([makeLoan()])
+    mocks.mockFetchEntries.mockResolvedValueOnce([
+      makeEntry({ category: 'rent',         amountCents: 400000 }),
+      makeEntry({ category: 'repairs',       amountCents: 50000  }),
+      makeEntry({ category: 'loan_payment',  amountCents: 200000, installmentLoanId: LOAN_ID }),
     ])
-    mocks.mockSelectProperties.mockResolvedValueOnce([makeProp()])
-    mocks.mockSelectLoans.mockResolvedValueOnce([makeLoan()])
 
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     expect(res.status).toBe(200)
@@ -158,14 +155,14 @@ describe('GET /api/ledger/summary', () => {
     expect(json.totals.totalRent).toBe(400000)
     expect(json.totals.totalExpenses).toBe(50000)
     expect(json.totals.totalMortgage).toBe(200000)
-    expect(json.totals.netAfterMortgage).toBe(150000) // 400000 - 50000 - 200000
+    expect(json.totals.netAfterMortgage).toBe(150000)
   })
 
   it('returns per-property breakdown in totals.properties', async () => {
-    mocks.mockSelectEntries.mockResolvedValueOnce([
+    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
+    mocks.mockFetchEntries.mockResolvedValueOnce([
       makeEntry({ category: 'rent', amountCents: 400000 }),
     ])
-    mocks.mockSelectProperties.mockResolvedValueOnce([makeProp()])
 
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     const json = await res.json()
@@ -175,9 +172,8 @@ describe('GET /api/ledger/summary', () => {
   })
 
   it('includes flags in response', async () => {
-    mocks.mockSelectEntries.mockResolvedValueOnce([])
-    mocks.mockSelectProperties.mockResolvedValueOnce([makeProp()])
-    mocks.mockSelectLoans.mockResolvedValueOnce([makeLoan()])
+    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
+    mocks.mockFetchLoans.mockResolvedValueOnce([makeLoan()])
 
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     const json = await res.json()
@@ -186,18 +182,31 @@ describe('GET /api/ledger/summary', () => {
   })
 
   it('propertyId param scopes entries and properties to that property', async () => {
-    mocks.mockSelectEntries.mockResolvedValueOnce([])
-    mocks.mockSelectProperties.mockResolvedValueOnce([makeProp()])
+    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
 
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31', propertyId: PROP_ID }))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.totals.propertyCount).toBe(1)
+    // propertyId is passed through to fetchPropertiesActiveInRange
+    expect(mocks.mockFetchProperties).toHaveBeenCalledWith(
+      'user-123', '2026-03-01', '2026-03-31', PROP_ID, null,
+    )
   })
 
   it('returns propertyCount: 0 when no properties exist', async () => {
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     const json = await res.json()
     expect(json.totals.propertyCount).toBe(0)
+  })
+
+  it('passes userId to all repository functions', async () => {
+    await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
+    expect(mocks.mockFetchProperties).toHaveBeenCalledWith(
+      'user-123', '2026-03-01', '2026-03-31', null, null,
+    )
+    expect(mocks.mockFetchLoans).toHaveBeenCalledWith(
+      'user-123', '2026-03-01', '2026-03-31', null,
+    )
   })
 })

@@ -6,7 +6,7 @@ vi.setSystemTime(new Date('2026-03-15'))
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockGroupBy: vi.fn(),
+  mockFetchTrendData: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -15,16 +15,8 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          groupBy: vi.fn().mockImplementation(() => mocks.mockGroupBy()),
-        }),
-      }),
-    }),
-  },
+vi.mock('@/lib/reporting', () => ({
+  fetchTrendData: mocks.mockFetchTrendData,
 }))
 
 function makeRequest(params: Record<string, string> = {}) {
@@ -33,7 +25,7 @@ function makeRequest(params: Record<string, string> = {}) {
   return new Request(url.toString(), { method: 'GET' })
 }
 
-// A DB row as returned from the grouped query
+// A DB row as returned from fetchTrendData
 function makeRow(month: string, category: string, totalCents: number) {
   return { month, category, totalCents }
 }
@@ -42,7 +34,7 @@ describe('GET /api/reports/trends', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockGroupBy.mockResolvedValue([])
+    mocks.mockFetchTrendData.mockResolvedValue([])
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -80,7 +72,6 @@ describe('GET /api/reports/trends', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.trends).toHaveLength(6)
-    // Ascending order: first month < last month
     const months = json.trends.map((t: { month: string }) => t.month)
     expect(months[0]).toBe('2025-10')
     expect(months[5]).toBe('2026-03')
@@ -95,12 +86,11 @@ describe('GET /api/reports/trends', () => {
   })
 
   it('zero fields for months with no entries (not null)', async () => {
-    mocks.mockGroupBy.mockResolvedValueOnce([
+    mocks.mockFetchTrendData.mockResolvedValueOnce([
       makeRow('2026-03', 'rent', 400000),
     ])
     const res = await GET(makeRequest({ months: '3' }))
     const json = await res.json()
-    // 2026-01 and 2026-02 have no entries — should be 0, not null
     const jan = json.trends.find((t: { month: string }) => t.month === '2026-01')
     const feb = json.trends.find((t: { month: string }) => t.month === '2026-02')
     expect(jan.rentCents).toBe(0)
@@ -117,7 +107,7 @@ describe('GET /api/reports/trends', () => {
   })
 
   it('hasData is true for months with any entries', async () => {
-    mocks.mockGroupBy.mockResolvedValueOnce([
+    mocks.mockFetchTrendData.mockResolvedValueOnce([
       makeRow('2026-03', 'rent', 400000),
     ])
     const res = await GET(makeRequest({ months: '1' }))
@@ -126,7 +116,7 @@ describe('GET /api/reports/trends', () => {
   })
 
   it('derives netCents from rent - expenses - mortgage', async () => {
-    mocks.mockGroupBy.mockResolvedValueOnce([
+    mocks.mockFetchTrendData.mockResolvedValueOnce([
       makeRow('2026-03', 'rent', 400000),
       makeRow('2026-03', 'repairs', 90000),
       makeRow('2026-03', 'loan_payment', 210000),
@@ -137,11 +127,11 @@ describe('GET /api/reports/trends', () => {
     expect(point.rentCents).toBe(400000)
     expect(point.expensesCents).toBe(90000)
     expect(point.mortgageCents).toBe(210000)
-    expect(point.netCents).toBe(400000 - 90000 - 210000) // 100000
+    expect(point.netCents).toBe(400000 - 90000 - 210000)
   })
 
   it('aggregates multiple expense categories into expensesCents', async () => {
-    mocks.mockGroupBy.mockResolvedValueOnce([
+    mocks.mockFetchTrendData.mockResolvedValueOnce([
       makeRow('2026-03', 'rent', 400000),
       makeRow('2026-03', 'insurance', 10000),
       makeRow('2026-03', 'rates', 5000),
@@ -153,7 +143,7 @@ describe('GET /api/reports/trends', () => {
   })
 
   it('multiple months populate their respective months correctly', async () => {
-    mocks.mockGroupBy.mockResolvedValueOnce([
+    mocks.mockFetchTrendData.mockResolvedValueOnce([
       makeRow('2026-01', 'rent', 300000),
       makeRow('2026-03', 'rent', 400000),
     ])
@@ -163,7 +153,7 @@ describe('GET /api/reports/trends', () => {
     const feb = json.trends.find((t: { month: string }) => t.month === '2026-02')
     const mar = json.trends.find((t: { month: string }) => t.month === '2026-03')
     expect(jan.rentCents).toBe(300000)
-    expect(feb.rentCents).toBe(0)  // zero, not null
+    expect(feb.rentCents).toBe(0)
     expect(mar.rentCents).toBe(400000)
   })
 
@@ -175,5 +165,15 @@ describe('GET /api/reports/trends', () => {
       expect(t.rentCents).toBe(0)
       expect(t.netCents).toBe(0)
     })
+  })
+
+  it('passes userId and date range to fetchTrendData', async () => {
+    await GET(makeRequest({ months: '3' }))
+    // months=3 ending 2026-03: range is 2026-01 to 2026-03
+    expect(mocks.mockFetchTrendData).toHaveBeenCalledWith(
+      'user-123',
+      '2026-01-01',
+      '2026-03-31',
+    )
   })
 })

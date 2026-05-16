@@ -78,6 +78,13 @@
       "when": 1747526400000,
       "tag": "0010_borrowings_rename",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1747612800000,
+      "tag": "0011_drop_portfolio_reports",
+      "breakpoints": true
     }
   ]
 }

@@ -102,19 +102,6 @@ export const propertyLedger = pgTable('property_ledger', {
   index('idx_ledger_source_doc').on(t.sourceDocumentId),
 ])
 
-export const portfolioReports = pgTable('portfolio_reports', {
-  id:           uuid('id').primaryKey().defaultRandom(),
-  userId:       uuid('user_id').notNull(),
-  month:        varchar('month', { length: 7 }).notNull(),
-  aiCommentary: text('ai_commentary'),
-  version:      integer('version').notNull().default(1),
-  createdAt:    timestamp('created_at').defaultNow().notNull(),
-  updatedAt:    timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
-                  .$onUpdate(() => new Date()),
-}, (t) => [
-  unique().on(t.userId, t.month),
-  index('idx_reports_user_month').on(t.userId, t.month),
-])
 
 export const propertyValuations = pgTable('property_valuations', {
   id:         uuid('id').primaryKey().defaultRandom(),
@@ -149,7 +136,6 @@ export type Property               = typeof properties.$inferSelect
 export type SourceDocument         = typeof sourceDocuments.$inferSelect
 export type InstallmentLoan        = typeof installmentLoans.$inferSelect
 export type PropertyLedger         = typeof propertyLedger.$inferSelect
-export type PortfolioReport        = typeof portfolioReports.$inferSelect
 export type LedgerCategory         = typeof ledgerCategoryEnum.enumValues[number]
 export type PropertyValuation      = typeof propertyValuations.$inferSelect
 export type InstallmentLoanBalance = typeof installmentLoanBalances.$inferSelect

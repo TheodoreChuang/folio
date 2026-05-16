@@ -16,7 +16,6 @@ import {
   sourceDocuments,
   installmentLoans,
   propertyLedger,
-  portfolioReports,
   entities,
 } from '../db/schema'
 
@@ -200,19 +199,6 @@ async function seedOwner(userId: string) {
   // Keep a reference to georgeLoan for the flags
   void georgeLoan
 
-  // Portfolio report — commentary only (totals computed live from ledger)
-  console.log('  → portfolio report')
-  await db.insert(portfolioReports).values([
-    {
-      userId,
-      month:   '2026-03',
-      aiCommentary:
-        'Expenses at George Ave were notably higher this month due to an emergency plumbing repair ($1,426). ' +
-        'Excluding this one-off, operating expenses across the portfolio were in line with prior periods. ' +
-        'Loan payment data is incomplete — net cash flow may be understated.',
-      version: 1,
-    },
-  ])
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
