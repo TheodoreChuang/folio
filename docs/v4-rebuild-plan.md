@@ -145,7 +145,7 @@ data-model principle 14).
 ## Phase dependencies
 
 ```
-Phase 0 ✅ ─→ Phase 1 ✅ ─→ Phase 2 ✅ ─→ Phase 3 ─→ Frontend rebuild
+Phase 0 ✅ ─→ Phase 1 ✅ ─→ Phase 2 ✅ ─→ Phase 3 ✅ ─→ Frontend rebuild
 ```
 
 - **Phase 2 reads Phase 1 types.** Borrowings repositories import `PropertyLedger` row shape
@@ -218,43 +218,48 @@ PRs: 1
 
 ---
 
-### Phase 3 — Reporting domain (backend + dead-code removal)
-**Goal:** Reporting domain restructured to conventions. Monthly report generation and AI
-commentary deleted entirely.
+### Phase 3 — Reporting domain (backend + dead-code removal) ✅ Done
+**Status:** PR #17 merged to main.
 
-**Deleted in this phase** (do not migrate):
+Delivered:
+
+**Deleted (~1,800 lines removed):**
 
 | Path | Why dead |
 |---|---|
-| `db/schema.ts` → `portfolioReports` table + types | Monthly cadence removed; AI commentary feature-flagged off permanently. No live financial data stored. |
+| `portfolioReports` table + `PortfolioReport` type in `db/schema.ts` | Monthly cadence removed; AI commentary feature-flagged off permanently. No live financial data stored. |
 | `app/api/reports/route.ts` (GET + POST) | GET lists/reads `portfolio_reports`; POST writes it and calls `generateCommentary`. Both gone. |
-| `app/api/reports/health/route.ts` | Computes per-month `stale | no_commentary | incomplete | healthy` status against `portfolio_reports`. Without that table, the staleness axis collapses; the new UI has no monthly health badges. If a completeness check is wanted later, it is a thin wrapper over `computeReport` on a date range. |
+| `app/api/reports/health/route.ts` | Computes per-month health status against `portfolio_reports`. Without the table, the staleness axis collapses. If a completeness check is wanted later, it is a thin wrapper over `computeReport` on a date range. |
 | `app/(app)/reports/[month]/page.tsx` | Monthly report detail page. Dead with monthly cadence. |
-| Dashboard `ReportListItem` fetch + month-tab switcher | Bound to monthly cadence. Re-evaluate during Frontend rebuild. |
-| `lib/reports/commentary.ts` | Only caller is the dead POST. |
-| `lib/flags.ts` | Only consumer is the dead POST (`flags.aiCommentary`). Grep confirms no other imports. |
+| `lib/reports/commentary.ts` | Only caller was the dead POST. |
+| `lib/flags.ts` | Only consumer was the dead POST (`flags.aiCommentary`). |
+| `__tests__/api/reports.test.ts`, `__tests__/api/reports-health.test.ts` | Tests for deleted routes. |
+| Dashboard: report list state + fetch, month pill nav, AI commentary section, regenerate button, bar-click navigation | Bound to monthly cadence and deleted route. |
 
-**Kept and restructured into `lib/reporting/`:**
+**New `lib/reporting/` module:**
 
-| Path | Notes |
+| File | Notes |
 |---|---|
-| `lib/reports/compute.ts` → `lib/reporting/services/compute.ts` | Pure aggregation, no DB. Already consumed by `/api/ledger/summary`. |
-| `app/api/reports/trends/route.ts` | Queries `property_ledger` directly; no `portfolio_reports` dependency. Becomes a thin adapter over `lib/reporting`. |
-| `app/api/portfolio/summary/route.ts` | LVR from valuations + balances. Becomes a thin adapter over `lib/reporting`. |
-| `app/api/ledger/summary/route.ts` | Calls `computeReport()` for ad-hoc range queries. Becomes a thin adapter over `lib/reporting`. |
-| `app/api/ledger/fy/route.ts` | Pure FY range utility, no DB. Keep as-is. |
-| `app/api/ledger/[id]/route.ts` (DELETE) | Stays in Property — single property_ledger row delete is Property-domain CRUD, not Reporting. |
+| `repositories/trends.ts` → `fetchTrendData(userId, from, to)` | GROUP BY aggregation on `property_ledger` by `YYYY-MM` + category; applies `isNull(deletedAt)`. Signature uses date strings, not a `TrendMonth[]` array (plan differed). |
+| `repositories/ledger.ts` → `fetchPropertiesActiveInRange`, `fetchLoansActiveInRange`, `fetchLedgerEntriesInRange` | Date-range overlap queries. `fetchLedgerEntriesInRange` returns `[]` immediately when `propertyIds` is an empty array (no DB hit). |
+| `repositories/portfolio.ts` → `fetchPortfolioData(userId, entityId?)` | Runs 4 queries in parallel (properties, valuations DESC, balances DESC, loans). Consolidated into one function rather than the two the plan specified (`fetchLatestPropertyValuations` + `fetchActiveLoansWithLatestBalance`). |
+| `services/compute.ts` | Moved verbatim from `lib/reports/compute.ts`. No logic changes. |
+| `services/portfolio.ts` → `computePortfolioLVR(allProperties, valuations, balances, loans)` | LVR aggregation extracted from inline route logic. Filters active loans (`endDate > today`); picks first valuation/balance per property/loan from ordered data. |
+| `index.ts` | Single public import surface for all routes. |
 
-Other scope:
-- `lib/reporting/repositories/` — cross-domain reads (the only domain allowed to do this)
-- `lib/reporting/services/` — aggregation logic
-- `lib/reporting/index.ts` — public API
-- TDD; integration tests cover the cross-domain reads against data-model principle 13
+**Routes refactored to thin adapters:**
 
-Depends on: Phase 1 (types from `lib/property`) + Phase 2 (types from `lib/borrowings`).
+| Route | Change |
+|---|---|
+| `app/api/reports/trends/route.ts` | Calls `fetchTrendData()`; month-range generation and response mapping stays in handler. |
+| `app/api/ledger/summary/route.ts` | Calls `fetchPropertiesActiveInRange`, `fetchLoansActiveInRange`, `fetchLedgerEntriesInRange`, `computeReport`. |
+| `app/api/portfolio/summary/route.ts` | Calls `fetchPortfolioData` + `computePortfolioLVR`. Re-exports `PortfolioLVR` type so dashboard import is unchanged. |
 
-Done when: `pnpm test` and `pnpm test:integration` pass; `lib/reports/` directory removed;
-`portfolio_reports` table removed from schema; dead routes deleted.
+**Migration:** `drizzle/0011_drop_portfolio_reports.sql` — `DROP TABLE IF EXISTS portfolio_reports` + its index.
+
+**Tests:** 403 unit tests + 19 integration tests passing. New repo test files in `__tests__/lib/reporting/`.
+
+**Known CI gotcha fixed in PR:** `vi.mock` with `importOriginal` for `@/lib/reporting` caused `lib/db → lib/env.ts → requireEnv('DATABASE_URL')` to throw in CI (env var absent in unit test runs). Fix: use `vi.importActual('@/lib/reporting/services/compute|portfolio')` inside the factory to load only the pure service functions, which have no db dependency. Avoid `importOriginal` for any module that transitively imports `lib/db`.
 
 PRs: 1
 
@@ -280,6 +285,22 @@ Constraints:
 - API contracts should be stable by this point. Changes need to be discussed.
 - Pages may compose data from multiple domain endpoints (per the not-a-BFF rule).
 
+**Callouts from Phase 3 for this phase:**
+
+- **Trends bar click is unhandled.** Phase 3 removed the bar-click navigation to `/reports/[month]`
+  (that route is deleted). The Frontend rebuild needs to decide what, if anything, a bar click does —
+  likely navigate to a date-filtered ledger view. Currently bars are inert.
+- **Upload page mortgage step still calls `POST /api/statements` manual mode.** Phase 2 added
+  `POST /api/properties/[id]/loan-payments` as the correct route. The upload page must be updated
+  during this re-skin to call the new route.
+- **Dashboard is functional but unstyled.** KPI strip, portfolio card, trends chart, date range
+  selector, and entity filter all work — they just use the interim Phase 0 primitives. Full re-skin
+  in this phase.
+- **No monthly health badges.** The old dashboard showed per-month health status from
+  `GET /api/reports/health`. That endpoint is deleted. If a completeness indicator is wanted on
+  the new dashboard (e.g. "3 of 5 properties have statements this month"), it can be derived
+  from `computeReport` on the current month — no stored state needed. Decide during UI design.
+
 Visual designs locatied in `docs/designs/`. These visual designs represent the ideal state. Many features and field are not support by the backend yet. Anything new is out of scope for the rebuild. New features and sections will be iterative added after the rebuild and stabilization of the app.
 
 As of May 15, the landing page and login UI have not been designed yet. Existing UI can be used as placeholders.
@@ -295,13 +316,13 @@ Files that span multiple domains and must be tracked across phases:
 | `app/(app)/upload/page.tsx` (~750 lines) | Frontend rebuild (full re-skin) | Phase 2 adds the new loan-payments route; upload page keeps calling old `/api/statements` manual mode until Frontend rebuild re-skins it. |
 | `app/(app)/dashboard/page.tsx` (incl. `TrendsSection`, `ReportListItem`) | Phase 3 (delete report-list tab/switcher); Frontend rebuild (re-skin trends + dashboard composition) | Phase 3 removes the monthly report list fetch and switcher. Frontend rebuild re-skins what remains. |
 | `app/(app)/properties/page.tsx`, `app/(app)/properties/[id]/page.tsx` | Frontend rebuild | Full re-skin. |
-| `app/(app)/reports/[month]/page.tsx` | Phase 3 | **Deleted.** |
+| `app/(app)/reports/[month]/page.tsx` | Phase 3 ✅ | **Deleted.** |
 | `app/auth/callback/route.ts` | None (frozen) | First-login redirect logic. No domain dependency. Leave alone. |
 | `playwright/tests/*` (E2E) | Each phase that changes a route contract | Update assertions when routes move. Phase 2: mortgage step E2E must point at new route. Phase 3: remove monthly report tests. |
 | `lib/extraction/*` | None (frozen) | Moves with Ingestion domain post-migration. |
 | `lib/utils.ts` (`cn` helper) | Frontend rebuild (shadcn chunk) | Resolve conflict with shadcn install. |
-| `lib/reports/compute.ts` | Phase 3 | Move into `lib/reporting/services/`. |
-| `lib/reports/commentary.ts`, `lib/flags.ts` | Phase 3 | **Deleted.** |
+| `lib/reports/compute.ts` | Phase 3 ✅ | Moved to `lib/reporting/services/compute.ts`. |
+| `lib/reports/commentary.ts`, `lib/flags.ts` | Phase 3 ✅ | **Deleted.** |
 
 ---
 
@@ -327,6 +348,6 @@ With the backend stable and UI on the new design system, new feature work resume
 | 0 | Design system + AppShell | ✅ Done | 2 |
 | 1 | Property backend | ✅ Done (in flight) | 1 |
 | 2 | Borrowings backend (+ move manual loan-payments) | ✅ Done | 1 |
-| 3 | Reporting backend (delete `portfolio_reports`, monthly reports, AI commentary; move `lib/reports/*` → `lib/reporting/*`) | | 1 |
+| 3 | Reporting backend (delete `portfolio_reports`, monthly reports, AI commentary; move `lib/reports/*` → `lib/reporting/*`) | ✅ Done | 1 |
 | Frontend rebuild | shadcn + all UI surfaces on new design system | | 3–4 |
-| **Total remaining** | | | **~6–7** |
+| **Total remaining** | | | **~3–4** |
