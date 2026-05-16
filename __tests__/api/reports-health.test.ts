@@ -106,7 +106,7 @@ function makeDoc(overrides: Record<string, unknown> = {}) {
 function makeLoanPaymentEntry(overrides: Record<string, unknown> = {}) {
   return {
     id: 'entry-001',
-    loanAccountId: LOAN_ID,
+    installmentLoanId: LOAN_ID,
     category: 'loan_payment',
     lineItemDate: '2026-03-15',
     updatedAt: BEFORE_REPORT,
@@ -212,7 +212,7 @@ describe('GET /api/reports/health', () => {
     mocks.mockDocs.mockResolvedValue([makeDoc()])
     mocks.mockEntries.mockResolvedValue([
       // deleted entry with updatedAt after report
-      { id: 'entry-deleted', loanAccountId: LOAN_ID, category: 'loan_payment', lineItemDate: '2026-03-15', updatedAt: AFTER_REPORT, deletedAt: new Date('2026-03-11') },
+      { id: 'entry-deleted', installmentLoanId: LOAN_ID, category: 'loan_payment', lineItemDate: '2026-03-15', updatedAt: AFTER_REPORT, deletedAt: new Date('2026-03-11') },
       // active entry for loan payment check
       makeLoanPaymentEntry(),
     ])

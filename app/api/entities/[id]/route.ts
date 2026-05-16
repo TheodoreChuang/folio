@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { entities, properties, loanAccounts } from '@/db/schema'
+import { entities, properties, installmentLoans } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -62,9 +62,9 @@ export async function DELETE(
         .from(properties)
         .where(and(eq(properties.userId, user.id), eq(properties.entityId, id)))
         .limit(1),
-      db.select({ id: loanAccounts.id })
-        .from(loanAccounts)
-        .where(and(eq(loanAccounts.userId, user.id), eq(loanAccounts.entityId, id)))
+      db.select({ id: installmentLoans.id })
+        .from(installmentLoans)
+        .where(and(eq(installmentLoans.userId, user.id), eq(installmentLoans.entityId, id)))
         .limit(1),
     ])
 

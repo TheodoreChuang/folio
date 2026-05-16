@@ -1,28 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GET, POST } from '@/app/api/properties/[id]/loans/route'
 
+const VALID_PROP_ID = 'a1b2c3d4-e5f6-4789-a012-111111111111'
+const VALID_LOAN_ID = 'b2c3d4e5-f6a7-4890-b123-222222222222'
+
 const propRow = {
-  id: 'a1b2c3d4-e5f6-4789-a012-111111111111',
+  id: VALID_PROP_ID,
   userId: 'user-123',
   address: '123 Smith St, Sydney NSW 2000',
   nickname: 'Smith St',
   startDate: '2020-01-01',
   endDate: null,
+  entityId: null,
   createdAt: new Date(),
 }
 
 const loanRow = {
-  id: 'b2c3d4e5-f6a7-4890-b123-222222222222',
+  id: VALID_LOAN_ID,
   userId: 'user-123',
-  propertyId: propRow.id,
+  propertyId: VALID_PROP_ID,
   lender: 'Westpac',
   nickname: 'Investment loan',
   startDate: '2020-01-01',
   endDate: '2050-01-01',
+  entityId: null,
   createdAt: new Date(),
 }
-
-const VALID_PROP_ID = propRow.id
 
 function makeGetRequest(propertyId: string) {
   return new Request(`http://localhost/api/properties/${propertyId}/loans`, { method: 'GET' })
@@ -36,69 +39,26 @@ function makePostRequest(propertyId: string, body: unknown) {
   })
 }
 
-let selectCallCount = 0
-
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockSelectLimit: vi.fn(),    // property ownership check (.where().limit())
-  mockSelectLoans: vi.fn(),    // loan listing (call 2, thenable, no limit)
-  mockSelectBalances: vi.fn(), // balance enrichment (call 3, orderBy)
-  mockInsertReturning: vi.fn(),
+  mockFindPropertyById: vi.fn(),
+  mockListInstallmentLoans: vi.fn(),
+  mockCreateInstallmentLoan: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(() =>
-    Promise.resolve({
-      auth: { getUser: mocks.mockGetUser },
-    })
+    Promise.resolve({ auth: { getUser: mocks.mockGetUser } })
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn(() => {
-      selectCallCount++
-      const call = selectCallCount
-      if (call === 1) {
-        // property ownership check
-        return {
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: mocks.mockSelectLimit,
-              then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
-                mocks.mockSelectLoans().then(resolve, reject),
-            }),
-          }),
-        }
-      }
-      if (call === 2) {
-        // loans list
-        return {
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: mocks.mockSelectLimit,
-              then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
-                mocks.mockSelectLoans().then(resolve, reject),
-            }),
-          }),
-        }
-      }
-      // call 3 — balance enrichment (orderBy)
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]),
-            orderBy: vi.fn().mockImplementation(() => mocks.mockSelectBalances()),
-          }),
-        }),
-      }
-    }),
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        returning: mocks.mockInsertReturning,
-      }),
-    }),
-  },
+vi.mock('@/lib/property', () => ({
+  findPropertyById: mocks.mockFindPropertyById,
+}))
+
+vi.mock('@/lib/borrowings', () => ({
+  listInstallmentLoans: mocks.mockListInstallmentLoans,
+  createInstallmentLoan: mocks.mockCreateInstallmentLoan,
 }))
 
 // ── GET ───────────────────────────────────────────────────────────────────────
@@ -106,11 +66,9 @@ vi.mock('@/lib/db', () => ({
 describe('GET /api/properties/[id]/loans', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    selectCallCount = 0
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelectLimit.mockResolvedValue([propRow])
-    mocks.mockSelectLoans.mockResolvedValue([loanRow])
-    mocks.mockSelectBalances.mockResolvedValue([])
+    mocks.mockFindPropertyById.mockResolvedValue(propRow)
+    mocks.mockListInstallmentLoans.mockResolvedValue([{ ...loanRow, latestBalance: null }])
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -127,20 +85,20 @@ describe('GET /api/properties/[id]/loans', () => {
   })
 
   it('returns 404 when property not found', async () => {
-    mocks.mockSelectLimit.mockResolvedValueOnce([])
+    mocks.mockFindPropertyById.mockResolvedValueOnce(undefined)
     const res = await GET(makeGetRequest(VALID_PROP_ID), { params: Promise.resolve({ id: VALID_PROP_ID }) })
     expect(res.status).toBe(404)
   })
 
   it('returns 404 when property belongs to another user', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-B' } } })
-    mocks.mockSelectLimit.mockResolvedValueOnce([]) // WHERE userId = user-B → no match
+    mocks.mockFindPropertyById.mockResolvedValueOnce(undefined)
     const res = await GET(makeGetRequest(VALID_PROP_ID), { params: Promise.resolve({ id: VALID_PROP_ID }) })
     expect(res.status).toBe(404)
   })
 
   it('returns 200 with empty loans array when none exist', async () => {
-    mocks.mockSelectLoans.mockResolvedValueOnce([])
+    mocks.mockListInstallmentLoans.mockResolvedValueOnce([])
     const res = await GET(makeGetRequest(VALID_PROP_ID), { params: Promise.resolve({ id: VALID_PROP_ID }) })
     expect(res.status).toBe(200)
     const json = await res.json()
@@ -156,8 +114,8 @@ describe('GET /api/properties/[id]/loans', () => {
   })
 
   it('returns all loans regardless of endDate', async () => {
-    const endedLoan = { ...loanRow, id: 'c3d4e5f6-a7b8-4901-c234-333333333333', endDate: '2023-06-30' }
-    mocks.mockSelectLoans.mockResolvedValueOnce([loanRow, endedLoan])
+    const endedLoan = { ...loanRow, id: 'c3d4e5f6-a7b8-4901-c234-333333333333', endDate: '2023-06-30', latestBalance: null }
+    mocks.mockListInstallmentLoans.mockResolvedValueOnce([{ ...loanRow, latestBalance: null }, endedLoan])
     const res = await GET(makeGetRequest(VALID_PROP_ID), { params: Promise.resolve({ id: VALID_PROP_ID }) })
     expect(res.status).toBe(200)
     const json = await res.json()
@@ -165,8 +123,8 @@ describe('GET /api/properties/[id]/loans', () => {
   })
 
   it('enriches loans with latestBalance when balance exists', async () => {
-    const balanceRow = { id: 'd4e5f6a7-b8c9-4012-d345-444444444444', userId: 'user-123', loanAccountId: loanRow.id, balanceCents: 45000000, recordedAt: '2026-03-01', notes: null, createdAt: new Date() }
-    mocks.mockSelectBalances.mockResolvedValueOnce([balanceRow])
+    const balance = { balanceCents: 45000000, recordedAt: '2026-03-01' }
+    mocks.mockListInstallmentLoans.mockResolvedValueOnce([{ ...loanRow, latestBalance: balance }])
     const res = await GET(makeGetRequest(VALID_PROP_ID), { params: Promise.resolve({ id: VALID_PROP_ID }) })
     expect(res.status).toBe(200)
     const json = await res.json()
@@ -186,10 +144,9 @@ describe('GET /api/properties/[id]/loans', () => {
 describe('POST /api/properties/[id]/loans', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    selectCallCount = 0
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelectLimit.mockResolvedValue([propRow])
-    mocks.mockInsertReturning.mockResolvedValue([loanRow])
+    mocks.mockFindPropertyById.mockResolvedValue(propRow)
+    mocks.mockCreateInstallmentLoan.mockResolvedValue(loanRow)
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -244,17 +201,10 @@ describe('POST /api/properties/[id]/loans', () => {
   })
 
   it('returns 404 when property not found', async () => {
-    mocks.mockSelectLimit.mockResolvedValueOnce([])
+    mocks.mockFindPropertyById.mockResolvedValueOnce(undefined)
     const res = await POST(makePostRequest(VALID_PROP_ID, { lender: 'Westpac', startDate: '2020-01-01', endDate: '2050-01-01' }), { params: Promise.resolve({ id: VALID_PROP_ID }) })
     expect(res.status).toBe(404)
-    expect(mocks.mockInsertReturning).not.toHaveBeenCalled()
-  })
-
-  it('returns 404 when property belongs to another user', async () => {
-    mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-B' } } })
-    mocks.mockSelectLimit.mockResolvedValueOnce([])
-    const res = await POST(makePostRequest(VALID_PROP_ID, { lender: 'Westpac', startDate: '2020-01-01', endDate: '2050-01-01' }), { params: Promise.resolve({ id: VALID_PROP_ID }) })
-    expect(res.status).toBe(404)
+    expect(mocks.mockCreateInstallmentLoan).not.toHaveBeenCalled()
   })
 
   it('returns 201 and created loan on success', async () => {
@@ -266,7 +216,7 @@ describe('POST /api/properties/[id]/loans', () => {
   })
 
   it('accepts nickname as null (omitted from body)', async () => {
-    mocks.mockInsertReturning.mockResolvedValueOnce([{ ...loanRow, nickname: null }])
+    mocks.mockCreateInstallmentLoan.mockResolvedValueOnce({ ...loanRow, nickname: null })
     const res = await POST(makePostRequest(VALID_PROP_ID, { lender: 'ANZ', startDate: '2020-01-01', endDate: '2050-01-01' }), { params: Promise.resolve({ id: VALID_PROP_ID }) })
     expect(res.status).toBe(201)
     const json = await res.json()

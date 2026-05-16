@@ -195,13 +195,11 @@ Scope:
 - `lib/borrowings/services/` — business logic, including the loan-payment validators currently
   inlined in `POST /api/statements`
 - `lib/borrowings/index.ts` — public API
-- Move the **manual loan-payment write path** out of `POST /api/statements`:
-  - New route: `POST /api/properties/[id]/loan-payments` (Property owns property_ledger; the
-    route accepts `loanAccountId` and delegates to `lib/property` for the write and
-    `lib/borrowings` for the loan-account validation)
-  - Update `app/(app)/upload/page.tsx` mortgage step `fetch` call to point at the new route.
-    Call-site only — no re-skin, no UI restructure.
-  - Keep `POST /api/statements` for PDF-backed (Ingestion) writes only
+- Add new route: `POST /api/properties/[id]/loan-payments` (Property owns property_ledger; the
+  route accepts `loanAccountId` and delegates to `lib/property` for the write and
+  `lib/borrowings` for the loan-account validation)
+- `POST /api/statements` manual mode stays alive — upload page is not touched in this phase.
+  Dead-code removal of the manual path deferred to Frontend rebuild.
 - Route handlers updated; TDD
 
 Dead-code sweep in this phase: any Borrowings-domain code paths that the new product does
@@ -288,7 +286,7 @@ Files that span multiple domains and must be tracked across phases:
 
 | File | Phase touched | Action |
 |---|---|---|
-| `app/(app)/upload/page.tsx` (~750 lines) | Phase 2 (mortgage-step API call only); Frontend rebuild (full re-skin) | Phase 2: update `fetch` to new `/api/properties/[id]/loan-payments`. Frontend rebuild: full re-skin. |
+| `app/(app)/upload/page.tsx` (~750 lines) | Frontend rebuild (full re-skin) | Phase 2 adds the new loan-payments route; upload page keeps calling old `/api/statements` manual mode until Frontend rebuild re-skins it. |
 | `app/(app)/dashboard/page.tsx` (incl. `TrendsSection`, `ReportListItem`) | Phase 3 (delete report-list tab/switcher); Frontend rebuild (re-skin trends + dashboard composition) | Phase 3 removes the monthly report list fetch and switcher. Frontend rebuild re-skins what remains. |
 | `app/(app)/properties/page.tsx`, `app/(app)/properties/[id]/page.tsx` | Frontend rebuild | Full re-skin. |
 | `app/(app)/reports/[month]/page.tsx` | Phase 3 | **Deleted.** |

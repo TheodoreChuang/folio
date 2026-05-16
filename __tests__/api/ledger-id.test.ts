@@ -6,7 +6,7 @@ const manualEntry = {
   userId: 'user-123',
   propertyId: 'prop-uuid-aaaa-bbbb-cccc-dddddddddddd',
   sourceDocumentId: null,
-  loanAccountId: null,
+  installmentLoanId: null,
   lineItemDate: '2026-03-15',
   amountCents: 120000,
   category: 'insurance',

@@ -1,7 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { properties, propertyValuations, loanAccounts, loanBalances } from '@/db/schema'
+import { properties, propertyValuations, installmentLoans, installmentLoanBalances } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -31,8 +31,8 @@ export async function GET(request: Request) {
       : eq(properties.userId, user.id)
 
     const loansWhere = entityId
-      ? and(eq(loanAccounts.userId, user.id), eq(loanAccounts.entityId, entityId))
-      : eq(loanAccounts.userId, user.id)
+      ? and(eq(installmentLoans.userId, user.id), eq(installmentLoans.entityId, entityId))
+      : eq(installmentLoans.userId, user.id)
 
     const [allProperties, valuationRows, balanceRows, allLoans] = await Promise.all([
       db.select().from(properties).where(propsWhere),
@@ -42,11 +42,11 @@ export async function GET(request: Request) {
         .where(eq(propertyValuations.userId, user.id))
         .orderBy(propertyValuations.propertyId, desc(propertyValuations.valuedAt)),
       db
-        .select({ loanAccountId: loanBalances.loanAccountId, balanceCents: loanBalances.balanceCents, recordedAt: loanBalances.recordedAt })
-        .from(loanBalances)
-        .where(eq(loanBalances.userId, user.id))
-        .orderBy(loanBalances.loanAccountId, desc(loanBalances.recordedAt)),
-      db.select().from(loanAccounts).where(loansWhere),
+        .select({ installmentLoanId: installmentLoanBalances.installmentLoanId, balanceCents: installmentLoanBalances.balanceCents, recordedAt: installmentLoanBalances.recordedAt })
+        .from(installmentLoanBalances)
+        .where(eq(installmentLoanBalances.userId, user.id))
+        .orderBy(installmentLoanBalances.installmentLoanId, desc(installmentLoanBalances.recordedAt)),
+      db.select().from(installmentLoans).where(loansWhere),
     ])
 
     const latestValuationMap = new Map<string, number>()
@@ -58,8 +58,8 @@ export async function GET(request: Request) {
 
     const latestBalanceMap = new Map<string, number>()
     for (const row of balanceRows) {
-      if (!latestBalanceMap.has(row.loanAccountId)) {
-        latestBalanceMap.set(row.loanAccountId, row.balanceCents)
+      if (!latestBalanceMap.has(row.installmentLoanId)) {
+        latestBalanceMap.set(row.installmentLoanId, row.balanceCents)
       }
     }
 

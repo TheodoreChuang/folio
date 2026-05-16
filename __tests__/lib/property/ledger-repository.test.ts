@@ -26,7 +26,7 @@ const entry = {
   userId: 'user-aaa',
   propertyId: 'prop-111',
   sourceDocumentId: null,
-  loanAccountId: null,
+  installmentLoanId: null,
   lineItemDate: '2025-01-15',
   amountCents: 200000,
   category: 'rent' as const,

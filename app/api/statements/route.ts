@@ -2,7 +2,7 @@ import { and, desc, eq, getTableColumns, gte, isNull, lt, lte, sql } from 'drizz
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { db } from '@/lib/db'
-import { properties, sourceDocuments, propertyLedger, loanAccounts } from '@/db/schema'
+import { properties, sourceDocuments, propertyLedger, installmentLoans } from '@/db/schema'
 import type { PropertyLedger } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
         .where(
           and(
             eq(propertyLedger.userId, user.id),
-            eq(propertyLedger.loanAccountId, loanAccountId),
+            eq(propertyLedger.installmentLoanId, loanAccountId),
             eq(propertyLedger.category, 'loan_payment'),
             lt(propertyLedger.lineItemDate, `${month}-01`),
             isNull(propertyLedger.deletedAt),
@@ -74,11 +74,11 @@ export async function GET(request: Request) {
       const entries = await db
         .select({
           ...getTableColumns(propertyLedger),
-          lender: loanAccounts.lender,
-          loanNickname: loanAccounts.nickname,
+          lender: installmentLoans.lender,
+          loanNickname: installmentLoans.nickname,
         })
         .from(propertyLedger)
-        .leftJoin(loanAccounts, eq(propertyLedger.loanAccountId, loanAccounts.id))
+        .leftJoin(installmentLoans, eq(propertyLedger.installmentLoanId, installmentLoans.id))
         .where(
           and(
             eq(propertyLedger.userId, user.id),
@@ -269,13 +269,13 @@ export async function POST(request: Request) {
     if (loanPaymentItems.length > 0) {
       const firstLoanAccountId = loanPaymentItems[0].loanAccountId!
       const [validLoan] = await db
-        .select({ id: loanAccounts.id })
-        .from(loanAccounts)
+        .select({ id: installmentLoans.id })
+        .from(installmentLoans)
         .where(
           and(
-            eq(loanAccounts.id, firstLoanAccountId),
-            eq(loanAccounts.propertyId, property!.id),
-            eq(loanAccounts.userId, user.id),
+            eq(installmentLoans.id, firstLoanAccountId),
+            eq(installmentLoans.propertyId, property!.id),
+            eq(installmentLoans.userId, user.id),
           )
         )
         .limit(1)
@@ -305,7 +305,7 @@ export async function POST(request: Request) {
               eq(propertyLedger.userId, user.id),
               eq(propertyLedger.propertyId, property!.id),
               eq(propertyLedger.category, 'loan_payment'),
-              manualLoanAccountId ? eq(propertyLedger.loanAccountId, manualLoanAccountId) : undefined,
+              manualLoanAccountId ? eq(propertyLedger.installmentLoanId, manualLoanAccountId) : undefined,
               gte(propertyLedger.lineItemDate, startDate),
               lte(propertyLedger.lineItemDate, endDate),
             )
@@ -329,7 +329,7 @@ export async function POST(request: Request) {
         userId: user.id,
         propertyId: property!.id,
         sourceDocumentId: sourceDocumentIdRaw, // null for manual entries
-        loanAccountId: item.loanAccountId ?? null,
+        installmentLoanId: item.loanAccountId ?? null,
         lineItemDate: item.lineItemDate,
         amountCents: item.amountCents,
         category: item.category,

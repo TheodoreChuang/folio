@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray, isNull, lte } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { propertyLedger, properties, loanAccounts } from '@/db/schema'
+import { propertyLedger, properties, installmentLoans } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import { computeReport } from '@/lib/reports/compute'
@@ -38,15 +38,15 @@ export async function GET(request: Request) {
     ]
 
     const loansWhere = [
-      eq(loanAccounts.userId, user.id),
-      lte(loanAccounts.startDate, to),
-      gte(loanAccounts.endDate, from),
-      ...(entityId ? [eq(loanAccounts.entityId, entityId)] : []),
+      eq(installmentLoans.userId, user.id),
+      lte(installmentLoans.startDate, to),
+      gte(installmentLoans.endDate, from),
+      ...(entityId ? [eq(installmentLoans.entityId, entityId)] : []),
     ]
 
     const [props, loans] = await Promise.all([
       db.select().from(properties).where(and(...propertiesWhere)),
-      db.select().from(loanAccounts).where(and(...loansWhere)),
+      db.select().from(installmentLoans).where(and(...loansWhere)),
     ])
 
     const filteredPropertyIds = props.map(p => p.id)

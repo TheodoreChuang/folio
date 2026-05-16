@@ -71,6 +71,13 @@
       "when": 1747267200000,
       "tag": "0009_rename_property_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1747526400000,
+      "tag": "0010_borrowings_rename",
+      "breakpoints": true
     }
   ]
 }
