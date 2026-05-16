@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GET, POST } from '@/app/api/properties/[id]/loans/[loanId]/balances/route'
 import { DELETE } from '@/app/api/properties/[id]/loans/[loanId]/balances/[balanceId]/route'
 
-const PROP_ID    = 'a1b2c3d4-e5f6-4789-a012-111111111111'
-const LOAN_ID    = 'b2c3d4e5-f6a7-4890-b123-222222222222'
-const BAL_ID     = 'c3d4e5f6-a7b8-4901-c234-333333333333'
+const PROP_ID  = 'a1b2c3d4-e5f6-4789-a012-111111111111'
+const LOAN_ID  = 'b2c3d4e5-f6a7-4890-b123-222222222222'
+const BAL_ID   = 'c3d4e5f6-a7b8-4901-c234-333333333333'
 
 const loanRow = {
   id: LOAN_ID,
@@ -14,27 +14,26 @@ const loanRow = {
   nickname: null,
   startDate: '2020-01-01',
   endDate: '2050-01-01',
+  entityId: null,
   createdAt: new Date(),
 }
 
 const balanceRow = {
   id: BAL_ID,
   userId: 'user-123',
-  loanAccountId: LOAN_ID,
+  installmentLoanId: LOAN_ID,
   recordedAt: '2026-03-01',
   balanceCents: 45000000,
   notes: null,
   createdAt: new Date(),
 }
 
-let selectCallCount = 0
-
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockSelectOrderBy: vi.fn(),   // balances list
-  mockSelectLimit: vi.fn(),     // loan ownership check
-  mockInsertReturning: vi.fn(),
-  mockDeleteReturning: vi.fn(),
+  mockFindInstallmentLoanById: vi.fn(),
+  mockListInstallmentLoanBalances: vi.fn(),
+  mockCreateInstallmentLoanBalance: vi.fn(),
+  mockDeleteInstallmentLoanBalance: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -43,31 +42,11 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn(() => {
-      selectCallCount++
-      const call = selectCallCount
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: mocks.mockSelectLimit,
-            orderBy: call === 2 ? mocks.mockSelectOrderBy : vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      }
-    }),
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        returning: mocks.mockInsertReturning,
-      }),
-    }),
-    delete: vi.fn().mockReturnValue({
-      where: vi.fn().mockReturnValue({
-        returning: mocks.mockDeleteReturning,
-      }),
-    }),
-  },
+vi.mock('@/lib/borrowings', () => ({
+  findInstallmentLoanById: mocks.mockFindInstallmentLoanById,
+  listInstallmentLoanBalances: mocks.mockListInstallmentLoanBalances,
+  createInstallmentLoanBalance: mocks.mockCreateInstallmentLoanBalance,
+  deleteInstallmentLoanBalance: mocks.mockDeleteInstallmentLoanBalance,
 }))
 
 function makeParams(id: string, loanId: string) {
@@ -93,10 +72,9 @@ function makeDeleteRequest() {
 describe('GET /api/properties/[id]/loans/[loanId]/balances', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    selectCallCount = 0
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelectLimit.mockResolvedValue([loanRow])
-    mocks.mockSelectOrderBy.mockResolvedValue([balanceRow])
+    mocks.mockFindInstallmentLoanById.mockResolvedValue(loanRow)
+    mocks.mockListInstallmentLoanBalances.mockResolvedValue([balanceRow])
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -120,7 +98,13 @@ describe('GET /api/properties/[id]/loans/[loanId]/balances', () => {
   })
 
   it('returns 404 when loan not found', async () => {
-    mocks.mockSelectLimit.mockResolvedValue([])
+    mocks.mockFindInstallmentLoanById.mockResolvedValueOnce(null)
+    const res = await GET(makeGetRequest(), makeParams(PROP_ID, LOAN_ID))
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 404 when loan belongs to a different property', async () => {
+    mocks.mockFindInstallmentLoanById.mockResolvedValueOnce({ ...loanRow, propertyId: 'ffffffff-ffff-4fff-afff-ffffffffffff' })
     const res = await GET(makeGetRequest(), makeParams(PROP_ID, LOAN_ID))
     expect(res.status).toBe(404)
   })
@@ -142,10 +126,9 @@ describe('POST /api/properties/[id]/loans/[loanId]/balances', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    selectCallCount = 0
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelectLimit.mockResolvedValue([loanRow])
-    mocks.mockInsertReturning.mockResolvedValue([balanceRow])
+    mocks.mockFindInstallmentLoanById.mockResolvedValue(loanRow)
+    mocks.mockCreateInstallmentLoanBalance.mockResolvedValue(balanceRow)
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -205,14 +188,14 @@ describe('POST /api/properties/[id]/loans/[loanId]/balances', () => {
   })
 
   it('returns 404 when loan not found', async () => {
-    mocks.mockSelectLimit.mockResolvedValue([])
+    mocks.mockFindInstallmentLoanById.mockResolvedValueOnce(null)
     const res = await POST(makePostRequest(validBody), makeParams(PROP_ID, LOAN_ID))
     expect(res.status).toBe(404)
-    expect(mocks.mockInsertReturning).not.toHaveBeenCalled()
+    expect(mocks.mockCreateInstallmentLoanBalance).not.toHaveBeenCalled()
   })
 
   it('returns 409 on duplicate date', async () => {
-    mocks.mockInsertReturning.mockRejectedValue({ code: '23505' })
+    mocks.mockCreateInstallmentLoanBalance.mockRejectedValue({ code: '23505' })
     const res = await POST(makePostRequest(validBody), makeParams(PROP_ID, LOAN_ID))
     expect(res.status).toBe(409)
     const json = await res.json()
@@ -228,7 +211,7 @@ describe('POST /api/properties/[id]/loans/[loanId]/balances', () => {
   })
 
   it('returns 201 when balanceCents is 0 (fully paid loan)', async () => {
-    mocks.mockInsertReturning.mockResolvedValue([{ ...balanceRow, balanceCents: 0 }])
+    mocks.mockCreateInstallmentLoanBalance.mockResolvedValueOnce({ ...balanceRow, balanceCents: 0 })
     const res = await POST(makePostRequest({ ...validBody, balanceCents: 0 }), makeParams(PROP_ID, LOAN_ID))
     expect(res.status).toBe(201)
     const json = await res.json()
@@ -240,7 +223,7 @@ describe('DELETE /api/properties/[id]/loans/[loanId]/balances/[balanceId]', () =
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockDeleteReturning.mockResolvedValue([balanceRow])
+    mocks.mockDeleteInstallmentLoanBalance.mockResolvedValue(balanceRow)
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -271,7 +254,7 @@ describe('DELETE /api/properties/[id]/loans/[loanId]/balances/[balanceId]', () =
   })
 
   it('returns 404 when not found', async () => {
-    mocks.mockDeleteReturning.mockResolvedValue([])
+    mocks.mockDeleteInstallmentLoanBalance.mockResolvedValueOnce(undefined)
     const res = await DELETE(makeDeleteRequest(), makeBalParams(PROP_ID, LOAN_ID, BAL_ID))
     expect(res.status).toBe(404)
   })

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeReport } from '@/lib/reports/compute'
-import type { PropertyLedger, Property, LoanAccount } from '@/db/schema'
+import type { PropertyLedger, Property, InstallmentLoan } from '@/db/schema'
 
 function makeProperty(overrides: Partial<Property> = {}): Property {
   return {
@@ -22,7 +22,7 @@ function makeEntry(overrides: Partial<PropertyLedger> = {}): PropertyLedger {
     userId: 'user-1',
     propertyId: 'prop-1',
     sourceDocumentId: 'doc-1',
-    loanAccountId: null,
+    installmentLoanId: null,
     lineItemDate: '2026-03-31',
     amountCents: 100,
     category: 'rent',
@@ -35,7 +35,7 @@ function makeEntry(overrides: Partial<PropertyLedger> = {}): PropertyLedger {
   }
 }
 
-function makeLoanAccount(overrides: Partial<LoanAccount> = {}): LoanAccount {
+function makeLoanAccount(overrides: Partial<InstallmentLoan> = {}): InstallmentLoan {
   return {
     id: 'loan-1',
     userId: 'user-1',
@@ -161,7 +161,7 @@ describe('computeReport', () => {
     const entries = [makeEntry({ category: 'rent' })] // no loan_payment
     const { flags } = computeReport(entries, [prop1], [loan])
     expect(flags.missingMortgages).toHaveLength(1)
-    expect(flags.missingMortgages[0].loanAccountId).toBe('loan-1')
+    expect(flags.missingMortgages[0].installmentLoanId).toBe('loan-1')
     expect(flags.missingMortgages[0].lender).toBe('Westpac')
     expect(flags.missingMortgages[0].nickname).toBe('Investment')
     expect(flags.missingMortgages[0].propertyId).toBe('prop-1')
@@ -172,7 +172,7 @@ describe('computeReport', () => {
     const loan2 = makeLoanAccount({ id: 'loan-2', propertyId: 'prop-2', lender: 'ANZ' })
     const entries = [
       makeEntry({ id: 'r1', propertyId: 'prop-1', amountCents: 400000, category: 'rent' }),
-      makeEntry({ id: 'm1', propertyId: 'prop-1', amountCents: 210000, category: 'loan_payment', loanAccountId: 'loan-1' }),
+      makeEntry({ id: 'm1', propertyId: 'prop-1', amountCents: 210000, category: 'loan_payment', installmentLoanId: 'loan-1' }),
       makeEntry({ id: 'r2', propertyId: 'prop-2', amountCents: 550000, category: 'rent' }),
     ]
     const { totals, flags } = computeReport(entries, [prop1, prop2], [loan1, loan2])
@@ -181,7 +181,7 @@ describe('computeReport', () => {
     expect(totals.statementsReceived).toBe(2)
     expect(totals.mortgagesProvided).toBe(1)
     expect(flags.missingMortgages).toHaveLength(1)
-    expect(flags.missingMortgages[0].loanAccountId).toBe('loan-2')
+    expect(flags.missingMortgages[0].installmentLoanId).toBe('loan-2')
     expect(flags.missingMortgages[0].propertyId).toBe('prop-2')
   })
 
@@ -209,7 +209,7 @@ describe('computeReport', () => {
     const loan = makeLoanAccount({ id: 'loan-1', propertyId: 'prop-1' })
     const entries = [
       makeEntry({ id: 'r', category: 'rent' }),
-      makeEntry({ id: 'm', category: 'loan_payment', loanAccountId: 'loan-1' }),
+      makeEntry({ id: 'm', category: 'loan_payment', installmentLoanId: 'loan-1' }),
     ]
     const { flags } = computeReport(entries, [prop1], [loan])
     expect(flags.missingMortgages).toHaveLength(0)
@@ -220,11 +220,11 @@ describe('computeReport', () => {
     const loan2 = makeLoanAccount({ id: 'loan-2', propertyId: 'prop-1', lender: 'ANZ', nickname: 'Top-up' })
     const entries = [
       makeEntry({ id: 'r', category: 'rent' }),
-      makeEntry({ id: 'm', category: 'loan_payment', loanAccountId: 'loan-1' }), // only Westpac paid
+      makeEntry({ id: 'm', category: 'loan_payment', installmentLoanId: 'loan-1' }), // only Westpac paid
     ]
     const { flags } = computeReport(entries, [prop1], [loan1, loan2])
     expect(flags.missingMortgages).toHaveLength(1)
-    expect(flags.missingMortgages[0].loanAccountId).toBe('loan-2')
+    expect(flags.missingMortgages[0].installmentLoanId).toBe('loan-2')
     expect(flags.missingMortgages[0].lender).toBe('ANZ')
     expect(flags.missingMortgages[0].nickname).toBe('Top-up')
   })
@@ -233,7 +233,7 @@ describe('computeReport', () => {
     const activeLoan = makeLoanAccount({ id: 'loan-1', propertyId: 'prop-1' })
     // Ended loan not passed to computeReport — caller is responsible for filtering
     const entries = [
-      makeEntry({ id: 'm', category: 'loan_payment', loanAccountId: 'loan-1' }),
+      makeEntry({ id: 'm', category: 'loan_payment', installmentLoanId: 'loan-1' }),
     ]
     const { flags } = computeReport(entries, [prop1], [activeLoan])
     expect(flags.missingMortgages).toHaveLength(0)

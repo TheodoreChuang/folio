@@ -47,7 +47,7 @@ function makeEntry(overrides: Record<string, unknown> = {}) {
     userId: 'user-123',
     propertyId: PROP_ID,
     sourceDocumentId: null,
-    loanAccountId: null,
+    installmentLoanId: null,
     lineItemDate: '2026-03-15',
     amountCents: 400000,
     category: 'rent',
@@ -147,7 +147,7 @@ describe('GET /api/ledger/summary', () => {
     mocks.mockSelectEntries.mockResolvedValueOnce([
       makeEntry({ category: 'rent',    amountCents: 400000 }),
       makeEntry({ category: 'repairs', amountCents: 50000  }),
-      makeEntry({ category: 'loan_payment', amountCents: 200000, loanAccountId: LOAN_ID }),
+      makeEntry({ category: 'loan_payment', amountCents: 200000, installmentLoanId: LOAN_ID }),
     ])
     mocks.mockSelectProperties.mockResolvedValueOnce([makeProp()])
     mocks.mockSelectLoans.mockResolvedValueOnce([makeLoan()])

@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { properties, loanAccounts } from '@/db/schema'
+import { properties, installmentLoans } from '@/db/schema'
 
 const refs = vi.hoisted(() => ({
   cookieStore: [] as { name: string; value: string }[],
@@ -68,19 +68,19 @@ describe('GET /api/ledger/summary (integration — S-1 loan date-range filter)',
     propertyId = prop.id
 
     const [activeLoan] = await db
-      .insert(loanAccounts)
+      .insert(installmentLoans)
       .values({ userId, propertyId, lender: 'Active Bank', startDate: '2020-01-01', endDate: '2050-01-01' })
       .returning()
     activeLoanId = activeLoan.id
 
     const [endedLoan] = await db
-      .insert(loanAccounts)
+      .insert(installmentLoans)
       .values({ userId, propertyId, lender: 'Ended Bank', startDate: '2020-01-01', endDate: '2025-12-31' })
       .returning()
     endedLoanId = endedLoan.id
 
     const [futureLoan] = await db
-      .insert(loanAccounts)
+      .insert(installmentLoans)
       .values({ userId, propertyId, lender: 'Future Bank', startDate: '2026-04-01', endDate: '2050-01-01' })
       .returning()
     futureLoanId = futureLoan.id
@@ -88,9 +88,9 @@ describe('GET /api/ledger/summary (integration — S-1 loan date-range filter)',
 
   afterAll(async () => {
     if (!hasEnv) return
-    if (activeLoanId) await db.delete(loanAccounts).where(eq(loanAccounts.id, activeLoanId))
-    if (endedLoanId) await db.delete(loanAccounts).where(eq(loanAccounts.id, endedLoanId))
-    if (futureLoanId) await db.delete(loanAccounts).where(eq(loanAccounts.id, futureLoanId))
+    if (activeLoanId) await db.delete(installmentLoans).where(eq(installmentLoans.id, activeLoanId))
+    if (endedLoanId) await db.delete(installmentLoans).where(eq(installmentLoans.id, endedLoanId))
+    if (futureLoanId) await db.delete(installmentLoans).where(eq(installmentLoans.id, futureLoanId))
     if (propertyId) await db.delete(properties).where(eq(properties.id, propertyId))
   })
 
@@ -105,8 +105,8 @@ describe('GET /api/ledger/summary (integration — S-1 loan date-range filter)',
     const res = await getLedgerSummary(FROM, TO, propertyId)
     expect(res.status).toBe(200)
     const json = await res.json()
-    const missing = json.flags.missingMortgages as { loanAccountId: string }[]
-    expect(missing.some((m) => m.loanAccountId === activeLoanId)).toBe(true)
+    const missing = json.flags.missingMortgages as { installmentLoanId: string }[]
+    expect(missing.some((m) => m.installmentLoanId === activeLoanId)).toBe(true)
   })
 
   it('ended loan (endDate before period) excluded from missingMortgages (S-1)', async () => {
@@ -114,8 +114,8 @@ describe('GET /api/ledger/summary (integration — S-1 loan date-range filter)',
     const res = await getLedgerSummary(FROM, TO, propertyId)
     expect(res.status).toBe(200)
     const json = await res.json()
-    const missing = json.flags.missingMortgages as { loanAccountId: string }[]
-    expect(missing.some((m) => m.loanAccountId === endedLoanId)).toBe(false)
+    const missing = json.flags.missingMortgages as { installmentLoanId: string }[]
+    expect(missing.some((m) => m.installmentLoanId === endedLoanId)).toBe(false)
   })
 
   it('future loan (startDate after period) excluded from missingMortgages (S-1)', async () => {
@@ -123,7 +123,7 @@ describe('GET /api/ledger/summary (integration — S-1 loan date-range filter)',
     const res = await getLedgerSummary(FROM, TO, propertyId)
     expect(res.status).toBe(200)
     const json = await res.json()
-    const missing = json.flags.missingMortgages as { loanAccountId: string }[]
-    expect(missing.some((m) => m.loanAccountId === futureLoanId)).toBe(false)
+    const missing = json.flags.missingMortgages as { installmentLoanId: string }[]
+    expect(missing.some((m) => m.installmentLoanId === futureLoanId)).toBe(false)
   })
 })

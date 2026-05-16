@@ -1,7 +1,8 @@
-import { and, eq, gte, isNull } from 'drizzle-orm'
+import { and, eq, gte, isNull, lte } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { propertyLedger } from '@/db/schema'
 import type { PropertyLedger, LedgerCategory } from '@/db/schema'
+import { lastDayOfMonth } from '@/lib/format'
 
 type CreateLedgerEntryInput = {
   userId: string
@@ -11,7 +12,7 @@ type CreateLedgerEntryInput = {
   category: LedgerCategory
   description: string | null
   sourceDocumentId?: string | null
-  loanAccountId?: string | null
+  installmentLoanId?: string | null
 }
 
 export async function findTrailing12mEntries(
@@ -42,7 +43,7 @@ export async function createLedgerEntry(input: CreateLedgerEntryInput): Promise<
       userId: input.userId,
       propertyId: input.propertyId,
       sourceDocumentId: input.sourceDocumentId ?? null,
-      loanAccountId: input.loanAccountId ?? null,
+      installmentLoanId: input.installmentLoanId ?? null,
       lineItemDate: input.lineItemDate,
       amountCents: input.amountCents,
       category: input.category,
@@ -50,4 +51,50 @@ export async function createLedgerEntry(input: CreateLedgerEntryInput): Promise<
     })
     .returning()
   return row
+}
+
+export async function upsertLoanPaymentEntry(
+  userId: string,
+  propertyId: string,
+  installmentLoanId: string,
+  lineItemDate: string,
+  amountCents: number,
+  description: string,
+): Promise<PropertyLedger> {
+  const month = lineItemDate.slice(0, 7)
+  const startDate = `${month}-01`
+  const endDate = lastDayOfMonth(month)
+
+  let inserted!: PropertyLedger
+  await db.transaction(async (tx) => {
+    await tx
+      .update(propertyLedger)
+      .set({ deletedAt: new Date() })
+      .where(
+        and(
+          eq(propertyLedger.userId, userId),
+          eq(propertyLedger.propertyId, propertyId),
+          eq(propertyLedger.category, 'loan_payment'),
+          eq(propertyLedger.installmentLoanId, installmentLoanId),
+          gte(propertyLedger.lineItemDate, startDate),
+          lte(propertyLedger.lineItemDate, endDate),
+          isNull(propertyLedger.deletedAt),
+        ),
+      )
+
+    const [row] = await tx
+      .insert(propertyLedger)
+      .values({
+        userId,
+        propertyId,
+        installmentLoanId,
+        lineItemDate,
+        amountCents,
+        category: 'loan_payment',
+        description,
+      })
+      .returning()
+    inserted = row
+  })
+  return inserted
 }

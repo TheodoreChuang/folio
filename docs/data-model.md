@@ -107,7 +107,7 @@ all change between transactions. Each gets a dedicated snapshot table:
 
 ```
 property_valuations   (property_id, valued_at, value_cents)
-loan_balances         (loan_id, recorded_at, balance_cents)
+installment_loan_balances   (installment_loan_id, recorded_at, balance_cents)
 ```
 
 ### 10. The "account" abstraction is a UI concept, not a schema concept
@@ -228,7 +228,7 @@ revolving credit have different attributes, amortisation logic, and query patter
 ATO debt, and other amortising debt.
 ```
 installment_loans         — entity table
-loan_balances             — snapshot table; balance recordings over time
+installment_loan_balances — snapshot table; balance recordings over time
 loan_ledger               — ledger table; principal, interest, fees per payment
 loan_property_securities  — entity table; junction: loan + property (many-to-many for cross-collateralisation)
 ```

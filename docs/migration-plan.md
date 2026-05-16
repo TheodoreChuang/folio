@@ -82,7 +82,7 @@ The existing ingestion code is in the tree and crosses every domain we are touch
 | `app/api/extract/route.ts` | Ingestion + AI extraction | Freeze. |
 | `app/api/statements/route.ts` (POST) | Ingestion (writes ledger from PDF) + Property + Borrowings | Split — see Phase 2. PDF-backed writes stay; manual loan-payment path moves out. |
 | `app/api/documents/route.ts` (GET) | Property (reads source_documents joined to property_ledger) | Thin adapter over `lib/property` (done in Phase 1). Route stays at `/api/documents/*` until the Ingestion domain is built. |
-| `app/(app)/upload/page.tsx` (~750 lines, 5-step stepper) | Property, Borrowings, Ingestion | Freeze structurally. Phase 2 updates only the mortgage-step API call site. Full re-skin happens in the Frontend rebuild. |
+| `app/(app)/upload/page.tsx` (~750 lines, 5-step stepper) | Property, Borrowings, Ingestion | Freeze structurally. Upload page keeps calling `/api/statements` manual mode until Frontend rebuild re-skins it. Full re-skin happens in the Frontend rebuild. |
 | `lib/extraction/` (parse.ts, schema.ts, etc.) | Ingestion | Freeze. Move untouched when the Ingestion domain is built post-migration. |
 
 **Rule of thumb:** if a file's *primary* responsibility is ingestion, freeze it — fix only the
@@ -95,11 +95,17 @@ a new API contract and is out of scope here.
 
 ## DB approach
 
-No incremental migration scripts. Each domain phase does a full reset:
+**Local development:** full reset at each phase boundary:
 ```
 npx supabase db reset --local
 ```
-Production is wiped and reseeded at each phase boundary. Data loss is acceptable.
+Data loss is acceptable locally — no live users.
+
+**Production:** incremental migration via `pnpm db:migrate` (Drizzle applies only unapplied
+migrations). Do not reset production. Each phase generates a standalone migration file
+(`drizzle/NNNN_*.sql`) that is safe DDL — no destructive data operations. CI runs
+`pnpm db:migrate` automatically; production apply is manual (`pnpm db:migrate` against prod
+connection string).
 
 **Exact column names and indexes are decided at implementation time per phase.** The plan
 names tables where renames are structurally significant; column-level decisions are not
@@ -135,16 +141,15 @@ data-model principle 14).
 ## Phase dependencies
 
 ```
-Phase 0 ✅ ─→ Phase 1 ✅ ─→ Phase 2 ─→ Phase 3 ─→ Frontend rebuild
+Phase 0 ✅ ─→ Phase 1 ✅ ─→ Phase 2 ✅ ─→ Phase 3 ─→ Frontend rebuild
 ```
 
 - **Phase 2 reads Phase 1 types.** Borrowings repositories import `PropertyLedger` row shape
   for the loan-payment lookup. Land Phase 1 first.
 - **Phase 3 reads Phase 1 + Phase 2 types.** `lib/reports/compute.ts` consumes both. Reporting
   cannot move until both source domains have stable public APIs.
-- **`app/(app)/upload/page.tsx` mortgage step depends on Phase 2.** Phase 2 must update the
-  upload page's mortgage-step `fetch` call site to the new Borrowings route in the same PR.
-  No re-skin.
+- **`app/(app)/upload/page.tsx` mortgage step** is updated in the Frontend rebuild, not Phase 2.
+  The upload page continues calling `POST /api/statements` (manual mode) until the full re-skin.
 - **Frontend rebuild depends on all backend phases.** It does not start until Phase 3 lands.
 
 ---
@@ -185,30 +190,25 @@ Not done (intentionally deferred to Phase 2):
 
 ---
 
-### Phase 2 — Borrowings domain (backend)
-**Goal:** Borrowings domain restructured to conventions. Manual loan-payment write path moved
-off `/api/statements`.
+### Phase 2 — Borrowings domain (backend) ✅ Done
+**Status:** PR #15 merged to main.
 
-Scope:
-- Schema: `loan_accounts` → `installment_loans`; keep `loan_balances`
-- `lib/borrowings/repositories/` — queries for installment loans, loan balances
-- `lib/borrowings/services/` — business logic, including the loan-payment validators currently
-  inlined in `POST /api/statements`
+Delivered:
+- Schema: `loan_accounts` → `installment_loans`; `loan_balances` → `installment_loan_balances`;
+  `loan_account_id` column → `installment_loan_id` in both tables and `property_ledger`;
+  `installment_loans.property_id` made nullable (`ON DELETE SET NULL`) — not all loans secured by property
+- `lib/borrowings/repositories/loans.ts` — CRUD for installment loans (with latestBalance join)
+- `lib/borrowings/repositories/balances.ts` — CRUD for installment loan balances
+- `lib/borrowings/services/borrowings.ts` — `validateLoanOwnership` (extracted from inline `POST /api/statements`)
 - `lib/borrowings/index.ts` — public API
-- Move the **manual loan-payment write path** out of `POST /api/statements`:
-  - New route: `POST /api/properties/[id]/loan-payments` (Property owns property_ledger; the
-    route accepts `loanAccountId` and delegates to `lib/property` for the write and
-    `lib/borrowings` for the loan-account validation)
-  - Update `app/(app)/upload/page.tsx` mortgage step `fetch` call to point at the new route.
-    Call-site only — no re-skin, no UI restructure.
-  - Keep `POST /api/statements` for PDF-backed (Ingestion) writes only
-- Route handlers updated; TDD
-
-Dead-code sweep in this phase: any Borrowings-domain code paths that the new product does
-not need (assess during implementation).
-
-Done when: `pnpm test` and `pnpm test:integration` pass; no Drizzle queries in Borrowings
-route handlers; the upload mortgage step writes via the new property/loan-payments route.
+- New route: `POST /api/properties/[id]/loan-payments` — thin adapter; delegates write to
+  `lib/property` (`upsertLoanPaymentEntry`) and validation to `lib/borrowings`
+- `upsertLoanPaymentEntry` added to `lib/property/repositories/ledger.ts` — transaction-based
+  soft-delete + insert dedup (month derived from `lineItemDate`)
+- All Borrowings route handlers (`/api/properties/[id]/loans/**`) refactored to thin adapters
+- `POST /api/statements` manual mode preserved — upload page keeps calling it until Frontend rebuild
+- Incremental migration `drizzle/0010_borrowings_rename.sql` — safe DDL renames only
+- Unit tests for all new library functions; route tests updated to mock library modules
 
 PRs: 1
 
@@ -288,7 +288,7 @@ Files that span multiple domains and must be tracked across phases:
 
 | File | Phase touched | Action |
 |---|---|---|
-| `app/(app)/upload/page.tsx` (~750 lines) | Phase 2 (mortgage-step API call only); Frontend rebuild (full re-skin) | Phase 2: update `fetch` to new `/api/properties/[id]/loan-payments`. Frontend rebuild: full re-skin. |
+| `app/(app)/upload/page.tsx` (~750 lines) | Frontend rebuild (full re-skin) | Phase 2 adds the new loan-payments route; upload page keeps calling old `/api/statements` manual mode until Frontend rebuild re-skins it. |
 | `app/(app)/dashboard/page.tsx` (incl. `TrendsSection`, `ReportListItem`) | Phase 3 (delete report-list tab/switcher); Frontend rebuild (re-skin trends + dashboard composition) | Phase 3 removes the monthly report list fetch and switcher. Frontend rebuild re-skins what remains. |
 | `app/(app)/properties/page.tsx`, `app/(app)/properties/[id]/page.tsx` | Frontend rebuild | Full re-skin. |
 | `app/(app)/reports/[month]/page.tsx` | Phase 3 | **Deleted.** |
@@ -322,7 +322,7 @@ With the backend stable and UI on the new design system, new feature work resume
 |---|---|---|---|
 | 0 | Design system + AppShell | ✅ Done | 2 |
 | 1 | Property backend | ✅ Done (in flight) | 1 |
-| 2 | Borrowings backend (+ move manual loan-payments) | | 1 |
+| 2 | Borrowings backend (+ move manual loan-payments) | ✅ Done | 1 |
 | 3 | Reporting backend (delete `portfolio_reports`, monthly reports, AI commentary; move `lib/reports/*` → `lib/reporting/*`) | | 1 |
 | Frontend rebuild | shadcn + all UI surfaces on new design system | | 3–4 |
 | **Total remaining** | | | **~6–7** |

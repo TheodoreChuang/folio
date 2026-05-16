@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { PATCH, DELETE } from '@/app/api/properties/[id]/loans/[loanId]/route'
 
-const VALID_PROP_ID   = 'a1b2c3d4-e5f6-4789-a012-111111111111'
-const VALID_LOAN_ID   = 'b2c3d4e5-f6a7-4890-b123-222222222222'
+const VALID_PROP_ID = 'a1b2c3d4-e5f6-4789-a012-111111111111'
+const VALID_LOAN_ID = 'b2c3d4e5-f6a7-4890-b123-222222222222'
 
 const loanRow = {
   id: VALID_LOAN_ID,
@@ -12,6 +12,7 @@ const loanRow = {
   nickname: 'Investment loan',
   startDate: '2020-01-01',
   endDate: '2050-01-01',
+  entityId: null,
   createdAt: new Date(),
 }
 
@@ -31,27 +32,19 @@ function makeDeleteRequest(propertyId: string, loanId: string) {
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockUpdateReturning: vi.fn(),
+  mockUpdateInstallmentLoan: vi.fn(),
+  mockEndInstallmentLoan: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(() =>
-    Promise.resolve({
-      auth: { getUser: mocks.mockGetUser },
-    })
+    Promise.resolve({ auth: { getUser: mocks.mockGetUser } })
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    update: vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          returning: mocks.mockUpdateReturning,
-        }),
-      }),
-    }),
-  },
+vi.mock('@/lib/borrowings', () => ({
+  updateInstallmentLoan: mocks.mockUpdateInstallmentLoan,
+  endInstallmentLoan: mocks.mockEndInstallmentLoan,
 }))
 
 // ── PATCH ─────────────────────────────────────────────────────────────────────
@@ -60,7 +53,7 @@ describe('PATCH /api/properties/[id]/loans/[loanId]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockUpdateReturning.mockResolvedValue([loanRow])
+    mocks.mockUpdateInstallmentLoan.mockResolvedValue(loanRow)
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -109,7 +102,7 @@ describe('PATCH /api/properties/[id]/loans/[loanId]', () => {
   })
 
   it('returns 404 when loan not found (wrong user or property)', async () => {
-    mocks.mockUpdateReturning.mockResolvedValueOnce([])
+    mocks.mockUpdateInstallmentLoan.mockResolvedValueOnce(null)
     const res = await PATCH(
       makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { lender: 'ANZ' }),
       { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
@@ -118,7 +111,7 @@ describe('PATCH /api/properties/[id]/loans/[loanId]', () => {
   })
 
   it('returns 200 and updated loan when lender is changed', async () => {
-    mocks.mockUpdateReturning.mockResolvedValueOnce([{ ...loanRow, lender: 'ANZ' }])
+    mocks.mockUpdateInstallmentLoan.mockResolvedValueOnce({ ...loanRow, lender: 'ANZ' })
     const res = await PATCH(
       makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { lender: 'ANZ' }),
       { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
@@ -129,7 +122,7 @@ describe('PATCH /api/properties/[id]/loans/[loanId]', () => {
   })
 
   it('returns 200 when endDate is updated', async () => {
-    mocks.mockUpdateReturning.mockResolvedValueOnce([{ ...loanRow, endDate: '2026-03-06' }])
+    mocks.mockUpdateInstallmentLoan.mockResolvedValueOnce({ ...loanRow, endDate: '2026-03-06' })
     const res = await PATCH(
       makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { endDate: '2026-03-06' }),
       { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
@@ -150,7 +143,7 @@ describe('PATCH /api/properties/[id]/loans/[loanId]', () => {
   })
 
   it('clears nickname when set to null', async () => {
-    mocks.mockUpdateReturning.mockResolvedValueOnce([{ ...loanRow, nickname: null }])
+    mocks.mockUpdateInstallmentLoan.mockResolvedValueOnce({ ...loanRow, nickname: null })
     const res = await PATCH(
       makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { nickname: null }),
       { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
@@ -167,7 +160,7 @@ describe('DELETE /api/properties/[id]/loans/[loanId]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockUpdateReturning.mockResolvedValue([{ ...loanRow, endDate: '2026-03-06' }])
+    mocks.mockEndInstallmentLoan.mockResolvedValue({ ...loanRow, endDate: '2026-05-15' })
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -188,7 +181,7 @@ describe('DELETE /api/properties/[id]/loans/[loanId]', () => {
   })
 
   it('returns 404 when loan not found (wrong user or property)', async () => {
-    mocks.mockUpdateReturning.mockResolvedValueOnce([])
+    mocks.mockEndInstallmentLoan.mockResolvedValueOnce(null)
     const res = await DELETE(
       makeDeleteRequest(VALID_PROP_ID, VALID_LOAN_ID),
       { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }

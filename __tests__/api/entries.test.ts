@@ -14,7 +14,7 @@ const entryRow = {
   userId: 'user-123',
   propertyId: propRow.id,
   sourceDocumentId: null,
-  loanAccountId: null,
+  installmentLoanId: null,
   lineItemDate: '2026-03-15',
   amountCents: 120000,
   category: 'insurance',
@@ -87,7 +87,7 @@ describe('POST /api/properties/[id]/entries', () => {
     expect(json.entry.category).toBe('insurance')
     expect(json.entry.amountCents).toBe(120000)
     expect(json.entry.sourceDocumentId).toBeNull()
-    expect(json.entry.loanAccountId).toBeNull()
+    expect(json.entry.installmentLoanId).toBeNull()
   })
 
   it('returns 401 when unauthenticated', async () => {

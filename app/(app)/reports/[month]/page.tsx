@@ -376,7 +376,7 @@ export default function ReportPage() {
               )
             })}
             {flags?.missingMortgages.map((m: MissingMortgage) => (
-              <div key={m.loanAccountId} className="flex items-start gap-3 px-5 py-3 border-b border-ruled last:border-b-0 text-xs leading-relaxed">
+              <div key={m.installmentLoanId} className="flex items-start gap-3 px-5 py-3 border-b border-ruled last:border-b-0 text-xs leading-relaxed">
                 <span className="text-sm flex-shrink-0 mt-0.5">⚠️</span>
                 <div className="text-muted">
                   <strong>{m.lender}{m.nickname ? ` — ${m.nickname}` : ''}</strong>

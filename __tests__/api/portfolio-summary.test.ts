@@ -17,8 +17,8 @@ const endedLoan   = { id: LOAN_ID2, userId: 'user-123', propertyId: PROP_ID,  le
 
 const valuationRow  = { propertyId: PROP_ID,  valueCents: 65000000, valuedAt: '2026-03-01' }
 const valuationRow2 = { propertyId: PROP_ID,  valueCents: 60000000, valuedAt: '2025-01-01' } // older — should not be used
-const balanceRow    = { loanAccountId: LOAN_ID, balanceCents: 45000000, recordedAt: '2026-03-01' }
-const balanceRow2   = { loanAccountId: LOAN_ID, balanceCents: 50000000, recordedAt: '2025-01-01' } // older — should not be used
+const balanceRow    = { installmentLoanId: LOAN_ID, balanceCents: 45000000, recordedAt: '2026-03-01' }
+const balanceRow2   = { installmentLoanId: LOAN_ID, balanceCents: 50000000, recordedAt: '2025-01-01' } // older — should not be used
 
 let selectCallCount = 0
 
@@ -141,7 +141,7 @@ describe('GET /api/portfolio/summary', () => {
     mocks.mockSelect3.mockResolvedValue([activeLoan, endedLoan])
     mocks.mockSelect2.mockResolvedValue([
       balanceRow,
-      { loanAccountId: LOAN_ID2, balanceCents: 20000000, recordedAt: '2019-01-01' },
+      { installmentLoanId: LOAN_ID2, balanceCents: 20000000, recordedAt: '2019-01-01' },
     ])
     const res = await GET(new Request('http://localhost/api/portfolio/summary'))
     expect(res.status).toBe(200)

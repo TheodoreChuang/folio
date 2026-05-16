@@ -1,4 +1,4 @@
-import type { PropertyLedger, Property, LoanAccount } from '@/db/schema'
+import type { PropertyLedger, Property, InstallmentLoan } from '@/db/schema'
 
 export type PropertyTotals = {
   propertyId: string
@@ -25,7 +25,7 @@ export type ReportTotals = {
 }
 
 export type MissingMortgage = {
-  loanAccountId: string
+  installmentLoanId: string
   lender: string
   nickname: string | null
   propertyId: string
@@ -33,8 +33,8 @@ export type MissingMortgage = {
 }
 
 export type ReportFlags = {
-  missingStatements: string[]    // property IDs
-  missingMortgages: MissingMortgage[]  // per-loan-account (FR-1.8)
+  missingStatements: string[]
+  missingMortgages: MissingMortgage[]
 }
 
 const EXPENSE_CATEGORIES = new Set([
@@ -50,7 +50,7 @@ const EXPENSE_CATEGORIES = new Set([
 export function computeReport(
   entries: PropertyLedger[],
   properties: Property[],
-  loanAccounts: LoanAccount[] = [],
+  installmentLoans: InstallmentLoan[] = [],
 ): { totals: ReportTotals; flags: ReportFlags } {
   const propertyTotals: PropertyTotals[] = properties.map((p) => {
     const propEntries = entries.filter((e) => e.propertyId === p.id)
@@ -103,19 +103,17 @@ export function computeReport(
     properties: propertyTotals,
   }
 
-  // Per-loan-account mortgage flags (FR-1.8): flag each active loan account
-  // that has no matching loan_payment entry in this month's entries.
   const missingMortgages: MissingMortgage[] = []
   for (const p of properties) {
     const propEntries = entries.filter((e) => e.propertyId === p.id)
-    const propertyLoans = loanAccounts.filter((l) => l.propertyId === p.id)
+    const propertyLoans = installmentLoans.filter((l) => l.propertyId === p.id)
     for (const loan of propertyLoans) {
       const hasPaid = propEntries.some(
-        (e) => e.category === 'loan_payment' && e.loanAccountId === loan.id,
+        (e) => e.category === 'loan_payment' && e.installmentLoanId === loan.id,
       )
       if (!hasPaid) {
         missingMortgages.push({
-          loanAccountId: loan.id,
+          installmentLoanId: loan.id,
           lender: loan.lender,
           nickname: loan.nickname,
           propertyId: p.id,

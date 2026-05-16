@@ -275,7 +275,7 @@ describe('GET /api/statements - propertyId filter', () => {
     userId: 'user-123',
     propertyId: 'aaaaaaaa-1111-4111-a111-111111111111',
     sourceDocumentId: null,
-    loanAccountId: null,
+    installmentLoanId: null,
     lineItemDate: '2026-03-15',
     amountCents: 120000,
     category: 'insurance',
@@ -321,7 +321,7 @@ describe('GET /api/statements - propertyId filter', () => {
       ...entryRow,
       id: 'e2222222-2222-4222-a222-222222222222',
       category: 'loan_payment',
-      loanAccountId: 'c3d4e5f6-a7b8-4901-c234-333333333333',
+      installmentLoanId: 'c3d4e5f6-a7b8-4901-c234-333333333333',
       lender: 'Westpac',
       loanNickname: 'Investment',
     }

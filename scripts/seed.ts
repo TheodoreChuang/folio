@@ -14,7 +14,7 @@ import postgres from 'postgres'
 import {
   properties,
   sourceDocuments,
-  loanAccounts,
+  installmentLoans,
   propertyLedger,
   portfolioReports,
   entities,
@@ -97,7 +97,7 @@ async function seedOwner(userId: string) {
   // George Ave loan has no payment this month — tests missing-loan UI
   console.log('  → loan accounts')
   const [smithLoan, georgeLoan, riversideLoan] = await db
-    .insert(loanAccounts)
+    .insert(installmentLoans)
     .values([
       { userId, propertyId: smithSt.id,   lender: 'Westpac', nickname: 'Investment loan', startDate: '2020-01-01', endDate: '2050-01-01' },
       { userId, propertyId: georgeAve.id, lender: 'ANZ',     nickname: 'Main loan',       startDate: '2020-01-01', endDate: '2050-01-01' },
@@ -144,8 +144,8 @@ async function seedOwner(userId: string) {
     {
       userId,
       propertyId:       smithSt.id,
-      sourceDocumentId: null, // manual entry
-      loanAccountId:    smithLoan.id,
+      sourceDocumentId:  null, // manual entry
+      installmentLoanId: smithLoan.id,
       lineItemDate:     '2026-03-01',
       amountCents:      210_000,
       category:         'loan_payment',
@@ -187,8 +187,8 @@ async function seedOwner(userId: string) {
     {
       userId,
       propertyId:       riverside.id,
-      sourceDocumentId: null, // manual entry, no PDF
-      loanAccountId:    riversideLoan.id,
+      sourceDocumentId:  null, // manual entry, no PDF
+      installmentLoanId: riversideLoan.id,
       lineItemDate:     '2026-03-01',
       amountCents:      240_000,
       category:         'loan_payment',

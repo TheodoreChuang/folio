@@ -2,7 +2,7 @@ import { and, eq, gte, lte } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import {
-  portfolioReports, properties, loanAccounts,
+  portfolioReports, properties, installmentLoans,
   sourceDocuments, propertyLedger,
 } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
@@ -61,8 +61,8 @@ export async function GET(request: Request) {
         .from(properties)
         .where(eq(properties.userId, user.id)),
       db.select()
-        .from(loanAccounts)
-        .where(eq(loanAccounts.userId, user.id)),
+        .from(installmentLoans)
+        .where(eq(installmentLoans.userId, user.id)),
       // All docs (including deleted) — filter in app code per-check
       db.select()
         .from(sourceDocuments)
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
       // All entries in range (including deleted) for staleness + payment checks
       db.select({
         id: propertyLedger.id,
-        loanAccountId: propertyLedger.loanAccountId,
+        installmentLoanId: propertyLedger.installmentLoanId,
         category: propertyLedger.category,
         lineItemDate: propertyLedger.lineItemDate,
         updatedAt: propertyLedger.updatedAt,
@@ -143,7 +143,7 @@ export async function GET(request: Request) {
       )
       for (const l of activeLoans) {
         const hasPayment = monthEntries.some(e =>
-          e.loanAccountId === l.id &&
+          e.installmentLoanId === l.id &&
           e.category === 'loan_payment' &&
           e.deletedAt === null
         )
