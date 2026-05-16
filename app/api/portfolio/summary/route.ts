@@ -1,19 +1,9 @@
-import { and, desc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { properties, propertyValuations, installmentLoans, installmentLoanBalances } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
+import { fetchPortfolioData, computePortfolioLVR } from '@/lib/reporting'
 
-export type PortfolioLVR = {
-  totalValueCents: number
-  totalDebtCents: number
-  lvr: number | null
-  propertiesValued: number
-  propertiesTotal: number
-  loansWithBalance: number
-  activeLoansTotal: number
-}
+export type { PortfolioLVR } from '@/lib/reporting'
 
 export async function GET(request: Request) {
   try {
@@ -24,63 +14,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const entityId = searchParams.get('entityId')
 
-    const today = new Date().toISOString().slice(0, 10)
-
-    const propsWhere = entityId
-      ? and(eq(properties.userId, user.id), eq(properties.entityId, entityId))
-      : eq(properties.userId, user.id)
-
-    const loansWhere = entityId
-      ? and(eq(installmentLoans.userId, user.id), eq(installmentLoans.entityId, entityId))
-      : eq(installmentLoans.userId, user.id)
-
-    const [allProperties, valuationRows, balanceRows, allLoans] = await Promise.all([
-      db.select().from(properties).where(propsWhere),
-      db
-        .select({ propertyId: propertyValuations.propertyId, valueCents: propertyValuations.valueCents, valuedAt: propertyValuations.valuedAt })
-        .from(propertyValuations)
-        .where(eq(propertyValuations.userId, user.id))
-        .orderBy(propertyValuations.propertyId, desc(propertyValuations.valuedAt)),
-      db
-        .select({ installmentLoanId: installmentLoanBalances.installmentLoanId, balanceCents: installmentLoanBalances.balanceCents, recordedAt: installmentLoanBalances.recordedAt })
-        .from(installmentLoanBalances)
-        .where(eq(installmentLoanBalances.userId, user.id))
-        .orderBy(installmentLoanBalances.installmentLoanId, desc(installmentLoanBalances.recordedAt)),
-      db.select().from(installmentLoans).where(loansWhere),
-    ])
-
-    const latestValuationMap = new Map<string, number>()
-    for (const row of valuationRows) {
-      if (!latestValuationMap.has(row.propertyId)) {
-        latestValuationMap.set(row.propertyId, row.valueCents)
-      }
-    }
-
-    const latestBalanceMap = new Map<string, number>()
-    for (const row of balanceRows) {
-      if (!latestBalanceMap.has(row.installmentLoanId)) {
-        latestBalanceMap.set(row.installmentLoanId, row.balanceCents)
-      }
-    }
-
-    const activeLoans = allLoans.filter(l => l.endDate > today)
-
-    const totalValueCents = Array.from(latestValuationMap.values()).reduce((sum, v) => sum + v, 0)
-    const totalDebtCents = activeLoans
-      .filter(l => latestBalanceMap.has(l.id))
-      .reduce((sum, l) => sum + (latestBalanceMap.get(l.id) ?? 0), 0)
-
-    const lvr = totalValueCents > 0 ? Math.round((totalDebtCents / totalValueCents) * 10000) / 100 : null
-
-    const portfolio: PortfolioLVR = {
-      totalValueCents,
-      totalDebtCents,
-      lvr,
-      propertiesValued: latestValuationMap.size,
-      propertiesTotal: allProperties.length,
-      loansWithBalance: activeLoans.filter(l => latestBalanceMap.has(l.id)).length,
-      activeLoansTotal: activeLoans.length,
-    }
+    const { properties, valuations, balances, loans } = await fetchPortfolioData(user.id, entityId)
+    const portfolio = computePortfolioLVR(properties, valuations, balances, loans)
 
     return NextResponse.json({ portfolio })
   } catch (err) {

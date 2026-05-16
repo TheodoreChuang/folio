@@ -1,10 +1,8 @@
-import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { propertyLedger } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import { lastDayOfMonth } from '@/lib/format'
+import { fetchTrendData } from '@/lib/reporting'
 
 export type TrendPoint = {
   month: string
@@ -56,25 +54,7 @@ export async function GET(request: Request) {
     const from = `${months[0]}-01`
     const to = lastDayOfMonth(months[months.length - 1])
 
-    const rows = await db
-      .select({
-        month: sql<string>`to_char(date_trunc('month', ${propertyLedger.lineItemDate}), 'YYYY-MM')`,
-        category: propertyLedger.category,
-        totalCents: sql<number>`SUM(${propertyLedger.amountCents})::int`,
-      })
-      .from(propertyLedger)
-      .where(
-        and(
-          eq(propertyLedger.userId, user.id),
-          gte(propertyLedger.lineItemDate, from),
-          lte(propertyLedger.lineItemDate, to),
-          isNull(propertyLedger.deletedAt),
-        )
-      )
-      .groupBy(
-        sql`date_trunc('month', ${propertyLedger.lineItemDate})`,
-        propertyLedger.category,
-      )
+    const rows = await fetchTrendData(user.id, from, to)
 
     type MonthBucket = { rent: number; expenses: number; mortgage: number }
     const buckets = new Map<string, MonthBucket>()

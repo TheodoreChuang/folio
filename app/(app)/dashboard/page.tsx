@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import {
   ComposedChart, Bar, Line, XAxis, YAxis,
-  CartesianGrid, Cell,
+  CartesianGrid,
 } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,25 +15,14 @@ import { ChartTooltip } from '@/components/ui/chart'
 import type { ChartConfig } from '@/components/ui/chart'
 import { formatCents, formatMonth } from '@/lib/format'
 import { currentFY, prevFY } from '@/lib/date-ranges'
-import type { ReportTotals } from '@/lib/reports/compute'
+import type { ReportTotals } from '@/lib/reporting'
 import type { TrendPoint } from '@/app/api/reports/trends/route'
-import type { MonthHealth } from '@/app/api/reports/health/route'
 import type { PortfolioLVR } from '@/app/api/portfolio/summary/route'
 import type { Entity } from '@/db/schema'
 import { cn } from '@/lib/utils'
 
 type DateRangeOption = 'last12' | 'current_fy' | 'prev_fy' | 'custom'
 type DateRange = { from: string; to: string; label: string }
-
-type ReportListItem = { month: string; createdAt: string }
-
-type Report = {
-  month: string
-  aiCommentary: string | null
-  version: number
-  createdAt: string
-  updatedAt: string | null
-}
 
 const chartConfig = {
   rent:   { label: 'Rent',     color: '#2d5a3d' },
@@ -126,11 +115,7 @@ function DateRangeSelector({ option, onOptionChange, customFrom, customTo, onCus
   )
 }
 
-function TrendsSection({ trends, month, onBarClick }: {
-  trends: TrendPoint[]
-  month: string
-  onBarClick: (m: string) => void
-}) {
+function TrendsSection({ trends }: { trends: TrendPoint[] }) {
   const data: ChartPoint[] = trends.map(t => ({
     label: t.month.slice(5),
     month: t.month,
@@ -140,9 +125,9 @@ function TrendsSection({ trends, month, onBarClick }: {
     hasData: t.hasData,
   }))
 
-  const currentIdx = trends.findIndex(t => t.month === month)
-  const current = currentIdx >= 0 ? trends[currentIdx] : null
-  const prior = currentIdx > 0 ? trends[currentIdx - 1] : null
+  // Use last 2 months for expense ratio comparison
+  const current = trends.length >= 1 ? trends[trends.length - 1] : null
+  const prior = trends.length >= 2 ? trends[trends.length - 2] : null
 
   const currentRatio = current?.rentCents && current.expensesCents
     ? (current.expensesCents / current.rentCents) * 100
@@ -179,12 +164,7 @@ function TrendsSection({ trends, month, onBarClick }: {
         </div>
 
         <ChartContainer config={chartConfig} className="min-h-[220px] w-full px-2 pt-3 pb-1">
-          <ComposedChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-            onClick={(e) => {
-              const p = e?.activePayload?.[0]?.payload as ChartPoint | undefined
-              if (p?.hasData) onBarClick(p.month)
-            }}
-          >
+          <ComposedChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke="#ddd9cf" strokeDasharray="3 3" />
             <XAxis
               dataKey="label"
@@ -210,25 +190,8 @@ function TrendsSection({ trends, month, onBarClick }: {
               }
             />
 
-            <Bar dataKey="rent" stackId="a" fill={chartConfig.rent.color} radius={[2, 2, 0, 0]} maxBarSize={32}>
-              {data.map((entry) => (
-                <Cell
-                  key={entry.month}
-                  fill={entry.month === month ? '#2d5a3d' : '#8fba9e'}
-                  cursor={entry.hasData ? 'pointer' : 'default'}
-                />
-              ))}
-            </Bar>
-
-            <Bar dataKey="costs" stackId="b" fill={chartConfig.costs.color} radius={[0, 0, 2, 2]} maxBarSize={32}>
-              {data.map((entry) => (
-                <Cell
-                  key={entry.month}
-                  fill={entry.month === month ? '#c4622d' : '#e0a080'}
-                  cursor={entry.hasData ? 'pointer' : 'default'}
-                />
-              ))}
-            </Bar>
+            <Bar dataKey="rent" stackId="a" fill={chartConfig.rent.color} radius={[2, 2, 0, 0]} maxBarSize={32} />
+            <Bar dataKey="costs" stackId="b" fill={chartConfig.costs.color} radius={[0, 0, 2, 2]} maxBarSize={32} />
 
             <Line
               dataKey="net"
@@ -251,19 +214,14 @@ function TrendsSection({ trends, month, onBarClick }: {
 }
 
 function DashboardContent() {
-  const searchParams = useSearchParams()
   const router = useRouter()
 
   const now = new Date()
   const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
-  const [reportList, setReportList] = useState<ReportListItem[]>([])
-  const [report, setReport] = useState<Report | null>(null)
   const [totals, setTotals] = useState<ReportTotals | null>(null)
-  const [loadingList, setLoadingList] = useState(true)
   const [loadingTotals, setLoadingTotals] = useState(true)
   const [trends, setTrends] = useState<TrendPoint[]>([])
-  const [health, setHealth] = useState<MonthHealth[]>([])
   const [portfolio, setPortfolio] = useState<PortfolioLVR | null>(null)
   const [rangeOption, setRangeOption] = useState<DateRangeOption>('last12')
   const [customFrom, setCustomFrom] = useState(currentMonthStr)
@@ -271,21 +229,10 @@ function DashboardContent() {
   const [entities, setEntities] = useState<Entity[]>([])
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null)
 
-  const month = searchParams.get('month') || reportList[0]?.month || ''
-
   const activeRange = getActiveRange(rangeOption, customFrom, customTo)
   const singleMonth = isSingleMonth(activeRange.from, activeRange.to)
 
-  // Fetch report list on mount
-  useEffect(() => {
-    fetch('/api/reports')
-      .then(r => r.json())
-      .then(data => setReportList(data.reports ?? []))
-      .catch(() => {})
-      .finally(() => setLoadingList(false))
-  }, [])
-
-  // Fetch entities + trends + health once on mount
+  // Fetch entities + trends once on mount
   useEffect(() => {
     fetch('/api/entities')
       .then(r => r.ok ? r.json() : null)
@@ -294,10 +241,6 @@ function DashboardContent() {
     fetch('/api/reports/trends?months=12')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setTrends(data.trends ?? []) })
-      .catch(() => {})
-    fetch('/api/reports/health?months=12')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) setHealth(data.health ?? []) })
       .catch(() => {})
   }, [])
 
@@ -312,16 +255,6 @@ function DashboardContent() {
       .catch(() => {})
   }, [selectedEntityId])
 
-  // Fetch commentary when month pill changes (independent of date range)
-  useEffect(() => {
-    if (!month) return
-    setReport(null)
-    fetch(`/api/reports?month=${month}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) setReport(data.report) })
-      .catch(() => {})
-  }, [month])
-
   // Fetch live totals when active range or entity filter changes
   useEffect(() => {
     setTotals(null)
@@ -334,47 +267,10 @@ function DashboardContent() {
       .finally(() => setLoadingTotals(false))
   }, [activeRange.from, activeRange.to, selectedEntityId])
 
-  const healthMap = new Map(health.map(h => [h.month, h]))
-
-  const healthIndicator = (status: MonthHealth['status'] | undefined) => {
-    if (status === 'healthy')       return <span className="ml-1 text-accent">✓</span>
-    if (status === 'stale')         return <span className="ml-1 text-warn">⚠</span>
-    if (status === 'incomplete')    return <span className="ml-1 text-muted">○</span>
-    if (status === 'no_commentary') return <span className="ml-1 text-muted">✏</span>
-    if (status === 'no_data')       return <span className="ml-1 text-muted">—</span>
-    return null
-  }
-
   const hasTotals = totals !== null && totals.propertyCount > 0
 
   return (
     <div className="min-h-screen bg-screen-bg">
-      {/* Month selector (pill nav) */}
-      <div className="bg-white border-b border-border px-6 py-3 flex items-center gap-2 overflow-x-auto">
-        {loadingList ? (
-          <span className="text-xs text-muted">Loading…</span>
-        ) : reportList.length === 0 ? (
-          <span className="text-xs text-muted">No reports yet.</span>
-        ) : (
-          reportList.map(r => {
-            const h = healthMap.get(r.month)
-            return (
-              <button key={r.month} onClick={() => router.push('/dashboard?month=' + r.month)}
-                className={cn('flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-mono border transition-colors',
-                  r.month === month
-                    ? 'bg-ink text-white border-ink'
-                    : 'border-accent text-accent bg-white hover:bg-accent-light'
-                )}>
-                {formatMonth(r.month)}{healthIndicator(h?.status)}
-              </button>
-            )
-          })
-        )}
-        <Button size="sm" className="ml-auto flex-shrink-0" onClick={() => router.push('/upload')}>
-          Generate report
-        </Button>
-      </div>
-
       {/* Date range selector */}
       <DateRangeSelector
         option={rangeOption}
@@ -462,40 +358,14 @@ function DashboardContent() {
                 <span className="text-base flex-shrink-0">⚠️</span>
                 <div>
                   <strong>Incomplete data — {totals.propertyCount - totals.statementsReceived} statement{totals.propertyCount - totals.statementsReceived > 1 ? 's' : ''} missing.</strong>{' '}
-                  {totals.properties.filter(p => !p.hasStatement).map(p => p.address).join(', ')} has no statement for {month ? formatMonth(month) : activeRange.label}. Rent shown as $0.
+                  {totals.properties.filter(p => !p.hasStatement).map(p => p.address).join(', ')} has no statement for {activeRange.label}. Rent shown as $0.
                 </div>
-              </div>
-            )}
-
-            {/* AI Commentary — only when a month pill is selected */}
-            {month && report?.aiCommentary && (
-              <Card className="mx-5 mt-4">
-                <div className="bg-screen-bg border-b border-border px-4 py-2 flex items-center gap-2 rounded-t-lg">
-                  <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-muted">AI Commentary — {formatMonth(month)}</span>
-                </div>
-                <CardContent className="py-4 text-sm leading-relaxed text-[#333] whitespace-pre-wrap">
-                  {report.aiCommentary}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* View full report — only for single-month views when a pill is selected */}
-            {singleMonth && month && (
-              <div className="px-5 py-4">
-                <Link href={`/reports/${month}`}>
-                  <Button variant="outline" size="sm" className="w-full">View full report →</Button>
-                </Link>
               </div>
             )}
 
             {/* Trends chart */}
             {trends.length >= 1 && (
-              <TrendsSection
-                trends={trends}
-                month={month}
-                onBarClick={(m) => router.push('/reports/' + m)}
-              />
+              <TrendsSection trends={trends} />
             )}
           </div>
 
@@ -503,7 +373,7 @@ function DashboardContent() {
           <div className="bg-white">
             <div className="p-4 border-b border-border space-y-2">
               <Link href="/upload" className="block">
-                <Button variant="outline" className="w-full" size="sm">↻ Regenerate</Button>
+                <Button variant="outline" className="w-full" size="sm">↻ Upload statements</Button>
               </Link>
             </div>
             {singleMonth && [
@@ -516,11 +386,6 @@ function DashboardContent() {
                 { label: 'Entered this month', value: `${totals.mortgagesProvided} of ${totals.propertyCount}` },
                 { label: 'Not entered', value: String(totals.propertyCount - totals.mortgagesProvided), warn: totals.mortgagesProvided < totals.propertyCount },
               ]},
-              ...(report ? [{ title: 'Generated', rows: [
-                { label: 'Date',  value: new Date(report.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) },
-                { label: 'Month', value: formatMonth(month) },
-                ...(report.version > 1 && report.updatedAt ? [{ label: 'Last updated', value: new Date(report.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) }] : []),
-              ]}] : []),
             ].map(block => (
               <div key={block.title} className="px-4 py-4 border-b border-border">
                 <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-2">{block.title}</p>

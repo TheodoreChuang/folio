@@ -1,10 +1,12 @@
-import { and, eq, gte, inArray, isNull, lte } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { propertyLedger, properties, installmentLoans } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
-import { computeReport } from '@/lib/reports/compute'
+import {
+  fetchPropertiesActiveInRange,
+  fetchLoansActiveInRange,
+  fetchLedgerEntriesInRange,
+  computeReport,
+} from '@/lib/reporting'
 
 export async function GET(request: Request) {
   try {
@@ -31,37 +33,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'from must be on or before to' }, { status: 400 })
     }
 
-    const propertiesWhere = [
-      eq(properties.userId, user.id),
-      ...(propertyId ? [eq(properties.id, propertyId)] : []),
-      ...(entityId ? [eq(properties.entityId, entityId)] : []),
-    ]
-
-    const loansWhere = [
-      eq(installmentLoans.userId, user.id),
-      lte(installmentLoans.startDate, to),
-      gte(installmentLoans.endDate, from),
-      ...(entityId ? [eq(installmentLoans.entityId, entityId)] : []),
-    ]
-
     const [props, loans] = await Promise.all([
-      db.select().from(properties).where(and(...propertiesWhere)),
-      db.select().from(installmentLoans).where(and(...loansWhere)),
+      fetchPropertiesActiveInRange(user.id, from, to, propertyId, entityId),
+      fetchLoansActiveInRange(user.id, from, to, entityId),
     ])
 
     const filteredPropertyIds = props.map(p => p.id)
-
-    const entriesWhere = [
-      eq(propertyLedger.userId, user.id),
-      gte(propertyLedger.lineItemDate, from),
-      lte(propertyLedger.lineItemDate, to),
-      isNull(propertyLedger.deletedAt),
-      ...(filteredPropertyIds.length > 0 ? [inArray(propertyLedger.propertyId, filteredPropertyIds)] : []),
-    ]
-
-    const entries = filteredPropertyIds.length === 0 && (propertyId || entityId)
-      ? []
-      : await db.select().from(propertyLedger).where(and(...entriesWhere))
+    const hasFilter = !!(propertyId || entityId)
+    const entries = await fetchLedgerEntriesInRange(
+      user.id,
+      from,
+      to,
+      filteredPropertyIds.length > 0 ? filteredPropertyIds : (hasFilter ? [] : undefined),
+    )
 
     const { totals, flags } = computeReport(entries, props, loans)
 
