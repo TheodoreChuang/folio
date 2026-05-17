@@ -376,7 +376,8 @@ Deviations from plan:
 
 ---
 
-#### PR 3 — Properties Pages
+#### PR 3 — Properties Pages ✅ Done
+**Status:** PR #25 merged to main.
 
 Three files:
 
@@ -395,12 +396,10 @@ Submit: `POST /api/properties` → optional `POST /api/properties/[id]/valuation
 
 ---
 
-#### PR 4 — Loans Pages
+#### PR 4 — Loans Pages ✅ Done
+**Status:** PR #24 merged to main.
 
 Three new files: `app/(app)/loans/page.tsx`, `/loans/new/page.tsx`, `/loans/[id]/page.tsx`.
-
-Note: no `GET /api/loans` route exists today — decide at implementation whether to fan-out
-per-property or add a thin adapter route over `lib/borrowings`.
 
 **`/loans`** — summary tiles (total debt, properties secured), table (lender, nickname, entity,
 security, balance, type), entity filter.
@@ -444,13 +443,15 @@ Deviations and callouts:
 
 ---
 
-#### PR 5b — Upload: Idle State
+#### PR 5b — Upload: Idle State ✅ Done
+**Status:** PR #26 merged to main.
 
 New `app/(app)/upload/page.tsx` (replaces old file entirely).
 
 Idle state: drop zone → `POST /api/upload` → `POST /api/extract` (now writes to staging);
 per-file status indicator; "In review — N documents" banner if pending staged items exist;
-recent uploads list from `GET /api/documents`. Review state is a placeholder in this PR.
+review state placeholder ("Full review UI coming soon"). `assignedMonth` removed from upload
+and extract APIs — dates are inferred from PDF content by the AI extractor.
 
 ---
 
@@ -561,10 +562,10 @@ With the backend stable and UI on the new design system, new feature work resume
 | 3 | Reporting backend (delete `portfolio_reports`, monthly reports, AI commentary) | ✅ Done | 1 |
 | Frontend PR 1 | Design foundation (shell, shared components, shadcn primitives) | ✅ Done | 1 |
 | Frontend PR 2 | Dashboard | ✅ Done | 1 |
-| Frontend PR 3 | Properties pages (list + add + tabbed detail) | 🔍 In review (#25) | 1 |
-| Frontend PR 4 | Loans pages (list + add + detail) | 🔍 In review (#24) | 1 |
+| Frontend PR 3 | Properties pages (list + add + tabbed detail) | ✅ Done | 1 |
+| Frontend PR 4 | Loans pages (list + add + detail) | ✅ Done | 1 |
 | Frontend PR 5a | Ingestion domain backend + delete `POST /api/statements` | ✅ Done | 1 |
-| Frontend PR 5b | Upload idle state | 🔍 In review (#26) | 1 |
+| Frontend PR 5b | Upload idle state | ✅ Done | 1 |
 | Frontend PR 5c | Upload review state | | 1 |
 | Frontend PR 6 | Entities | ✅ Done | 1 |
 | **Total remaining** | | | **~1** |
