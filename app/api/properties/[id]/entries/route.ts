@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
-import { findPropertyById, createLedgerEntry } from '@/lib/property'
+import { findPropertyById, listLedgerEntriesByMonth, createLedgerEntry } from '@/lib/property'
 import type { LedgerCategory } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
@@ -18,6 +18,38 @@ const bodySchema = z.object({
   category: z.enum(MANUAL_CATEGORIES, { message: `category must be one of: ${MANUAL_CATEGORIES.join(', ')}` }),
   description: z.string().max(500, 'description too long (max 500 characters)').nullish().transform(v => v?.trim() || null),
 })
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = await createServerSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { id } = await params
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json({ error: 'Invalid property ID' }, { status: 400 })
+    }
+
+    const month = new URL(request.url).searchParams.get('month') ?? ''
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return NextResponse.json({ error: 'month must be YYYY-MM' }, { status: 400 })
+    }
+
+    const property = await findPropertyById(user.id, id)
+    if (!property) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    const entries = await listLedgerEntriesByMonth(user.id, id, month)
+    return NextResponse.json({ entries })
+  } catch (err) {
+    captureError(err, { route: 'GET /api/properties/[id]/entries' })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
 
 export async function POST(
   request: Request,
