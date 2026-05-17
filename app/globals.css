@@ -49,6 +49,10 @@
   --color-positive-soft:    hsl(148 30% 92%);
   --color-negative:         hsl(14 58% 42%);
   --color-negative-soft:    hsl(18 58% 94%);
+  /* Warning (amber) — distinct from negative (red) */
+  --color-warning:          hsl(34 70% 42%);
+  --color-warning-soft:     hsl(38 76% 93%);
+  --color-foreground-faint: hsl(36 8% 72%);
 
   /* Border radius scale (updated to new design system values) */
   --radius:    0.4375rem;   /* 7px */
@@ -80,6 +84,8 @@
   --accent-foreground:      hsl(188 32% 32%);
   --destructive:            hsl(14 58% 42%);
   --destructive-foreground: hsl(0 0% 100%);
+  --warning:                hsl(34 70% 42%);
+  --warning-foreground:     hsl(0 0% 100%);
   --border:                 hsl(36 12% 86%);
   --input:                  hsl(36 12% 86%);
   --ring:                   hsl(188 32% 32%);
