@@ -302,16 +302,51 @@ backwards-compatibility during the rebuild is not required.
 
 ---
 
-#### PR 1 — Design Foundation
+#### PR 1 — Design Foundation ✅ Done
+**Status:** PR #18 merged to main.
 
-Lay the component and layout foundation. No page content changes.
+Delivered:
+- **shadcn primitives added:** `tabs`, `table`, `select`, `tooltip`, `dropdown-menu`
+- **shadcn upgraded** 3.8.5 → 4.7.0 (new project, no reason to pin old); `components.json`
+  `tailwind.config` field fixed from stale `tailwind.config.ts` reference to `""` (Tailwind v4
+  stores config in `globals.css`, no separate file)
+- **Token patch** — added `--color-warning` / `--color-warning-soft` (amber; distinct from
+  `--color-negative` which is red) and `--color-foreground-faint` to `@theme`; shadcn bridge
+  vars `--warning` / `--warning-foreground` added to `:root`
+- **Sidebar rebuilt** — flat nav: Portfolio pulse, Upload, All properties, All loans, Entities.
+  `CollapsibleSection` and old Reports link removed.
+- **app-shell.tsx** — main content area now `max-w-[1100px] mx-auto px-8 py-8`
+- **badge.tsx** — added `complete/partial/missing/estimated` variants with optional dot indicator;
+  legacy variants (`green/orange/grey/blue/outline`) kept for pages not yet rebuilt
+- **New components/ui/metric-tile.tsx** — `MetricTile` with label, value, optional foot row,
+  secondary (dashed border) variant
+- **New components/ui/prompt.tsx** — `Prompt` with `action/heads-up/complete/default` tone
+  variants; left 3px indicator bar driven by tone; message, context, actions slots
+- **New components/ui/lvr-meter.tsx** — `LvrMeter` with gradient colour bands (green 0–60%,
+  amber 60–80%, red 80–100%) and pip at given LVR decimal
+- **New components/ui/data-table.tsx** — composable `DataTable`, `DataTableHead`,
+  `DataTableHeadCell`, `DataTableBody`, `DataTableRow`, `DataTableCell` with numeric/muted props
+- **CLAUDE.md** — added explicit branch-first rule at top of file (convention was only in
+  referenced `docs/conventions.md`, not prominent enough)
 
-- Audit `app/globals.css` tokens against `docs/designs/folio.css`; patch mismatches
-- Rebuild `components/app-shell.tsx`, `components/sidebar.tsx`, `app/(app)/layout.tsx` to match
-  design shell (220px sidebar, active-state left bar, nav items: Dashboard, Properties, Loans, Upload, Entities)
-- Add missing shadcn primitives: `tabs`, `table`, `select`, `tooltip`, `dropdown-menu`
-- New shared components from folio.css: `metric-tile`, `prompt`, `lvr-meter`, `data-table`;
-  update `badge` variants (complete/partial/missing/estimated)
+Deviations from plan:
+- **Sidebar nav labels** — plan listed "Dashboard, Properties, Loans, Upload, Entities" but folio.html
+  uses "Portfolio pulse", "All properties", "All loans". Adopted design labels.
+- **MetricTile value font** — plan said "serif value"; actual folio.css uses the body font (Inter)
+  for `.metric .value`, not Fraunces. Implemented per design CSS.
+- **`layout.tsx`** — plan listed it as a rebuild target; it was already correct (`<AppShell>{children}</AppShell>`).
+  No changes made.
+
+Callouts for downstream PRs:
+- **Legacy badge variants** (`green/orange/grey/blue/outline`) remain in `badge.tsx` — used by
+  upload and entities pages which haven't been rebuilt yet. Delete them in PRs 5b and 6 respectively
+  when those pages are replaced.
+- **Phase 0 interim components** (`page-header.tsx`, `section-label.tsx`, `card-shell.tsx`) still
+  exist. They will become unused as pages are rebuilt. Delete each one when the last consumer is
+  replaced (or do a cleanup sweep after PR 6).
+- **Sidebar collapsible sections** — folio.html has collapsible Properties/Loans sections with
+  per-item links. Current sidebar uses flat links. Collapsibility can be added after PRs 3 and 4
+  ship the data to populate them; not needed now.
 
 ---
 
@@ -490,7 +525,7 @@ With the backend stable and UI on the new design system, new feature work resume
 | 1 | Property backend | ✅ Done | 1 |
 | 2 | Borrowings backend (+ move manual loan-payments) | ✅ Done | 1 |
 | 3 | Reporting backend (delete `portfolio_reports`, monthly reports, AI commentary) | ✅ Done | 1 |
-| Frontend PR 1 | Design foundation (shell, shared components, shadcn primitives) | | 1 |
+| Frontend PR 1 | Design foundation (shell, shared components, shadcn primitives) | ✅ Done | 1 |
 | Frontend PR 2 | Dashboard | | 1 |
 | Frontend PR 3 | Properties pages (list + add + tabbed detail) | | 1 |
 | Frontend PR 4 | Loans pages (list + add + detail) | | 1 |
