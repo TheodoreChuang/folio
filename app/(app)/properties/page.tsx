@@ -1,131 +1,210 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent } from '@/components/ui/card'
+import { MetricTile } from '@/components/ui/metric-tile'
 import type { Property, Entity } from '@/db/schema'
 
+type PropertyWithEntity = Property & { entityName: string | null }
+
+type LedgerSummaryFlags = {
+  missingStatements: string[]
+}
+
+function formatCents(cents: number): string {
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(cents / 100)
+}
+
+function currentMonthRange(): { from: string; to: string } {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const lastDay = new Date(y, now.getMonth() + 1, 0).getDate()
+  return { from: `${y}-${m}-01`, to: `${y}-${m}-${String(lastDay).padStart(2, '0')}` }
+}
+
 export default function PropertiesPage() {
-  const [properties, setProperties] = useState<Property[]>([])
+  const router = useRouter()
+  const [properties, setProperties] = useState<PropertyWithEntity[]>([])
+  const [entities, setEntities] = useState<Entity[]>([])
   const [loading, setLoading] = useState(true)
-  const [showAdd, setShowAdd] = useState(false)
-  const [newAddress, setNewAddress] = useState('')
-  const [newNickname, setNewNickname] = useState('')
-  const [newStartDate, setNewStartDate] = useState('')
-  const [newEntityId, setNewEntityId] = useState('')
-  const [availableEntities, setAvailableEntities] = useState<Entity[]>([])
+  const [missingStatements, setMissingStatements] = useState<Set<string>>(new Set())
+  const [totalValueCents, setTotalValueCents] = useState<number | null>(null)
+  const [totalDebtCents, setTotalDebtCents] = useState<number | null>(null)
+  const [entityFilter, setEntityFilter] = useState<string>('all')
 
   useEffect(() => {
-    fetch('/api/properties')
-      .then(r => r.json())
-      .then(data => setProperties(data.properties ?? []))
-      .catch(() => toast.error('Failed to load properties'))
-      .finally(() => setLoading(false))
-    fetch('/api/entities')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) setAvailableEntities(data.entities ?? []) })
-      .catch(() => {})
-  }, [])
+    async function load() {
+      setLoading(true)
+      try {
+        const propsRes = await fetch('/api/properties')
+        if (propsRes.status === 401) { router.push('/login'); return }
+        const { properties: rawProps = [] } = await propsRes.json() as { properties?: Property[] }
 
-  async function addProperty() {
-    if (!newAddress.trim() || !newStartDate) return
-    const res = await fetch('/api/properties', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: newAddress.trim(),
-        nickname: newNickname.trim() || null,
-        startDate: newStartDate,
-        entityId: newEntityId || null,
-      }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      toast.error(err.error ?? 'Failed to add property')
-      return
+        const [entitiesRes, portfolioRes, ledgerRes] = await Promise.all([
+          fetch('/api/entities'),
+          fetch('/api/portfolio/summary'),
+          fetch(`/api/ledger/summary?from=${currentMonthRange().from}&to=${currentMonthRange().to}`),
+        ])
+
+        const { entities: rawEntities = [] } = entitiesRes.ok
+          ? await entitiesRes.json() as { entities?: Entity[] }
+          : { entities: [] }
+
+        const entityMap = new Map(rawEntities.map((e: Entity) => [e.id, e.name]))
+
+        setEntities(rawEntities)
+        setProperties(rawProps.map((p: Property) => ({
+          ...p,
+          entityName: p.entityId ? (entityMap.get(p.entityId) ?? null) : null,
+        })))
+
+        if (portfolioRes.ok) {
+          const { portfolio } = await portfolioRes.json() as { portfolio: { totalValueCents: number; totalDebtCents: number } }
+          setTotalValueCents(portfolio.totalValueCents)
+          setTotalDebtCents(portfolio.totalDebtCents)
+        }
+
+        if (ledgerRes.ok) {
+          const { flags } = await ledgerRes.json() as { flags?: LedgerSummaryFlags }
+          setMissingStatements(new Set(flags?.missingStatements ?? []))
+        }
+      } catch {
+        toast.error('Failed to load properties')
+      } finally {
+        setLoading(false)
+      }
     }
-    const { property } = await res.json()
-    setProperties(prev => [...prev, property])
-    setNewAddress(''); setNewNickname(''); setNewStartDate(''); setNewEntityId(''); setShowAdd(false)
-    toast.success('Property added')
+    load()
+  }, [router])
+
+  const filtered = entityFilter === 'all'
+    ? properties
+    : properties.filter(p => p.entityId === entityFilter)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <span className="text-sm text-muted">Loading…</span>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-screen-bg">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="font-serif text-2xl">Properties</h1>
-          <Button onClick={() => setShowAdd(v => !v)} size="sm">+ Add property</Button>
+    <div>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="font-serif text-2xl text-ink">Properties</h1>
+          <p className="text-sm text-muted mt-0.5">{properties.length} {properties.length === 1 ? 'property' : 'properties'}</p>
         </div>
-
-        {showAdd && (
-          <Card className="border-dashed bg-screen-bg mb-4">
-            <CardContent className="pt-5 pb-5">
-              <p className="text-xs font-semibold text-muted mb-3 tracking-wide uppercase">New property</p>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="addr">Full address</Label>
-                  <Input id="addr" placeholder="123 Smith St, Sydney NSW 2000" value={newAddress} onChange={e => setNewAddress(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="nick">Nickname <span className="font-normal text-muted">(optional)</span></Label>
-                  <Input id="nick" placeholder="e.g. Smith St" value={newNickname} onChange={e => setNewNickname(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="start-date">Acquisition date</Label>
-                  <Input id="start-date" type="date" value={newStartDate} onChange={e => setNewStartDate(e.target.value)} />
-                </div>
-                {availableEntities.length > 0 && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="prop-entity">Entity <span className="font-normal text-muted">(optional)</span></Label>
-                    <select id="prop-entity" value={newEntityId} onChange={e => setNewEntityId(e.target.value)}
-                      className="w-full border border-border rounded-md px-3 py-2 text-sm bg-white text-ink">
-                      <option value="">None</option>
-                      {availableEntities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                    </select>
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <Button className="flex-1" onClick={addProperty} disabled={!newAddress.trim() || !newStartDate}>Add property</Button>
-                  <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {loading ? (
-          <Card>
-            <div className="px-5 py-6 text-center text-sm text-muted">Loading properties…</div>
-          </Card>
-        ) : (
-        <Card>
-          <div className="px-5 py-3 border-b border-border">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-muted">Your properties ({properties.length})</span>
-          </div>
-          {properties.map((p, _i) => (
-            <div key={p.id} className="flex items-center gap-4 px-5 py-4 border-b border-ruled last:border-b-0">
-              <div className="w-9 h-9 rounded-md bg-screen-bg border border-border flex items-center justify-center text-base flex-shrink-0">🏠</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">{p.address}</p>
-                {p.nickname && <p className="text-[11px] text-muted font-mono mt-0.5">"{p.nickname}"</p>}
-              </div>
-              <Link href={`/properties/${p.id}`}>
-                <Button variant="outline" size="sm">Edit</Button>
-              </Link>
-            </div>
-          ))}
-        </Card>
-        )}
-
-        <p className="text-xs text-muted mt-4 leading-relaxed">
-          Mortgage amounts are entered per-month when you generate a report.
-        </p>
+        <Button size="sm" onClick={() => router.push('/properties/new')}>+ Add property</Button>
       </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-7">
+        <MetricTile
+          label="Total value"
+          value={totalValueCents !== null ? formatCents(totalValueCents) : '—'}
+          foot={<span className="text-xs text-muted">{properties.length} properties</span>}
+        />
+        <MetricTile
+          label="Total debt"
+          value={totalDebtCents !== null ? formatCents(totalDebtCents) : '—'}
+          secondary
+        />
+      </div>
+
+      {entities.length > 1 && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <span className="text-xs text-muted font-medium">Filter</span>
+          <button
+            onClick={() => setEntityFilter('all')}
+            className={[
+              'text-xs px-2.5 py-1 rounded-full border transition-colors',
+              entityFilter === 'all'
+                ? 'bg-accent text-white border-accent'
+                : 'border-border text-muted hover:border-accent hover:text-ink',
+            ].join(' ')}
+          >
+            All entities
+          </button>
+          {entities.map(e => (
+            <button
+              key={e.id}
+              onClick={() => setEntityFilter(entityFilter === e.id ? 'all' : e.id)}
+              className={[
+                'text-xs px-2.5 py-1 rounded-full border transition-colors',
+                entityFilter === e.id
+                  ? 'bg-accent text-white border-accent'
+                  : 'border-border text-muted hover:border-accent hover:text-ink',
+              ].join(' ')}
+            >
+              {e.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-sm text-muted mb-3">
+            {properties.length === 0 ? 'No properties yet.' : 'No properties match the filter.'}
+          </p>
+          {properties.length === 0 && (
+            <Button size="sm" onClick={() => router.push('/properties/new')}>+ Add your first property</Button>
+          )}
+        </div>
+      ) : (
+        <div className="bg-surface border border-border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-screen-bg">
+                <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Property</th>
+                <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Entity</th>
+                <th className="text-center font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Statement</th>
+                <th className="text-right font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">LVR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(prop => {
+                const hasMissing = missingStatements.has(prop.id)
+                return (
+                  <tr
+                    key={prop.id}
+                    className="border-b border-ruled last:border-b-0 hover:bg-screen-bg cursor-pointer transition-colors"
+                    onClick={() => router.push(`/properties/${prop.id}`)}
+                  >
+                    <td className="py-3 px-4">
+                      <p className="font-medium text-ink">{prop.address}</p>
+                      {prop.nickname && <p className="text-xs text-muted mt-0.5">{prop.nickname}</p>}
+                    </td>
+                    <td className="py-3 px-4 text-muted">{prop.entityName ?? '—'}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={[
+                        'inline-flex items-center text-xs px-2 py-0.5 rounded-full font-medium',
+                        hasMissing
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : 'bg-green-50 text-green-700 border border-green-200',
+                      ].join(' ')}>
+                        {hasMissing ? 'Missing' : 'Complete'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right text-muted">—</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {filtered.length > 0 && (
+        <div className="mt-4 text-center">
+          <Link href="/properties/new" className="text-xs text-accent hover:underline">+ Add another property</Link>
+        </div>
+      )}
     </div>
   )
 }

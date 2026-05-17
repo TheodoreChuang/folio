@@ -1,25 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogDescription, DialogFooter, DialogClose,
-} from '@/components/ui/dialog'
-import { cn } from '@/lib/utils'
-import { formatMonth, formatCents, recentMonths } from '@/lib/format'
-import type { Property, PropertyLedger, PropertyValuation, LoanBalance, Entity } from '@/db/schema'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { MetricTile } from '@/components/ui/metric-tile'
+import { recentMonths } from '@/lib/format'
+import type { Property, PropertyLedger, PropertyValuation, InstallmentLoan, Entity } from '@/db/schema'
 
-type LatestBalance = { balanceCents: number; recordedAt: string } | null
-type LoanRow = { id: string; lender: string; nickname: string | null; startDate: string; endDate: string; entityId: string | null; latestBalance: LatestBalance }
 type LatestValuation = { valueCents: number; valuedAt: string; source: string | null } | null
 type YieldStats = { grossPercent: number; netPercent: number; periodLabel: string } | null
+type LoanWithBalance = InstallmentLoan & { latestBalance: { balanceCents: number; recordedAt: string } | null }
 
 const MANUAL_CATEGORIES = [
   'rent', 'insurance', 'rates', 'repairs',
@@ -29,743 +24,614 @@ const MANUAL_CATEGORIES = [
 const CATEGORY_LABELS: Record<string, string> = {
   rent: 'Rent', insurance: 'Insurance', rates: 'Rates', repairs: 'Repairs',
   property_management: 'Mgmt fee', utilities: 'Utilities',
-  strata_fees: 'Strata', other_expense: 'Other',
+  strata_fees: 'Strata', other_expense: 'Other', loan_payment: 'Loan repayment',
 }
 
-function parseCents(input: string): number {
-  const clean = input.replace(/[$,\s]/g, '')
-  const dollars = parseFloat(clean)
-  if (isNaN(dollars) || dollars <= 0) throw new Error('Invalid amount')
-  return Math.round(dollars * 100)
+const VALUATION_SOURCES = [
+  { value: 'manual_estimate', label: 'Manual estimate' },
+  { value: 'bank_valuation', label: 'Bank valuation' },
+  { value: 'agent_appraisal', label: 'Agent appraisal' },
+  { value: 'independent_valuer', label: 'Independent valuer' },
+  { value: 'comparable_sale', label: 'Recent comparable sale' },
+]
+
+function formatCents(cents: number): string {
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(cents / 100)
 }
 
-function addYears(dateStr: string, years: number): string {
-  const d = new Date(dateStr)
-  d.setFullYear(d.getFullYear() + years)
-  return d.toISOString().slice(0, 10)
+function formatDate(d: string): string {
+  const [y, m, day] = d.split('-')
+  return `${day}/${m}/${y}`
 }
 
-export default function EditPropertyPage() {
-  const router = useRouter()
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const router = useRouter()
+
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-  const [originalAddress, setOriginalAddress] = useState('')
-  const [address, setAddress] = useState('')
-  const [nickname, setNickname] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [loans, setLoans] = useState<LoanRow[]>([])
-  const [newLender, setNewLender] = useState('')
-  const [newNickname, setNewNickname] = useState('')
-  const [newLoanStartDate, setNewLoanStartDate] = useState('')
-  const [newLoanEndDate, setNewLoanEndDate] = useState('')
-  const [addingLoan, setAddingLoan] = useState(false)
+
+  const [property, setProperty] = useState<Property | null>(null)
+  const [latestValuation, setLatestValuation] = useState<LatestValuation>(null)
+  const [yieldStats, setYieldStats] = useState<YieldStats>(null)
+  const [loans, setLoans] = useState<LoanWithBalance[]>([])
+  const [valuations, setValuations] = useState<PropertyValuation[]>([])
+  const [entities, setEntities] = useState<Entity[]>([])
+
+  const [editAddress, setEditAddress] = useState('')
+  const [editNickname, setEditNickname] = useState('')
+  const [editStartDate, setEditStartDate] = useState('')
+  const [editEndDate, setEditEndDate] = useState('')
+  const [editEntityId, setEditEntityId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const [valDate, setValDate] = useState(todayIso)
+  const [valDollars, setValDollars] = useState('')
+  const [valSource, setValSource] = useState('manual_estimate')
+  const [addingVal, setAddingVal] = useState(false)
+
   const [txMonth, setTxMonth] = useState(() => recentMonths(1)[0])
   const [entries, setEntries] = useState<PropertyLedger[]>([])
   const [entriesLoading, setEntriesLoading] = useState(false)
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [showAddEntry, setShowAddEntry] = useState(false)
   const [entryDate, setEntryDate] = useState('')
-  const [entryAmount, setEntryAmount] = useState('')
-  const [entryCategory, setEntryCategory] = useState('')
+  const [entryDollars, setEntryDollars] = useState('')
+  const [entryCategory, setEntryCategory] = useState<typeof MANUAL_CATEGORIES[number]>('rent')
   const [entryDesc, setEntryDesc] = useState('')
   const [savingEntry, setSavingEntry] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState<PropertyLedger | null>(null)
-  const [latestValuation, setLatestValuation] = useState<LatestValuation>(null)
-  const [yieldStats, setYieldStats] = useState<YieldStats>(null)
-  const [valuations, setValuations] = useState<PropertyValuation[]>([])
-  const [showAddValuation, setShowAddValuation] = useState(false)
-  const [valDate, setValDate] = useState('')
-  const [valAmount, setValAmount] = useState('')
-  const [valSource, setValSource] = useState('')
-  const [valNotes, setValNotes] = useState('')
-  const [savingVal, setSavingVal] = useState(false)
-  const [loanBalancesMap, setLoanBalancesMap] = useState<Record<string, LoanBalance[]>>({})
-  const [expandedLoan, setExpandedLoan] = useState<string | null>(null)
-  const [showAddBalance, setShowAddBalance] = useState<string | null>(null)
-  const [balDate, setBalDate] = useState('')
-  const [balAmount, setBalAmount] = useState('')
-  const [balNotes, setBalNotes] = useState('')
-  const [savingBal, setSavingBal] = useState(false)
-  const [availableEntities, setAvailableEntities] = useState<Entity[]>([])
-  const [entityId, setEntityId] = useState<string | null>(null)
-  const [loanEntityIds, setLoanEntityIds] = useState<Record<string, string | null>>({})
 
-  useEffect(() => {
-    fetch('/api/entities')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) setAvailableEntities(data.entities ?? []) })
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    Promise.all([
-      fetch(`/api/properties/${id}`),
-      fetch(`/api/properties/${id}/loans`),
-      fetch(`/api/properties/${id}/valuations`),
-    ])
-      .then(async ([propRes, loansRes, valsRes]) => {
-        if (propRes.status === 404) { setNotFound(true); return }
-        if (!propRes.ok || !loansRes.ok || !valsRes.ok) throw new Error()
-        const [propData, loansData, valsData] = await Promise.all([propRes.json(), loansRes.json(), valsRes.json()])
-        const p: Property = propData.property
-        setAddress(p.address)
-        setNickname(p.nickname ?? '')
-        setStartDate(p.startDate ?? '')
-        setEndDate(p.endDate ?? '')
-        setEntityId(p.entityId ?? null)
-        setOriginalAddress(p.address)
-        setLatestValuation(propData.latestValuation ?? null)
-        setYieldStats(propData.yield ?? null)
-        const loadedLoans: LoanRow[] = loansData.loans ?? []
-        setLoans(loadedLoans)
-        setLoanEntityIds(Object.fromEntries(loadedLoans.map(l => [l.id, l.entityId])))
-        setValuations(valsData.valuations ?? [])
-      })
-      .catch(() => toast.error('Failed to load property'))
-      .finally(() => setLoading(false))
-  }, [id])
-
-  useEffect(() => {
-    if (!id) return
+  const loadEntries = useCallback(async () => {
     setEntriesLoading(true)
-    fetch(`/api/statements?propertyId=${id}&month=${txMonth}`)
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => setEntries(data.entries ?? []))
-      .catch(() => toast.error('Failed to load transactions'))
-      .finally(() => setEntriesLoading(false))
+    try {
+      const res = await fetch(`/api/properties/${id}/entries?month=${txMonth}`)
+      if (res.ok) {
+        const data = await res.json() as { entries?: PropertyLedger[] }
+        setEntries(data.entries ?? [])
+      }
+    } catch {
+      toast.error('Failed to load transactions')
+    } finally {
+      setEntriesLoading(false)
+    }
   }, [id, txMonth])
 
-  async function handleAddEntry() {
-    let amountCents: number
-    try { amountCents = parseCents(entryAmount) }
-    catch { toast.error('Invalid amount'); return }
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      try {
+        const [propRes, loansRes, valsRes, entitiesRes] = await Promise.all([
+          fetch(`/api/properties/${id}`),
+          fetch(`/api/properties/${id}/loans`),
+          fetch(`/api/properties/${id}/valuations`),
+          fetch('/api/entities'),
+        ])
 
-    setSavingEntry(true)
-    const res = await fetch(`/api/properties/${id}/entries`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        lineItemDate: entryDate,
-        amountCents,
-        category: entryCategory,
-        description: entryDesc.trim() || null,
-      }),
-    })
-    setSavingEntry(false)
-    if (!res.ok) { toast.error((await res.json().catch(() => ({}))).error ?? 'Failed to add transaction'); return }
-    const { entry } = await res.json()
-    setEntries(prev => [entry, ...prev])
-    setEntryDate(''); setEntryAmount(''); setEntryCategory(''); setEntryDesc('')
-    setShowAddForm(false)
-  }
+        if (propRes.status === 401) { router.push('/login'); return }
+        if (propRes.status === 404) { setNotFound(true); return }
+        if (!propRes.ok) throw new Error()
 
-  async function handleDeleteEntry(entry: PropertyLedger) {
-    const res = await fetch(`/api/ledger/${entry.id}`, { method: 'DELETE' })
-    if (!res.ok) { toast.error('Failed to delete transaction'); return }
-    setEntries(prev => prev.filter(e => e.id !== entry.id))
-    setConfirmDelete(null)
-  }
+        const propData = await propRes.json() as {
+          property: Property
+          latestValuation: LatestValuation
+          yield: YieldStats
+        }
+        setProperty(propData.property)
+        setLatestValuation(propData.latestValuation)
+        setYieldStats(propData.yield)
+
+        setEditAddress(propData.property.address)
+        setEditNickname(propData.property.nickname ?? '')
+        setEditStartDate(propData.property.startDate)
+        setEditEndDate(propData.property.endDate ?? '')
+        setEditEntityId(propData.property.entityId ?? null)
+
+        if (loansRes.ok) {
+          const loansData = await loansRes.json() as { loans?: LoanWithBalance[] }
+          setLoans(loansData.loans ?? [])
+        }
+
+        if (valsRes.ok) {
+          const valsData = await valsRes.json() as { valuations?: PropertyValuation[] }
+          setValuations((valsData.valuations ?? []).sort((a, b) => b.valuedAt.localeCompare(a.valuedAt)))
+        }
+
+        if (entitiesRes.ok) {
+          const entitiesData = await entitiesRes.json() as { entities?: Entity[] }
+          setEntities(entitiesData.entities ?? [])
+        }
+      } catch {
+        toast.error('Failed to load property')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [id, router])
+
+  useEffect(() => {
+    if (!loading) loadEntries()
+  }, [txMonth, loading, loadEntries])
 
   async function handleSave() {
-    const res = await fetch(`/api/properties/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address,
-        nickname: nickname.trim() || null,
-        startDate: startDate || undefined,
-        endDate: endDate || null,
-        entityId: entityId || null,
-      }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      toast.error(err.error ?? 'Failed to update property')
-      return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/properties/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: editAddress.trim(),
+          nickname: editNickname.trim() || null,
+          startDate: editStartDate,
+          endDate: editEndDate || null,
+          entityId: editEntityId || null,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        toast.error(err.error ?? 'Failed to save')
+        return
+      }
+      const { property: updated } = await res.json() as { property: Property }
+      setProperty(updated)
+      toast.success('Saved')
+    } finally {
+      setSaving(false)
     }
-    toast.success('Property updated')
-    router.push('/properties')
-  }
-
-  async function handleDelete() {
-    const res = await fetch(`/api/properties/${id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      toast.error(err.error ?? 'Failed to delete property')
-      return
-    }
-    toast.success('Property deleted')
-    router.push('/properties')
-  }
-
-  async function handleAddLoan() {
-    if (!newLender.trim() || !newLoanStartDate || !newLoanEndDate) return
-    setAddingLoan(true)
-    const res = await fetch(`/api/properties/${id}/loans`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        lender: newLender.trim(),
-        nickname: newNickname.trim() || null,
-        startDate: newLoanStartDate,
-        endDate: newLoanEndDate,
-      }),
-    })
-    setAddingLoan(false)
-    if (!res.ok) { toast.error((await res.json().catch(() => ({}))).error ?? 'Failed to add loan'); return }
-    const { loan } = await res.json()
-    setLoans(prev => [...prev, loan])
-    setNewLender('')
-    setNewNickname('')
-    setNewLoanStartDate('')
-    setNewLoanEndDate('')
-  }
-
-  async function handleEndLoan(loanId: string) {
-    const res = await fetch(`/api/properties/${id}/loans/${loanId}`, { method: 'DELETE' })
-    if (!res.ok) { toast.error('Failed to end loan'); return }
-    const { loan } = await res.json()
-    setLoans(prev => prev.map(l => l.id === loanId ? loan : l))
   }
 
   async function handleAddValuation() {
-    let valueCents: number
-    try { valueCents = parseCents(valAmount) }
-    catch { toast.error('Invalid amount'); return }
-
-    setSavingVal(true)
-    const res = await fetch(`/api/properties/${id}/valuations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        valuedAt: valDate,
-        valueCents,
-        source: valSource.trim() || null,
-        notes: valNotes.trim() || null,
-      }),
-    })
-    setSavingVal(false)
-    if (!res.ok) { toast.error((await res.json().catch(() => ({}))).error ?? 'Failed to add valuation'); return }
-    const { valuation } = await res.json()
-    setValuations(prev => [valuation, ...prev])
-    setValDate(''); setValAmount(''); setValSource(''); setValNotes('')
-    setShowAddValuation(false)
-    // Refresh yield stats since a new valuation may change them
-    fetch(`/api/properties/${id}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data) { setLatestValuation(data.latestValuation ?? null); setYieldStats(data.yield ?? null) }
+    const parsedValue = parseFloat(valDollars.replace(/,/g, ''))
+    if (!valDollars.trim() || isNaN(parsedValue) || parsedValue <= 0) {
+      toast.error('Invalid value'); return
+    }
+    setAddingVal(true)
+    try {
+      const res = await fetch(`/api/properties/${id}/valuations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          valuedAt: valDate,
+          valueCents: Math.round(parsedValue * 100),
+          source: valSource,
+        }),
       })
-  }
-
-  async function handleDeleteValuation(valuationId: string) {
-    const res = await fetch(`/api/properties/${id}/valuations/${valuationId}`, { method: 'DELETE' })
-    if (!res.ok) { toast.error('Failed to delete valuation'); return }
-    setValuations(prev => prev.filter(v => v.id !== valuationId))
-  }
-
-  async function handleToggleLoanBalances(loanId: string) {
-    if (expandedLoan === loanId) {
-      setExpandedLoan(null)
-      return
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        toast.error(err.error ?? 'Failed to add valuation')
+        return
+      }
+      const { valuation } = await res.json() as { valuation: PropertyValuation }
+      setValuations(prev => [valuation, ...prev].sort((a, b) => b.valuedAt.localeCompare(a.valuedAt)))
+      if (!latestValuation || valuation.valuedAt >= (latestValuation?.valuedAt ?? '')) {
+        setLatestValuation({ valueCents: valuation.valueCents, valuedAt: valuation.valuedAt, source: valuation.source })
+      }
+      setValDollars('')
+      setValDate(todayIso())
+      toast.success('Valuation added')
+    } finally {
+      setAddingVal(false)
     }
-    setExpandedLoan(loanId)
-    if (loanBalancesMap[loanId]) return // already fetched
-    const res = await fetch(`/api/properties/${id}/loans/${loanId}/balances`)
-    if (!res.ok) { toast.error('Failed to load balances'); return }
-    const data = await res.json()
-    setLoanBalancesMap(prev => ({ ...prev, [loanId]: data.balances ?? [] }))
   }
 
-  async function handleAddBalance(loanId: string) {
-    let balanceCents: number
-    try { balanceCents = parseCents(balAmount) }
-    catch {
-      // Allow $0
-      const clean = balAmount.replace(/[$,\s]/g, '')
-      if (clean === '0') { balanceCents = 0 }
-      else { toast.error('Invalid amount'); return }
+  async function handleAddEntry() {
+    const parsedAmount = parseFloat(entryDollars.replace(/,/g, ''))
+    if (!entryDollars.trim() || isNaN(parsedAmount) || parsedAmount <= 0) {
+      toast.error('Invalid amount'); return
     }
-
-    setSavingBal(true)
-    const res = await fetch(`/api/properties/${id}/loans/${loanId}/balances`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recordedAt: balDate, balanceCents, notes: balNotes.trim() || null }),
-    })
-    setSavingBal(false)
-    if (!res.ok) { toast.error((await res.json().catch(() => ({}))).error ?? 'Failed to add balance'); return }
-    const { balance } = await res.json()
-    setLoanBalancesMap(prev => ({ ...prev, [loanId]: [balance, ...(prev[loanId] ?? [])] }))
-    setLoans(prev => prev.map(l => l.id === loanId ? { ...l, latestBalance: { balanceCents: balance.balanceCents, recordedAt: balance.recordedAt } } : l))
-    setBalDate(''); setBalAmount(''); setBalNotes('')
-    setShowAddBalance(null)
+    if (!entryDate) { toast.error('Date is required'); return }
+    setSavingEntry(true)
+    try {
+      const res = await fetch(`/api/properties/${id}/entries`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineItemDate: entryDate,
+          amountCents: Math.round(parsedAmount * 100),
+          category: entryCategory,
+          description: entryDesc.trim() || null,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        toast.error(err.error ?? 'Failed to add transaction')
+        return
+      }
+      const { entry } = await res.json() as { entry: PropertyLedger }
+      setEntries(prev => [entry, ...prev])
+      setEntryDate(''); setEntryDollars(''); setEntryDesc('')
+      setShowAddEntry(false)
+      toast.success('Transaction added')
+    } finally {
+      setSavingEntry(false)
+    }
   }
 
-  async function handleLoanEntityChange(loanId: string, newEntityId: string | null) {
-    setLoanEntityIds(prev => ({ ...prev, [loanId]: newEntityId }))
-    await fetch(`/api/properties/${id}/loans/${loanId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entityId: newEntityId }),
-    }).catch(() => toast.error('Failed to update loan entity'))
+  async function handleDeleteEntry(entry: PropertyLedger) {
+    if (!confirm('Delete this transaction?')) return
+    const res = await fetch(`/api/ledger/${entry.id}`, { method: 'DELETE' })
+    if (!res.ok) { toast.error('Failed to delete transaction'); return }
+    setEntries(prev => prev.filter(e => e.id !== entry.id))
   }
 
-  async function handleDeleteBalance(loanId: string, balanceId: string) {
-    const res = await fetch(`/api/properties/${id}/loans/${loanId}/balances/${balanceId}`, { method: 'DELETE' })
-    if (!res.ok) { toast.error('Failed to delete balance'); return }
-    setLoanBalancesMap(prev => ({ ...prev, [loanId]: (prev[loanId] ?? []).filter(b => b.id !== balanceId) }))
-  }
+  const totalDebt = loans.reduce((sum, l) => sum + (l.latestBalance?.balanceCents ?? 0), 0)
+  const lvr = latestValuation && latestValuation.valueCents > 0 && totalDebt > 0
+    ? Math.round((totalDebt / latestValuation.valueCents) * 100)
+    : null
 
-  if (loading) return (
-    <div className="min-h-screen bg-screen-bg">
-      <div className="max-w-lg mx-auto px-4 py-8 text-center text-sm text-muted">Loading…</div>
-    </div>
-  )
+  const entityName = property?.entityId
+    ? (entities.find(e => e.id === property.entityId)?.name ?? null)
+    : null
 
-  if (notFound) return (
-    <div className="min-h-screen bg-screen-bg">
-      <div className="max-w-lg mx-auto px-4 py-8 text-center">
-        <p className="text-sm text-muted mb-4">Property not found.</p>
-        <Button variant="outline" onClick={() => router.push('/properties')}>← Back to properties</Button>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <span className="text-sm text-muted">Loading…</span>
       </div>
-    </div>
-  )
+    )
+  }
 
-  const today = new Date().toISOString().slice(0, 10)
+  if (notFound || !property) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-sm text-muted">Property not found.</p>
+        <Link href="/properties" className="text-accent text-sm hover:underline mt-2 inline-block">← Back to properties</Link>
+      </div>
+    )
+  }
+
+  const months = recentMonths(12)
 
   return (
-    <div className="min-h-screen bg-screen-bg">
-      <div className="max-w-lg mx-auto px-4 py-8">
-        <Button variant="ghost" size="sm" className="mb-6 text-muted" onClick={() => router.back()}>
-          ← Back to properties
-        </Button>
+    <div>
+      <div className="mb-2">
+        <Link href="/properties" className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-ink transition-colors">
+          <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden>
+            <polyline points="6,2 2,5 6,8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Properties
+        </Link>
+      </div>
 
-        <h1 className="font-serif text-2xl mb-1">Edit property</h1>
-        <p className="text-sm text-muted mb-6">Changes take effect on future report generation.</p>
-
-        <Card className="mb-4">
-          <CardContent className="pt-6 pb-6 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="address">Full address</Label>
-              <Input id="address" value={address} onChange={e => setAddress(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="nickname">Nickname <span className="font-normal text-muted">(optional)</span></Label>
-              <Input id="nickname" value={nickname} onChange={e => setNickname(e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="start-date">Acquisition date</Label>
-                <Input id="start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="end-date">Sold date <span className="font-normal text-muted">(optional)</span></Label>
-                <Input id="end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-              </div>
-            </div>
-            {availableEntities.length > 0 && (
-              <div className="space-y-1.5">
-                <Label htmlFor="prop-entity">Entity <span className="font-normal text-muted">(optional)</span></Label>
-                <select id="prop-entity" value={entityId ?? ''} onChange={e => setEntityId(e.target.value || null)}
-                  className="w-full border border-border rounded-md px-3 py-2 text-sm bg-white text-ink">
-                  <option value="">None</option>
-                  {availableEntities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                </select>
-              </div>
-            )}
-            <Separator />
-            <div className="flex items-center gap-2 pt-1">
-              <Button className="flex-1" onClick={handleSave}>Save changes</Button>
-              <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
-              <Button variant="destructive" size="sm" className="ml-auto" onClick={() => setDeleteOpen(true)}>
-                Delete
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="mt-8">
-          <h2 className="font-semibold text-sm mb-3">Loan accounts</h2>
-          <div className="space-y-2 mb-4">
-            {loans.map(loan => {
-              const isEnded = loan.endDate <= today
-              const isExpanded = expandedLoan === loan.id
-              const balances = loanBalancesMap[loan.id] ?? []
-              return (
-                <Card key={loan.id} className={cn(isEnded && 'opacity-60')}>
-                  <CardContent className="py-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">{loan.lender}</p>
-                        {loan.nickname && <p className="text-[11px] text-muted">{loan.nickname}</p>}
-                        <p className="text-[11px] text-muted font-mono mt-0.5">
-                          {loan.startDate} – {loan.endDate}
-                        </p>
-                        {loan.latestBalance && (
-                          <p className="text-[11px] text-muted font-mono mt-0.5">
-                            Balance: <span className="text-ink font-semibold">{formatCents(loan.latestBalance.balanceCents)}</span>
-                            <span className="ml-1">as of {loan.latestBalance.recordedAt}</span>
-                          </p>
-                        )}
-                        {availableEntities.length > 0 && (
-                          <select
-                            value={loanEntityIds[loan.id] ?? ''}
-                            onChange={e => handleLoanEntityChange(loan.id, e.target.value || null)}
-                            className="mt-1 border border-border rounded px-2 py-0.5 text-[11px] font-mono bg-white text-ink"
-                          >
-                            <option value="">No entity</option>
-                            {availableEntities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                          </select>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleToggleLoanBalances(loan.id)}
-                          className="text-[11px] text-muted hover:text-ink font-mono border border-border rounded px-2 py-1"
-                        >
-                          {isExpanded ? 'Hide balances' : 'Balances'}
-                        </button>
-                        {!isEnded && (
-                          <Button variant="outline" size="sm" onClick={() => handleEndLoan(loan.id)}>
-                            End loan
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="mt-3 pt-3 border-t border-border space-y-2">
-                        {balances.length === 0 && <p className="text-xs text-muted">No balance records yet.</p>}
-                        {balances.map(b => (
-                          <div key={b.id} className="flex items-center justify-between text-xs">
-                            <div>
-                              <span className="font-mono font-semibold">{formatCents(b.balanceCents)}</span>
-                              <span className="text-muted ml-2 font-mono">{b.recordedAt}</span>
-                              {b.notes && <span className="text-muted ml-2">{b.notes}</span>}
-                            </div>
-                            <Button variant="outline" size="sm" className="text-warn border-warn/50 hover:bg-warn-light h-6 text-[10px] px-2"
-                              onClick={() => handleDeleteBalance(loan.id, b.id)}>
-                              Delete
-                            </Button>
-                          </div>
-                        ))}
-                        {showAddBalance === loan.id ? (
-                          <div className="space-y-2 pt-2">
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="space-y-1">
-                                <Label className="text-xs">Date</Label>
-                                <Input type="date" value={balDate} onChange={e => setBalDate(e.target.value)} className="h-8 text-xs" />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Balance</Label>
-                                <div className="relative">
-                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">$</span>
-                                  <Input className="pl-6 h-8 text-xs" placeholder="e.g. 450,000"
-                                    value={balAmount} onChange={e => setBalAmount(e.target.value)} />
-                                </div>
-                              </div>
-                            </div>
-                            <Input placeholder="Notes (optional)" value={balNotes} onChange={e => setBalNotes(e.target.value)} className="h-8 text-xs" />
-                            <div className="flex gap-2">
-                              <Button size="sm" className="h-7 text-xs" onClick={() => handleAddBalance(loan.id)} disabled={!balDate || !balAmount || savingBal}>
-                                {savingBal ? 'Saving…' : 'Save'}
-                              </Button>
-                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowAddBalance(null)}>Cancel</Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowAddBalance(loan.id); setBalDate(new Date().toISOString().slice(0, 10)) }}>
-                            + Add balance
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })}
-            {loans.length === 0 && <p className="text-sm text-muted">No loan accounts yet.</p>}
+      <div className="flex items-start justify-between mb-2">
+        <div>
+          <h1 className="font-serif text-2xl text-ink">{property.nickname ?? property.address}</h1>
+          <div className="flex items-center gap-2 mt-1 text-sm text-muted">
+            {property.nickname && <span>{property.address}</span>}
+            {property.nickname && entityName && <span>·</span>}
+            {entityName && <span>{entityName}</span>}
           </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => router.push('/upload')}>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="mr-1.5" aria-hidden>
+            <path d="M3 11v2h10v-2"/><path d="M8 3v8M5 6l3-3 3 3"/>
+          </svg>
+          Upload statement
+        </Button>
+      </div>
 
-          <Card>
-            <CardContent className="pt-4 pb-4 space-y-3">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-muted">Add loan account</p>
+      <div className="grid grid-cols-4 gap-3 mb-7">
+        <MetricTile
+          label="Current value"
+          value={latestValuation ? formatCents(latestValuation.valueCents) : '—'}
+          foot={latestValuation ? <span className="text-xs text-muted">as of {formatDate(latestValuation.valuedAt)}</span> : undefined}
+        />
+        <MetricTile
+          label="Gross yield"
+          value={yieldStats ? `${yieldStats.grossPercent.toFixed(1)}%` : '—'}
+          foot={yieldStats ? <span className="text-xs text-muted">{yieldStats.periodLabel}</span> : undefined}
+          secondary
+        />
+        <MetricTile
+          label="Total debt"
+          value={totalDebt > 0 ? formatCents(totalDebt) : '—'}
+          foot={<span className="text-xs text-muted">{loans.length} {loans.length === 1 ? 'loan' : 'loans'}</span>}
+          secondary
+        />
+        <MetricTile
+          label="LVR"
+          value={lvr !== null ? `${lvr}%` : '—'}
+          foot={lvr !== null ? <span className="text-xs text-muted">{formatCents(totalDebt)} / {formatCents(latestValuation!.valueCents)}</span> : undefined}
+          secondary
+        />
+      </div>
+
+      <Tabs defaultValue="overview">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="loans">Loans {loans.length > 0 && <span className="ml-1 text-xs bg-border rounded-full px-1.5">{loans.length}</span>}</TabsTrigger>
+          <TabsTrigger value="valuations">Valuations {valuations.length > 0 && <span className="ml-1 text-xs bg-border rounded-full px-1.5">{valuations.length}</span>}</TabsTrigger>
+          <TabsTrigger value="transactions">Transactions</TabsTrigger>
+        </TabsList>
+
+        {/* ===== OVERVIEW TAB ===== */}
+        <TabsContent value="overview" className="mt-6">
+          <div className="bg-surface border border-border rounded-lg p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-ink">Property details</h3>
+            </div>
+            <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="new-lender">Lender</Label>
-                <Input id="new-lender" placeholder="e.g. Westpac" value={newLender} onChange={e => setNewLender(e.target.value)} />
+                <Label htmlFor="address">Address</Label>
+                <Input id="address" value={editAddress} onChange={e => setEditAddress(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="new-nickname">Nickname <span className="font-normal text-muted">(optional)</span></Label>
-                <Input id="new-nickname" placeholder="e.g. Investment loan" value={newNickname} onChange={e => setNewNickname(e.target.value)} />
+                <Label htmlFor="nickname">Nickname <span className="font-normal text-muted">(optional)</span></Label>
+                <Input id="nickname" value={editNickname} onChange={e => setEditNickname(e.target.value)} placeholder="e.g. Elm St" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="entity">Entity</Label>
+                <select
+                  id="entity"
+                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={editEntityId ?? ''}
+                  onChange={e => setEditEntityId(e.target.value || null)}
+                >
+                  <option value="">None</option>
+                  {entities.map(e => (
+                    <option key={e.id} value={e.id}>{e.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="new-loan-start">Loan start</Label>
+                  <Label htmlFor="start-date">Acquisition date</Label>
+                  <Input id="start-date" type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="end-date">End date <span className="font-normal text-muted">(optional)</span></Label>
+                  <Input id="end-date" type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} />
+                </div>
+              </div>
+              <Button size="sm" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Save changes'}
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ===== LOANS TAB ===== */}
+        <TabsContent value="loans" className="mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-muted uppercase tracking-wide font-medium">Loans secured by this property</p>
+            <Link href="/loans" className="text-xs text-muted hover:text-accent transition-colors">Open Loans section →</Link>
+          </div>
+
+          {loans.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-sm text-muted mb-3">No loans linked to this property.</p>
+              <Button size="sm" variant="outline" onClick={() => router.push('/loans/new')}>+ Add a loan</Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {loans.map(loan => (
+                <div key={loan.id} className="bg-surface border border-border rounded-lg p-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-ink">{loan.nickname ?? loan.lender}</p>
+                      <p className="text-sm text-muted mt-0.5">{loan.lender} · {formatDate(loan.startDate)} – {formatDate(loan.endDate)}</p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => router.push(`/loans/${loan.id}`)}>
+                      View in Loans →
+                    </Button>
+                  </div>
+                  {loan.latestBalance && (
+                    <div className="mt-4 pt-4 border-t border-ruled flex items-center justify-between text-sm">
+                      <span className="text-muted">Current balance</span>
+                      <span className="font-medium tabular-nums">{formatCents(loan.latestBalance.balanceCents)}</span>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted mt-3">
+                    <svg className="inline mr-1" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+                      <rect x="3" y="5.5" width="6" height="4.5" rx="0.6"/><path d="M4.2 5.5V4a1.8 1.8 0 0 1 3.6 0v1.5"/>
+                    </svg>
+                    Loan record lives in the Loans section · balance snapshots can be added there.
+                  </p>
+                </div>
+              ))}
+              <div className="text-center pt-2">
+                <button className="text-xs text-muted hover:text-accent transition-colors" onClick={() => router.push('/loans/new')}>
+                  + Add another loan →
+                </button>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ===== VALUATIONS TAB ===== */}
+        <TabsContent value="valuations" className="mt-6">
+          <div className="grid grid-cols-2 gap-6">
+
+            <div className="bg-surface border border-border rounded-lg p-5">
+              <h3 className="text-sm font-semibold text-ink mb-4">Valuation history</h3>
+              {valuations.length === 0 ? (
+                <p className="text-sm text-muted mb-4">No valuations recorded yet.</p>
+              ) : (
+                <div className="space-y-1 mb-2">
+                  {valuations.map(v => (
+                    <div key={v.id} className="flex items-center justify-between py-2 border-b border-ruled last:border-b-0">
+                      <div>
+                        <p className="text-sm text-muted">{formatDate(v.valuedAt)}</p>
+                        {v.source && <p className="text-xs text-muted capitalize">{v.source.replace(/_/g, ' ')}</p>}
+                      </div>
+                      <span className="text-sm font-medium tabular-nums">{formatCents(v.valueCents)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-surface border border-border rounded-lg p-5">
+              <h3 className="text-sm font-semibold text-ink mb-4">Add valuation</h3>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="val-amount">Value ($)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                    <Input
+                      id="val-amount"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="920,000"
+                      className="pl-7"
+                      value={valDollars}
+                      onChange={e => setValDollars(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="val-date">As of date</Label>
                   <Input
-                    id="new-loan-start"
+                    id="val-date"
                     type="date"
-                    value={newLoanStartDate}
-                    onChange={e => {
-                      setNewLoanStartDate(e.target.value)
-                      if (e.target.value) setNewLoanEndDate(addYears(e.target.value, 30))
-                    }}
+                    value={valDate}
+                    onChange={e => setValDate(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="new-loan-end">Loan end</Label>
-                  <Input id="new-loan-end" type="date" value={newLoanEndDate} onChange={e => setNewLoanEndDate(e.target.value)} />
+                  <Label htmlFor="val-source">Source</Label>
+                  <select
+                    id="val-source"
+                    className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={valSource}
+                    onChange={e => setValSource(e.target.value)}
+                  >
+                    {VALUATION_SOURCES.map(s => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAddValuation}
+                  disabled={addingVal || !valDollars.trim() || !valDate}
+                >
+                  {addingVal ? 'Adding…' : '+ Add valuation'}
+                </Button>
               </div>
-              <Button
-                onClick={handleAddLoan}
-                disabled={!newLender.trim() || !newLoanStartDate || !newLoanEndDate || addingLoan}
-              >
-                {addingLoan ? 'Adding…' : 'Add loan account'}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="mt-8">
-          <div className="mb-3">
-            <div className="flex items-baseline justify-between">
-              <h2 className="font-semibold text-sm">Valuations</h2>
-              {latestValuation && (
-                <span className="text-sm font-mono font-semibold">
-                  {formatCents(latestValuation.valueCents)}
-                  <span className="text-[11px] text-muted font-normal ml-1">as of {latestValuation.valuedAt}</span>
-                </span>
-              )}
             </div>
-            {yieldStats && (
-              <p className="text-xs text-muted mt-0.5">
-                <span className="font-mono">Gross yield: <span className="text-ink font-semibold">{yieldStats.grossPercent.toFixed(1)}%</span></span>
-                <span className="mx-2 text-border">|</span>
-                <span className="font-mono">Net yield: <span className="text-ink font-semibold">{yieldStats.netPercent.toFixed(1)}%</span></span>
-                <span className="ml-1 text-[10px]">({yieldStats.periodLabel})</span>
-              </p>
-            )}
-          </div>
 
-          <div className="space-y-2 mb-4">
-            {valuations.length === 0 && (
-              <p className="text-sm text-muted">No valuations yet. Add one to track your property&apos;s market value.</p>
-            )}
-            {valuations.map(v => (
-              <Card key={v.id}>
-                <CardContent className="py-2.5 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold font-mono">{formatCents(v.valueCents)}</p>
-                    <p className="text-[11px] text-muted font-mono">{v.valuedAt}{v.source ? ` · ${v.source}` : ''}</p>
-                    {v.notes && <p className="text-xs text-muted truncate">{v.notes}</p>}
-                  </div>
-                  <Button variant="outline" size="sm" className="text-warn border-warn/50 hover:bg-warn-light flex-shrink-0"
-                    onClick={() => handleDeleteValuation(v.id)}>
-                    Delete
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
           </div>
+        </TabsContent>
 
-          {!showAddValuation ? (
-            <Button variant="outline" size="sm" onClick={() => { setShowAddValuation(true); setValDate(new Date().toISOString().slice(0, 10)) }}>
-              + Add valuation
+        {/* ===== TRANSACTIONS TAB ===== */}
+        <TabsContent value="transactions" className="mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <select
+              className="h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              value={txMonth}
+              onChange={e => setTxMonth(e.target.value)}
+            >
+              {months.map(m => {
+                const [y, mo] = m.split('-')
+                const label = new Date(Number(y), Number(mo) - 1).toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })
+                return <option key={m} value={m}>{label}</option>
+              })}
+            </select>
+            <Button size="sm" variant="outline" onClick={() => setShowAddEntry(v => !v)}>
+              {showAddEntry ? 'Cancel' : '+ Add entry'}
             </Button>
-          ) : (
-            <Card>
-              <CardContent className="pt-4 pb-4 space-y-3">
-                <p className="text-[10px] font-mono uppercase tracking-widest text-muted">Add valuation</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="val-date">Date</Label>
-                    <Input id="val-date" type="date" value={valDate} onChange={e => setValDate(e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="val-amount">Value</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">$</span>
-                      <Input id="val-amount" className="pl-7" placeholder="e.g. 650,000"
-                        value={valAmount} onChange={e => setValAmount(e.target.value)} />
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="val-source">Source <span className="font-normal text-muted">(optional)</span></Label>
-                  <Input id="val-source" placeholder="e.g. bank valuation, purchase price"
-                    value={valSource} onChange={e => setValSource(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="val-notes">Notes <span className="font-normal text-muted">(optional)</span></Label>
-                  <Input id="val-notes" placeholder="e.g. pre-renovation estimate"
-                    value={valNotes} onChange={e => setValNotes(e.target.value)} />
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleAddValuation} disabled={!valDate || !valAmount || savingVal}>
-                    {savingVal ? 'Adding…' : 'Add valuation'}
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowAddValuation(false)}>Cancel</Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <div className="mt-8">
-          <h2 className="font-semibold text-sm mb-3">Transactions</h2>
-
-          {/* Month selector */}
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {recentMonths(12).map(m => (
-              <button key={m} onClick={() => setTxMonth(m)} className={cn(
-                'px-3 py-1 rounded-full text-xs font-mono border transition-colors',
-                txMonth === m
-                  ? 'bg-ink text-white border-ink'
-                  : 'bg-white text-muted border-border hover:border-ink hover:text-ink'
-              )}>{formatMonth(m)}</button>
-            ))}
           </div>
 
-          {/* Entry list */}
-          <div className="space-y-1.5 mb-4">
-            {entriesLoading && <p className="text-sm text-muted">Loading…</p>}
-            {!entriesLoading && entries.length === 0 && (
-              <p className="text-sm text-muted">No transactions for {formatMonth(txMonth)}.</p>
-            )}
-            {entries.map(e => (
-              <Card key={e.id}>
-                <CardContent className="py-2.5 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className={cn(
-                        'text-[10px] font-mono px-1.5 py-0.5 rounded',
-                        e.category === 'rent' ? 'bg-accent-light text-accent' : 'bg-screen-bg text-muted'
-                      )}>
-                        {CATEGORY_LABELS[e.category] ?? e.category}
-                      </span>
-                      {!e.sourceDocumentId && (
-                        <span className="text-[10px] text-muted font-mono">Manual</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted truncate">{e.description ?? '—'}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-semibold">{formatCents(e.amountCents)}</p>
-                    <p className="text-[11px] text-muted font-mono">{e.lineItemDate}</p>
-                  </div>
-                  {!e.sourceDocumentId && (
-                    <Button variant="outline" size="sm" className="text-warn border-warn/50 hover:bg-warn-light"
-                      onClick={() => setConfirmDelete(e)}>
-                      Delete
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Add form toggle */}
-          {!showAddForm ? (
-            <Button variant="outline" size="sm" onClick={() => { setShowAddForm(true); setEntryDate(new Date().toISOString().slice(0, 10)) }}>
-              + Add transaction
-            </Button>
-          ) : (
-            <Card>
-              <CardContent className="pt-4 pb-4 space-y-3">
-                <p className="text-[10px] font-mono uppercase tracking-widest text-muted">Add transaction</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="entry-date">Date</Label>
-                    <Input id="entry-date" type="date" value={entryDate}
-                      onChange={e => setEntryDate(e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="entry-amount">Amount</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">$</span>
-                      <Input id="entry-amount" className="pl-7" placeholder="e.g. 1,200"
-                        value={entryAmount} onChange={e => setEntryAmount(e.target.value)} />
-                    </div>
+          {showAddEntry && (
+            <div className="bg-surface border border-border rounded-lg p-5 mb-4">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">New transaction</p>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="entry-date">Date</Label>
+                  <Input id="entry-date" type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="entry-amount">Amount ($)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                    <Input
+                      id="entry-amount"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="1,200"
+                      className="pl-7"
+                      value={entryDollars}
+                      onChange={e => setEntryDollars(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="entry-cat">Category</Label>
-                  <select id="entry-cat" value={entryCategory}
-                    onChange={e => setEntryCategory(e.target.value)}
-                    className="w-full border border-border rounded px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent">
-                    <option value="">— select —</option>
-                    {MANUAL_CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
+                  <Label htmlFor="entry-category">Category</Label>
+                  <select
+                    id="entry-category"
+                    className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={entryCategory}
+                    onChange={e => setEntryCategory(e.target.value as typeof MANUAL_CATEGORIES[number])}
+                  >
+                    {MANUAL_CATEGORIES.map(c => (
+                      <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="entry-desc">Description <span className="font-normal text-muted">(optional)</span></Label>
-                  <Input id="entry-desc" placeholder="e.g. Building insurance renewal"
-                    value={entryDesc} onChange={e => setEntryDesc(e.target.value)} />
+                  <Input id="entry-desc" placeholder="e.g. Water bill" value={entryDesc} onChange={e => setEntryDesc(e.target.value)} />
                 </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleAddEntry}
-                    disabled={!entryDate || !entryAmount || !entryCategory || savingEntry}>
-                    {savingEntry ? 'Adding…' : 'Add transaction'}
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+              <Button size="sm" onClick={handleAddEntry} disabled={savingEntry || !entryDate || !entryDollars.trim()}>
+                {savingEntry ? 'Adding…' : 'Add transaction'}
+              </Button>
+            </div>
           )}
-        </div>
 
-        <Card className="text-[11px] text-muted leading-relaxed mt-4">
-          <CardContent className="py-3">
-            ⚠ Deleting a property does not delete historical statements. Past reports will retain the data as generated.
-          </CardContent>
-        </Card>
-
-        {/* Delete confirmation — Radix Dialog handles focus trap, Escape key, aria */}
-        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete property?</DialogTitle>
-              <DialogDescription>
-                This will remove <strong>{originalAddress}</strong> from your account.
-                Historical statements and reports are not affected.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="destructive" className="flex-1" onClick={handleDelete}>
-                Delete property
-              </Button>
-              <DialogClose asChild>
-                <Button variant="outline" className="flex-1">Cancel</Button>
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={!!confirmDelete} onOpenChange={open => !open && setConfirmDelete(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete transaction?</DialogTitle>
-              <DialogDescription>
-                This will permanently remove the{' '}
-                <strong>{CATEGORY_LABELS[confirmDelete?.category ?? ''] ?? confirmDelete?.category}</strong>{' '}
-                entry of <strong>{confirmDelete ? formatCents(confirmDelete.amountCents) : ''}</strong>.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="destructive" className="flex-1"
-                onClick={() => confirmDelete && handleDeleteEntry(confirmDelete)}>
-                Delete transaction
-              </Button>
-              <DialogClose asChild>
-                <Button variant="outline" className="flex-1">Cancel</Button>
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+          {entriesLoading ? (
+            <div className="text-center py-8">
+              <span className="text-sm text-muted">Loading…</span>
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-sm text-muted">No transactions for this month.</p>
+            </div>
+          ) : (
+            <div className="bg-surface border border-border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-screen-bg">
+                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Date</th>
+                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Category</th>
+                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Description</th>
+                    <th className="text-right font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Amount</th>
+                    <th className="w-8"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map(entry => (
+                    <tr key={entry.id} className="border-b border-ruled last:border-b-0">
+                      <td className="py-2.5 px-4 text-muted">{formatDate(entry.lineItemDate)}</td>
+                      <td className="py-2.5 px-4">{CATEGORY_LABELS[entry.category] ?? entry.category}</td>
+                      <td className="py-2.5 px-4 text-muted">{entry.description ?? '—'}</td>
+                      <td className="py-2.5 px-4 text-right tabular-nums font-medium">{formatCents(entry.amountCents)}</td>
+                      <td className="py-2.5 pr-3">
+                        {!entry.sourceDocumentId && (
+                          <button
+                            onClick={() => handleDeleteEntry(entry)}
+                            className="text-muted hover:text-red-600 transition-colors"
+                            title="Delete"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+                              <path d="M2 3.5h10M5 3.5V2h4v1.5M5.5 6v5M8.5 6v5M3 3.5l.7 8h6.6l.7-8"/>
+                            </svg>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

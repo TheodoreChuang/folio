@@ -1,4 +1,4 @@
-import { and, eq, gte, isNull, lte } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { propertyLedger } from '@/db/schema'
 import type { PropertyLedger, LedgerCategory } from '@/db/schema'
@@ -33,6 +33,32 @@ export async function findTrailing12mEntries(
         gte(propertyLedger.lineItemDate, cutoff),
         isNull(propertyLedger.deletedAt),
       ),
+    )
+}
+
+export async function listLedgerEntriesByMonth(
+  userId: string,
+  propertyId: string,
+  month: string,
+): Promise<PropertyLedger[]> {
+  const startDate = `${month}-01`
+  const endDate = lastDayOfMonth(month)
+
+  return db
+    .select()
+    .from(propertyLedger)
+    .where(
+      and(
+        eq(propertyLedger.userId, userId),
+        eq(propertyLedger.propertyId, propertyId),
+        gte(propertyLedger.lineItemDate, startDate),
+        lte(propertyLedger.lineItemDate, endDate),
+        isNull(propertyLedger.deletedAt),
+      ),
+    )
+    .orderBy(
+      asc(sql`CASE category WHEN 'rent' THEN 0 WHEN 'loan_payment' THEN 2 ELSE 1 END`),
+      desc(propertyLedger.lineItemDate),
     )
 }
 
