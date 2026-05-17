@@ -3,6 +3,16 @@
 @docs/conventions.md
 @docs/testing-strategy.md
 
+## Git — non-negotiable before any code change
+
+**Always create a branch before making any edits.** Never commit to `main`.
+
+```
+git checkout -b {type}/{short-description}   # do this first, before touching any file
+```
+
+After all work is done and verified: commit to the branch, push, open a PR via `gh pr create`.
+
 ## Stack
 - **Next.js 16** (App Router, TypeScript, `strict: true`)
 - **Supabase** — auth (SSR cookies), Postgres, Storage; local at `http://127.0.0.1:54321`
