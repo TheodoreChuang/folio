@@ -75,7 +75,7 @@ describe('stageExtractionResult', () => {
 
   it('inserts one staging row per line item', async () => {
     mocks.mockInsertStagedItems.mockResolvedValue([{}, {}])
-    const result = await stageExtractionResult(USER_ID, DOC_ID, sampleResult)
+    const _result = await stageExtractionResult(USER_ID, DOC_ID, sampleResult)
     expect(mocks.mockInsertStagedItems).toHaveBeenCalledOnce()
     const [items] = mocks.mockInsertStagedItems.mock.calls[0] as [unknown[]]
     expect(items).toHaveLength(2)

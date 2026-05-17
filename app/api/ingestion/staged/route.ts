@@ -25,7 +25,7 @@ export async function GET() {
           items: [],
         })
       }
-      grouped.get(item.sourceDocumentId)!.items.push(item)
+      grouped.get(item.sourceDocumentId)?.items.push(item)
     }
 
     const sessions = Array.from(grouped.values())

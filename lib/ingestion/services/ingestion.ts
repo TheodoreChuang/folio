@@ -82,11 +82,14 @@ export async function commitStagedItems(
         )
       )
 
-    if (approved.length === 0) return
+    const committable = approved.filter(
+      (item): item is typeof item & { propertyId: string } => item.propertyId !== null
+    )
+    if (committable.length === 0) return
 
-    const rows = approved.map((item) => ({
+    const rows = committable.map((item) => ({
       userId: item.userId,
-      propertyId: item.propertyId!,
+      propertyId: item.propertyId,
       sourceDocumentId: item.sourceDocumentId,
       installmentLoanId: item.installmentLoanId,
       lineItemDate: item.lineItemDate,

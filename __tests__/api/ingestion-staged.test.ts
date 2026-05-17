@@ -56,7 +56,7 @@ vi.mock('@/lib/ingestion', () => ({
   patchStagedItem: (...args: unknown[]) => mocks.mockPatchStagedItem(...args),
 }))
 
-function makeGetRequest() {
+function _makeGetRequest() {
   return new Request('http://localhost/api/ingestion/staged', { method: 'GET' })
 }
 
