@@ -561,10 +561,10 @@ With the backend stable and UI on the new design system, new feature work resume
 | 3 | Reporting backend (delete `portfolio_reports`, monthly reports, AI commentary) | ✅ Done | 1 |
 | Frontend PR 1 | Design foundation (shell, shared components, shadcn primitives) | ✅ Done | 1 |
 | Frontend PR 2 | Dashboard | ✅ Done | 1 |
-| Frontend PR 3 | Properties pages (list + add + tabbed detail) | | 1 |
-| Frontend PR 4 | Loans pages (list + add + detail) | | 1 |
+| Frontend PR 3 | Properties pages (list + add + tabbed detail) | 🔍 In review (#25) | 1 |
+| Frontend PR 4 | Loans pages (list + add + detail) | 🔍 In review (#24) | 1 |
 | Frontend PR 5a | Ingestion domain backend + delete `POST /api/statements` | ✅ Done | 1 |
-| Frontend PR 5b | Upload idle state | | 1 |
+| Frontend PR 5b | Upload idle state | 🔍 In review (#26) | 1 |
 | Frontend PR 5c | Upload review state | | 1 |
 | Frontend PR 6 | Entities | ✅ Done | 1 |
-| **Total remaining** | | | **~4** |
+| **Total remaining** | | | **~1** |
