@@ -70,7 +70,7 @@ vi.mock('@/lib/ingestion', () => ({
   stageExtractionResult: (...args: unknown[]) => mocks.mockStageExtractionResult(...args),
 }))
 
-vi.mock('@/lib/extraction/parse', () => ({
+vi.mock('@/lib/ingestion/extraction/parse', () => ({
   extractTextFromPdf: (...args: unknown[]) => mocks.mockExtractTextFromPdf(...args),
   extractStatementData: (...args: unknown[]) => mocks.mockExtractStatementData(...args),
 }))

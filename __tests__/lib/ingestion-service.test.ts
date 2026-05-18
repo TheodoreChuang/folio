@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { stageExtractionResult, commitStagedItems } from '@/lib/ingestion/services/ingestion'
-import type { ExtractionResult } from '@/lib/extraction/schema'
+import type { ExtractionResult } from '@/lib/ingestion/extraction/schema'
 
 const USER_ID = 'user-123'
 const DOC_ID = 'a1b2c3d4-e5f6-4789-a012-345678901234'
