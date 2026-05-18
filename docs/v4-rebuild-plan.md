@@ -455,15 +455,31 @@ and extract APIs — dates are inferred from PDF content by the AI extractor.
 
 ---
 
-#### PR 5c — Upload: Review State
+#### PR 5c — Upload: Review State ✅ Done
+**Status:** PR #28 merged to main.
 
-Completes `app/(app)/upload/page.tsx` with review state.
+Delivered:
+- **Review state** in `app/(app)/upload/page.tsx` (idle state from PR 5b unchanged)
+- **"Needs your input"** — staged sessions where any item has no `propertyId`; per-item category
+  dropdowns (`PATCH /api/ingestion/staged/[id]`); property selector at card footer; "Confirm →"
+  PATCHes all items with `{ propertyId, status: 'approved' }` in parallel → session moves to Matched
+- **"Matched"** — collapsible summary cards with net cashflow label
+- **Mortgage entries** — manual loan payment form per property/loan →
+  `POST /api/properties/[id]/loan-payments`; commits immediately, bypasses staging
+- **Commit bar** — "Confirm — add to portfolio →" → `POST /api/ingestion/commit` with all matched
+  `sourceDocumentIds`; unresolved sessions remain in queue; on success return to idle
+- **Header toggle** — segmented Idle / In review pill replacing the single button; count badge in
+  warning-red; only shown when staged sessions exist
+- **Idle callout** moved below drop zone; switched from accent (blue) to warning (amber) colours
+- **`lib/ingestion/services/ingestion.ts`** — `commitStagedItems` backend gap fixed: staging rows
+  are now deleted within the transaction after writing to `property_ledger`
+- **`formatCents`** fixed globally — now shows 2 decimal places (`$100.98` not `$101`); local
+  duplicate copies removed from all page files; all pages now import from `lib/format`
 
-Review state (from `GET /api/ingestion/staged`):
-- "Needs your input" — property selector + line item edits via `PATCH /api/ingestion/staged/[id]`
-- "Matched" — collapsible confirmed cards
-- Mortgage entries — per-property loan payment forms → `POST /api/properties/[id]/loan-payments`
-- Commit bar → `POST /api/ingestion/commit`; on success return to idle
+Deferred:
+- Property pre-fill from extracted address — requires schema change to persist `propertyAddress`
+  on `document_staging_items` or `source_documents`; deferred to a future PR
+- Document type auto-detection — no other document types supported yet; selector left in place
 
 ---
 
@@ -566,6 +582,6 @@ With the backend stable and UI on the new design system, new feature work resume
 | Frontend PR 4 | Loans pages (list + add + detail) | ✅ Done | 1 |
 | Frontend PR 5a | Ingestion domain backend + delete `POST /api/statements` | ✅ Done | 1 |
 | Frontend PR 5b | Upload idle state | ✅ Done | 1 |
-| Frontend PR 5c | Upload review state | | 1 |
+| Frontend PR 5c | Upload review state | ✅ Done | 1 |
 | Frontend PR 6 | Entities | ✅ Done | 1 |
-| **Total remaining** | | | **~1** |
+| **Total remaining** | | **Complete** | — |
