@@ -193,6 +193,9 @@ describe('commitStagedItems', () => {
             returning: vi.fn().mockResolvedValue([approvedItem]),
           }),
         }),
+        delete: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
       }
       await fn(txMock)
     })
@@ -223,5 +226,19 @@ describe('commitStagedItems', () => {
       .mockResolvedValueOnce([]) // no approved items
     const result = await commitStagedItems(USER_ID, [DOC_ID])
     expect(result.committed).toBe(0)
+  })
+
+  it('deletes staging items within the transaction after committing', async () => {
+    const deleteMock = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) })
+    mocks.mockDbTransaction.mockImplementationOnce(async (fn: (tx: unknown) => Promise<void>) => {
+      const txMock = {
+        update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }) }) }),
+        insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([approvedItem]) }) }),
+        delete: deleteMock,
+      }
+      await fn(txMock)
+    })
+    await commitStagedItems(USER_ID, [DOC_ID])
+    expect(deleteMock).toHaveBeenCalledOnce()
   })
 })

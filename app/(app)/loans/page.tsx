@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { MetricTile } from '@/components/ui/metric-tile'
 import type { Property, InstallmentLoan, InstallmentLoanBalance, Entity } from '@/db/schema'
+import { formatCents } from '@/lib/format'
 
 type LoanWithBalance = InstallmentLoan & {
   latestBalance: Pick<InstallmentLoanBalance, 'balanceCents' | 'recordedAt'> | null
@@ -15,14 +16,6 @@ type LoanWithBalance = InstallmentLoan & {
 type FlatLoan = LoanWithBalance & {
   propertyAddress: string
   entityName: string | null
-}
-
-function formatCents(cents: number): string {
-  const dollars = cents / 100
-  if (dollars >= 1_000_000) {
-    return `$${(dollars / 1_000_000).toFixed(2)}m`
-  }
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(dollars)
 }
 
 export default function LoansPage() {

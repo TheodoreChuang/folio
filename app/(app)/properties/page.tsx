@@ -7,15 +7,12 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { MetricTile } from '@/components/ui/metric-tile'
 import type { Property, Entity } from '@/db/schema'
+import { formatCents } from '@/lib/format'
 
 type PropertyWithEntity = Property & { entityName: string | null }
 
 type LedgerSummaryFlags = {
   missingStatements: string[]
-}
-
-function formatCents(cents: number): string {
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(cents / 100)
 }
 
 function currentMonthRange(): { from: string; to: string } {

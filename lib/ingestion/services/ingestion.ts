@@ -100,6 +100,16 @@ export async function commitStagedItems(
 
     const inserted = await tx.insert(propertyLedger).values(rows).returning()
     committed = inserted.length
+
+    // Clean up all staging items for committed documents (committed or skipped)
+    await tx
+      .delete(documentStagingItems)
+      .where(
+        and(
+          eq(documentStagingItems.userId, userId),
+          inArray(documentStagingItems.sourceDocumentId, sourceDocumentIds),
+        )
+      )
   })
 
   return { committed }
