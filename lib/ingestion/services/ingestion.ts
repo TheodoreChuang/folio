@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { documentStagingItems, propertyLedger, sourceDocuments } from '@/db/schema'
-import type { ExtractionResult } from '@/lib/extraction/schema'
+import type { ExtractionResult } from '../extraction/schema'
 import { insertStagedItems } from '../repositories/staging'
 
 export async function stageExtractionResult(

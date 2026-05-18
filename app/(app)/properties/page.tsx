@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { MetricTile } from '@/components/ui/metric-tile'
+import { Badge } from '@/components/ui/badge'
 import type { Property, Entity } from '@/db/schema'
 import { formatCents } from '@/lib/format'
 
@@ -179,14 +180,9 @@ export default function PropertiesPage() {
                     </td>
                     <td className="py-3 px-4 text-muted">{prop.entityName ?? '—'}</td>
                     <td className="py-3 px-4 text-center">
-                      <span className={[
-                        'inline-flex items-center text-xs px-2 py-0.5 rounded-full font-medium',
-                        hasMissing
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'bg-green-50 text-green-700 border border-green-200',
-                      ].join(' ')}>
+                      <Badge variant={hasMissing ? 'missing' : 'complete'}>
                         {hasMissing ? 'Missing' : 'Complete'}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="py-3 px-4 text-right text-muted">—</td>
                   </tr>

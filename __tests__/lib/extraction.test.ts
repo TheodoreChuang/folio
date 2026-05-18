@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   extractionResultSchema,
   extractedLineItemSchema,
-} from '@/lib/extraction/schema'
-import { extractTextFromPdf } from '@/lib/extraction/parse'
+} from '@/lib/ingestion/extraction/schema'
+import { extractTextFromPdf } from '@/lib/ingestion/extraction/parse'
 
 const validLineItem = {
   lineItemDate: '2026-03-31',
