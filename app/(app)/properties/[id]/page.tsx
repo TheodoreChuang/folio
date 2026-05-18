@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { MetricTile } from '@/components/ui/metric-tile'
-import { recentMonths } from '@/lib/format'
+import { formatCents, recentMonths } from '@/lib/format'
 import type { Property, PropertyLedger, PropertyValuation, InstallmentLoan, Entity } from '@/db/schema'
 
 type LatestValuation = { valueCents: number; valuedAt: string; source: string | null } | null
@@ -34,10 +34,6 @@ const VALUATION_SOURCES = [
   { value: 'independent_valuer', label: 'Independent valuer' },
   { value: 'comparable_sale', label: 'Recent comparable sale' },
 ]
-
-function formatCents(cents: number): string {
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(cents / 100)
-}
 
 function formatDate(d: string): string {
   const [y, m, day] = d.split('-')

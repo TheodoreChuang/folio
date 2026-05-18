@@ -538,21 +538,6 @@ export default function UploadPage() {
       ) : (
         <div className="space-y-6">
 
-          {stagedSessions.length > 0 && (
-            <div className="flex items-center justify-between bg-accent/5 border border-accent/20 rounded-lg px-5 py-4">
-              <div className="flex items-center gap-3">
-                <span className="text-accent font-bold text-base">?</span>
-                <div>
-                  <p className="text-sm font-medium text-ink">{stagedSessions.length} {stagedSessions.length === 1 ? 'document is' : 'documents are'} waiting on your input.</p>
-                  <p className="text-xs text-muted">{pendingCount} items from your last {stagedSessions.length === 1 ? 'upload' : `${stagedSessions.length} uploads`}</p>
-                </div>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => setUploadState('review')}>
-                Resolve now →
-              </Button>
-            </div>
-          )}
-
           <div className="grid grid-cols-3 gap-3">
             {DOCUMENT_TYPE_OPTIONS.map(opt => (
               <button
@@ -606,6 +591,21 @@ export default function UploadPage() {
               onChange={e => e.target.files && handleFiles(e.target.files)}
             />
           </div>
+
+          {stagedSessions.length > 0 && (
+            <div className="flex items-center justify-between bg-warning-soft border border-warning/25 rounded-lg px-5 py-4">
+              <div className="flex items-center gap-3">
+                <span className="text-warning font-bold text-base">!</span>
+                <div>
+                  <p className="text-sm font-medium text-ink">{stagedSessions.length} {stagedSessions.length === 1 ? 'document is' : 'documents are'} waiting on your input.</p>
+                  <p className="text-xs text-muted">{pendingCount} items from your last {stagedSessions.length === 1 ? 'upload' : `${stagedSessions.length} uploads`}</p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setUploadState('review')}>
+                Resolve now →
+              </Button>
+            </div>
+          )}
 
           {fileStatuses.length > 0 && (
             <div className="bg-surface border border-border rounded-lg overflow-hidden">

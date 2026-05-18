@@ -16,9 +16,7 @@ type LoanWithProperty = InstallmentLoan & {
   propertyAddress: string
 }
 
-function formatCents(cents: number): string {
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(cents / 100)
-}
+import { formatCents } from '@/lib/format'
 
 function formatDate(d: string): string {
   const [y, m, day] = d.split('-')

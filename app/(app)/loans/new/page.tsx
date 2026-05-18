@@ -8,10 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Property } from '@/db/schema'
-
-function formatCents(cents: number): string {
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(cents / 100)
-}
+import { formatCents } from '@/lib/format'
 
 export default function NewLoanPage() {
   const router = useRouter()
