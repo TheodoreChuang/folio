@@ -79,6 +79,13 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Build app for e2e
+        run: pnpm build
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:54322/postgres
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.supabase.outputs.api_url }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ steps.supabase.outputs.anon_key }}
+
       - name: E2E tests
         run: pnpm test:e2e
         env:
