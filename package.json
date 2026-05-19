@@ -16,8 +16,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run -c vitest.integration.config.ts",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e": "playwright test --grep-invert @screenshot",
+    "test:e2e:ui": "playwright test --ui",
+    "test:screenshots": "playwright test --grep @screenshot",
+    "pr:create": "bash scripts/pr-with-screenshots.sh"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.4",
