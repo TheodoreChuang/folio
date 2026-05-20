@@ -68,6 +68,14 @@ Rate sensitivity, extra repayments, projection charts. Backend not started.
 - See `docs/testing-strategy.md` for test requirements
 - See `docs/data-model.md` for schema and API patterns before adding any new tables or routes
 
+## Task tracking
+
+GitHub Issues + milestones. One milestone per screen/feature (e.g. "Property Detail").
+Issues within the milestone describe individual PRs with acceptance criteria.
+`docs/plans/` holds the active implementation spec — created during `/ce-plan`,
+deleted when the PR merges. To start work on a milestone: create the milestone in
+GitHub, open an issue for the first PR, then run `/ce-brainstorm`.
+
 ## Workflow
 
 Uses the compound engineering loop:
