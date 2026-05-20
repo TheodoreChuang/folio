@@ -1,4 +1,4 @@
-# Folio — Strategy
+# Folio — Project
 
 ## Product
 
@@ -13,7 +13,9 @@ with multiple lenders. They want clarity, not a full accounting product.
 **What it is not:** An accounting tool, a lender integration, a public service,
 or a spreadsheet replacement for complex structures.
 
-## Current state (as of 2026-05-19)
+See `docs/product-foundation.md` for full product vision, user profile, and brand principles.
+
+## Current state (as of 2026-05-20)
 
 ### Implemented pages
 | Page | State |
@@ -62,13 +64,43 @@ Rate sensitivity, extra repayments, projection charts. Backend not started.
 - No frontend unit tests — Playwright e2e for critical paths
 - Logic lives in backend services; frontend renders computed values
 - Branch + PR per feature; never commit to main
-- See CLAUDE.md for conventions and commands
+- See `docs/conventions.md` for coding conventions
+- See `docs/testing-strategy.md` for test requirements
+- See `docs/data-model.md` for schema and API patterns before adding any new tables or routes
 
 ## Workflow
-Uses compound engineering loop:
-1. `/ce-brainstorm` — clarify requirements from design
-2. `/ce-plan` — implementation plan (approved before coding)
-3. Implement (branch, TDD backend, build frontend)
-4. `pnpm pr:create` — screenshots embedded in PR
-5. `/ce-code-review` — multi-agent review
-6. `/ce-compound` — capture learnings
+
+Uses the compound engineering loop:
+
+1. `/ce-brainstorm` — read the relevant section of `docs/designs/folio.html` +
+   `docs/product-foundation.md` + `docs/data-model.md`; clarify requirements and
+   produce a short written spec
+2. `/ce-plan` — produce a numbered implementation plan approved before any code is written;
+   save the plan to `docs/plans/{feature}.md` so it survives context resets
+3. **Implement** — branch, TDD backend first (tests green before touching frontend),
+   then build frontend; plan file is the session anchor
+4. **PR** — open via `gh pr create`; link to the GitHub issue if one exists;
+   delete the plan file in the same PR
+5. `/ce-code-review` — multi-agent review before merge
+6. `/ce-compound` — capture learnings that belong in CLAUDE.md or docs/
+
+### Plan file format (`docs/plans/{feature}.md`)
+```
+# Plan: {feature name}
+GitHub issue: #{number} (if applicable)
+
+## Scope
+What is and is not in this PR.
+
+## Backend tasks (do first — tests must pass before frontend)
+- [ ] ...
+
+## Frontend tasks
+- [ ] ...
+
+## Done criteria
+- [ ] pnpm test passes
+- [ ] pnpm test:integration passes (if DB touched)
+- [ ] pnpm test:e2e passes for the affected flow
+- [ ] PR open and linked to issue
+```

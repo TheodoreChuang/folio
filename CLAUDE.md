@@ -2,6 +2,7 @@
 
 @docs/conventions.md
 @docs/testing-strategy.md
+@docs/project.md
 
 ## Git — non-negotiable before any code change
 
