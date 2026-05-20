@@ -45,6 +45,15 @@ function makeChain(resolvedValue: unknown) {
   return chain
 }
 
+// Resolves ownership pre-check (mockDb.select before entering a transaction)
+function mockOwnershipCheck() {
+  mockDb.select.mockReturnValueOnce({
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue([{ id: 'prop-1' }]),
+  })
+}
+
 describe('listTenancies', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -135,20 +144,21 @@ describe('renewTenancy', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('runs atomically: ends old tenancy and inserts new one', async () => {
+    const endedTenancy = makeTenancy({ id: 'old-tenancy', isCurrent: false })
     const newRow = makeTenancy({ id: 'new-tenancy', isCurrent: true })
     const txMock = {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue([]),
+        where: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([endedTenancy]),
       }),
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue([newRow]),
       }),
     }
-    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<void>) => {
-      await fn(txMock)
-    })
+    mockOwnershipCheck()
+    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<PropertyTenancy>) => fn(txMock))
 
     const { renewTenancy } = await import('@/lib/property/services/management')
     const result = await renewTenancy('user-1', 'prop-1', 'old-tenancy', {
@@ -160,5 +170,43 @@ describe('renewTenancy', () => {
     expect(result.isCurrent).toBe(true)
     expect(txMock.update).toHaveBeenCalled()
     expect(txMock.insert).toHaveBeenCalled()
+  })
+
+  it('throws when tenancyIdToEnd matches no rows', async () => {
+    const txMock = {
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([]),  // 0 rows updated
+      }),
+    }
+    mockOwnershipCheck()
+    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<PropertyTenancy>) => fn(txMock))
+
+    const { renewTenancy } = await import('@/lib/property/services/management')
+    await expect(
+      renewTenancy('user-1', 'prop-1', 'nonexistent-id', {
+        leaseType: 'fixed_term',
+        leaseStart: '2026-01-01',
+        weeklyRentCents: 65000,
+      })
+    ).rejects.toThrow('Tenancy not found')
+  })
+
+  it('throws when property does not belong to user', async () => {
+    mockDb.select.mockReturnValueOnce({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([]),
+    })
+
+    const { renewTenancy } = await import('@/lib/property/services/management')
+    await expect(
+      renewTenancy('user-1', 'other-prop', 'old-tenancy', {
+        leaseType: 'fixed_term',
+        leaseStart: '2026-01-01',
+        weeklyRentCents: 65000,
+      })
+    ).rejects.toThrow('Property not found')
   })
 })

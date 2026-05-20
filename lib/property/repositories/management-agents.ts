@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull } from 'drizzle-orm'
-import { db } from '@/lib/db'
+import { db, type DrizzleTx } from '@/lib/db'
 import { propertyManagementAgents } from '@/db/schema'
 import type { PropertyManagementAgent, StatementCadence } from '@/db/schema'
 
@@ -52,8 +52,31 @@ export async function findCurrentAgent(
   return row
 }
 
+export async function createManagementAgent(
+  tx: DrizzleTx,
+  input: CreateManagementAgentInput,
+): Promise<PropertyManagementAgent> {
+  const [row] = await tx
+    .insert(propertyManagementAgents)
+    .values({
+      userId: input.userId,
+      propertyId: input.propertyId,
+      agencyName: input.agencyName,
+      contactName: input.contactName ?? null,
+      phone: input.phone ?? null,
+      email: input.email ?? null,
+      feePercent: input.feePercent ?? null,
+      statementCadence: input.statementCadence,
+      effectiveFrom: input.effectiveFrom,
+      effectiveTo: input.effectiveTo ?? null,
+      isCurrent: true,
+    })
+    .returning()
+  return row
+}
+
 export async function deactivateCurrentAgents(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: DrizzleTx,
   userId: string,
   propertyId: string,
 ): Promise<void> {

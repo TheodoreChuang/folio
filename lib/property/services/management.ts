@@ -1,18 +1,29 @@
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { propertyTenancies, propertyManagementAgents } from '@/db/schema'
+import { properties, propertyTenancies, propertyManagementAgents } from '@/db/schema'
 import type { PropertyTenancy, PropertyManagementAgent } from '@/db/schema'
 import { createTenancy, type CreateTenancyInput } from '@/lib/property/repositories/tenancies'
 import {
   deactivateCurrentAgents,
+  createManagementAgent,
   type CreateManagementAgentInput,
 } from '@/lib/property/repositories/management-agents'
+
+async function assertPropertyOwnership(userId: string, propertyId: string): Promise<void> {
+  const [prop] = await db
+    .select({ id: properties.id })
+    .from(properties)
+    .where(and(eq(properties.id, propertyId), eq(properties.userId, userId)))
+    .limit(1)
+  if (!prop) throw new Error('Property not found')
+}
 
 export async function addTenancy(
   userId: string,
   propertyId: string,
   data: Omit<CreateTenancyInput, 'userId' | 'propertyId'>,
 ): Promise<PropertyTenancy> {
+  await assertPropertyOwnership(userId, propertyId)
   return createTenancy({ userId, propertyId, ...data })
 }
 
@@ -22,9 +33,9 @@ export async function renewTenancy(
   tenancyIdToEnd: string,
   data: Omit<CreateTenancyInput, 'userId' | 'propertyId'>,
 ): Promise<PropertyTenancy> {
-  let newRow!: PropertyTenancy
-  await db.transaction(async (tx) => {
-    await tx
+  await assertPropertyOwnership(userId, propertyId)
+  return db.transaction(async (tx) => {
+    const [ended] = await tx
       .update(propertyTenancies)
       .set({ isCurrent: false })
       .where(
@@ -35,24 +46,10 @@ export async function renewTenancy(
           isNull(propertyTenancies.deletedAt),
         ),
       )
-
-    const [row] = await tx
-      .insert(propertyTenancies)
-      .values({
-        userId,
-        propertyId,
-        tenants: data.tenants ?? null,
-        leaseType: data.leaseType,
-        leaseStart: data.leaseStart,
-        leaseEnd: data.leaseEnd ?? null,
-        weeklyRentCents: data.weeklyRentCents,
-        bondCents: data.bondCents ?? null,
-        isCurrent: true,
-      })
       .returning()
-    newRow = row
+    if (!ended) throw new Error('Tenancy not found')
+    return createTenancy({ userId, propertyId, ...data }, tx)
   })
-  return newRow
 }
 
 export async function setCurrentManagementAgent(
@@ -60,28 +57,11 @@ export async function setCurrentManagementAgent(
   propertyId: string,
   data: Omit<CreateManagementAgentInput, 'userId' | 'propertyId'>,
 ): Promise<PropertyManagementAgent> {
-  let newRow!: PropertyManagementAgent
-  await db.transaction(async (tx) => {
+  await assertPropertyOwnership(userId, propertyId)
+  return db.transaction(async (tx) => {
     await deactivateCurrentAgents(tx, userId, propertyId)
-    const [row] = await tx
-      .insert(propertyManagementAgents)
-      .values({
-        userId,
-        propertyId,
-        agencyName: data.agencyName,
-        contactName: data.contactName ?? null,
-        phone: data.phone ?? null,
-        email: data.email ?? null,
-        feePercent: data.feePercent ?? null,
-        statementCadence: data.statementCadence,
-        effectiveFrom: data.effectiveFrom,
-        effectiveTo: data.effectiveTo ?? null,
-        isCurrent: true,
-      })
-      .returning()
-    newRow = row
+    return createManagementAgent(tx, { userId, propertyId, ...data })
   })
-  return newRow
 }
 
 export async function softDeleteManagementAgent(
@@ -89,6 +69,7 @@ export async function softDeleteManagementAgent(
   propertyId: string,
   agentId: string,
 ): Promise<void> {
+  await assertPropertyOwnership(userId, propertyId)
   await db.transaction(async (tx) => {
     await tx
       .update(propertyManagementAgents)
@@ -102,25 +83,40 @@ export async function softDeleteManagementAgent(
         ),
       )
 
-    // Promote the most-recent remaining non-deleted agent
-    const [candidate] = await tx
+    // Only promote when the deleted agent was the current one
+    const [stillCurrent] = await tx
       .select({ id: propertyManagementAgents.id })
       .from(propertyManagementAgents)
       .where(
         and(
           eq(propertyManagementAgents.userId, userId),
           eq(propertyManagementAgents.propertyId, propertyId),
+          eq(propertyManagementAgents.isCurrent, true),
           isNull(propertyManagementAgents.deletedAt),
         ),
       )
-      .orderBy(desc(propertyManagementAgents.createdAt))
       .limit(1)
 
-    if (candidate) {
-      await tx
-        .update(propertyManagementAgents)
-        .set({ isCurrent: true })
-        .where(eq(propertyManagementAgents.id, candidate.id))
+    if (!stillCurrent) {
+      const [candidate] = await tx
+        .select({ id: propertyManagementAgents.id })
+        .from(propertyManagementAgents)
+        .where(
+          and(
+            eq(propertyManagementAgents.userId, userId),
+            eq(propertyManagementAgents.propertyId, propertyId),
+            isNull(propertyManagementAgents.deletedAt),
+          ),
+        )
+        .orderBy(desc(propertyManagementAgents.createdAt))
+        .limit(1)
+
+      if (candidate) {
+        await tx
+          .update(propertyManagementAgents)
+          .set({ isCurrent: true })
+          .where(eq(propertyManagementAgents.id, candidate.id))
+      }
     }
   })
 }

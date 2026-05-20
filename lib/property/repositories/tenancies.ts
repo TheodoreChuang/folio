@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull } from 'drizzle-orm'
-import { db } from '@/lib/db'
+import { db, type DrizzleTx } from '@/lib/db'
 import { propertyTenancies } from '@/db/schema'
 import type { PropertyTenancy, LeaseType } from '@/db/schema'
 
@@ -28,8 +28,9 @@ export async function listTenancies(userId: string, propertyId: string): Promise
     .orderBy(desc(propertyTenancies.isCurrent), desc(propertyTenancies.createdAt))
 }
 
-export async function createTenancy(input: CreateTenancyInput): Promise<PropertyTenancy> {
-  const [row] = await db
+export async function createTenancy(input: CreateTenancyInput, tx?: DrizzleTx): Promise<PropertyTenancy> {
+  const client = tx ?? db
+  const [row] = await client
     .insert(propertyTenancies)
     .values({
       userId: input.userId,

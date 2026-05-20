@@ -39,6 +39,15 @@ function makeSelectChain(resolvedValue: unknown) {
   }
 }
 
+// Resolves ownership pre-check (mockDb.select before entering a transaction)
+function mockOwnershipCheck() {
+  mockDb.select.mockReturnValueOnce({
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue([{ id: 'prop-1' }]),
+  })
+}
+
 describe('listManagementAgents', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -99,9 +108,8 @@ describe('setCurrentManagementAgent', () => {
         returning: vi.fn().mockResolvedValue([newAgent]),
       }),
     }
-    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<void>) => {
-      await fn(txMock)
-    })
+    mockOwnershipCheck()
+    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<PropertyManagementAgent>) => fn(txMock))
 
     const { setCurrentManagementAgent } = await import('@/lib/property/services/management')
     const result = await setCurrentManagementAgent('user-1', 'prop-1', {
@@ -113,33 +121,88 @@ describe('setCurrentManagementAgent', () => {
     expect(txMock.update).toHaveBeenCalled()
     expect(txMock.insert).toHaveBeenCalled()
   })
+
+  it('throws when property does not belong to user', async () => {
+    mockDb.select.mockReturnValueOnce({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([]),  // no property found
+    })
+
+    const { setCurrentManagementAgent } = await import('@/lib/property/services/management')
+    await expect(
+      setCurrentManagementAgent('user-1', 'other-prop', {
+        agencyName: 'New Agency',
+        statementCadence: 'monthly',
+        effectiveFrom: '2026-01-01',
+      })
+    ).rejects.toThrow('Property not found')
+  })
 })
 
 describe('softDeleteManagementAgent', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('marks agent deleted and promotes the next candidate', async () => {
+  it('marks agent deleted and promotes the next candidate when deleted agent was current', async () => {
     const promotedId = 'prev-agent'
     const txMock = {
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnThis(),
         where: vi.fn().mockResolvedValue([]),
       }),
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue([{ id: promotedId }]),
-      }),
+      select: vi.fn()
+        .mockReturnValueOnce({  // still-current check → none found (deleted agent was current)
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        })
+        .mockReturnValueOnce({  // candidate search
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          orderBy: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([{ id: promotedId }]),
+        }),
     }
-    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<void>) => {
-      await fn(txMock)
-    })
+    mockOwnershipCheck()
+    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<void>) => fn(txMock))
 
     const { softDeleteManagementAgent } = await import('@/lib/property/services/management')
     await softDeleteManagementAgent('user-1', 'prop-1', 'curr-agent')
 
-    // The update was called at least once for soft-delete and once for promotion
-    expect(txMock.update).toHaveBeenCalledTimes(2)
+    expect(txMock.update).toHaveBeenCalledTimes(2)  // delete + promote
+  })
+
+  it('does not promote when deleted agent was not the current one', async () => {
+    const txMock = {
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+      }),
+      select: vi.fn().mockReturnValueOnce({  // still-current check → another agent is still current
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([{ id: 'other-current' }]),
+      }),
+    }
+    mockOwnershipCheck()
+    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<void>) => fn(txMock))
+
+    const { softDeleteManagementAgent } = await import('@/lib/property/services/management')
+    await softDeleteManagementAgent('user-1', 'prop-1', 'non-curr-agent')
+
+    expect(txMock.update).toHaveBeenCalledTimes(1)  // delete only, no promote
+  })
+
+  it('throws when property does not belong to user', async () => {
+    mockDb.select.mockReturnValueOnce({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([]),
+    })
+
+    const { softDeleteManagementAgent } = await import('@/lib/property/services/management')
+    await expect(
+      softDeleteManagementAgent('user-1', 'other-prop', 'agent-1')
+    ).rejects.toThrow('Property not found')
   })
 })
