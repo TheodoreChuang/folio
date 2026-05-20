@@ -23,7 +23,6 @@ function makeAgent(overrides: Partial<PropertyManagementAgent> = {}): PropertyMa
     statementCadence: 'monthly',
     effectiveFrom: '2025-01-01',
     effectiveTo: null,
-    isCurrent: true,
     createdAt: new Date('2025-01-01'),
     deletedAt: null,
     ...overrides,
@@ -31,15 +30,28 @@ function makeAgent(overrides: Partial<PropertyManagementAgent> = {}): PropertyMa
 }
 
 function makeSelectChain(resolvedValue: unknown) {
+  // orderBy must be both awaitable (for queries that end there) and chainable (for .limit())
+  const orderByResult = {
+    limit: vi.fn().mockResolvedValue(resolvedValue),
+    then: (resolve: (v: unknown) => void, reject: (e: unknown) => void) =>
+      Promise.resolve(resolvedValue).then(resolve, reject),
+  }
   return {
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
-    orderBy: vi.fn().mockResolvedValue(resolvedValue),
+    orderBy: vi.fn().mockReturnValue(orderByResult),
     limit: vi.fn().mockResolvedValue(resolvedValue),
   }
 }
 
-// Resolves ownership pre-check (mockDb.select before entering a transaction)
+function makeUpdateChain(resolvedValue: unknown) {
+  return {
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockResolvedValue(resolvedValue),
+  }
+}
+
 function mockOwnershipCheck() {
   mockDb.select.mockReturnValueOnce({
     from: vi.fn().mockReturnThis(),
@@ -51,146 +63,112 @@ function mockOwnershipCheck() {
 describe('listManagementAgents', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns ordered list current-first', async () => {
-    const current = makeAgent({ id: 'a', isCurrent: true })
-    const prev = makeAgent({ id: 'b', isCurrent: false })
-    mockDb.select.mockReturnValue(makeSelectChain([current, prev]))
+  it('returns agents ordered by effectiveFrom desc', async () => {
+    const a1 = makeAgent({ id: 'a', effectiveFrom: '2025-06-01' })
+    const a2 = makeAgent({ id: 'b', effectiveFrom: '2025-01-01' })
+    mockDb.select.mockReturnValue(makeSelectChain([a1, a2]))
 
     const { listManagementAgents } = await import('@/lib/property/repositories/management-agents')
     const result = await listManagementAgents('user-1', 'prop-1')
     expect(result[0].id).toBe('a')
   })
-
-  it('excludes soft-deleted rows (isNull deletedAt applied in WHERE — verified by integration test)', async () => {
-    const live = makeAgent({ id: 'live' })
-    mockDb.select.mockReturnValue(makeSelectChain([live]))
-
-    const { listManagementAgents } = await import('@/lib/property/repositories/management-agents')
-    const result = await listManagementAgents('user-1', 'prop-1')
-    expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('live')
-  })
 })
 
-describe('findCurrentAgent', () => {
+describe('findActiveAgent', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns the single current agent', async () => {
-    const agent = makeAgent({ isCurrent: true })
+  it('returns agent with no effectiveTo (open-ended)', async () => {
+    const agent = makeAgent({ effectiveTo: null })
     mockDb.select.mockReturnValue(makeSelectChain([agent]))
 
-    const { findCurrentAgent } = await import('@/lib/property/repositories/management-agents')
-    const result = await findCurrentAgent('user-1', 'prop-1')
-    expect(result?.isCurrent).toBe(true)
+    const { findActiveAgent } = await import('@/lib/property/repositories/management-agents')
+    const result = await findActiveAgent('user-1', 'prop-1')
+    expect(result?.effectiveTo).toBeNull()
   })
 
-  it('returns undefined when no current agent', async () => {
+  it('returns undefined when no active agent', async () => {
     mockDb.select.mockReturnValue(makeSelectChain([]))
 
-    const { findCurrentAgent } = await import('@/lib/property/repositories/management-agents')
-    const result = await findCurrentAgent('user-1', 'prop-1')
+    const { findActiveAgent } = await import('@/lib/property/repositories/management-agents')
+    const result = await findActiveAgent('user-1', 'prop-1')
     expect(result).toBeUndefined()
   })
 })
 
-describe('setCurrentManagementAgent', () => {
+describe('createManagementAgent', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('deactivates existing current agent and inserts new one atomically', async () => {
-    const newAgent = makeAgent({ id: 'new-agent', agencyName: 'New Agency' })
-    const txMock = {
-      update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue([]),
-      }),
-      insert: vi.fn().mockReturnValue({
-        values: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([newAgent]),
-      }),
-    }
-    mockOwnershipCheck()
-    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<PropertyManagementAgent>) => fn(txMock))
+  it('inserts agent and returns it', async () => {
+    const agent = makeAgent({ id: 'new-agent' })
+    mockDb.insert.mockReturnValue({
+      values: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([agent]),
+    })
 
-    const { setCurrentManagementAgent } = await import('@/lib/property/services/management')
-    const result = await setCurrentManagementAgent('user-1', 'prop-1', {
-      agencyName: 'New Agency',
+    const { createManagementAgent } = await import('@/lib/property/repositories/management-agents')
+    const result = await createManagementAgent({
+      userId: 'user-1',
+      propertyId: 'prop-1',
+      agencyName: 'McGrath',
       statementCadence: 'monthly',
-      effectiveFrom: '2026-01-01',
+      effectiveFrom: '2025-01-01',
     })
     expect(result.id).toBe('new-agent')
-    expect(txMock.update).toHaveBeenCalled()
-    expect(txMock.insert).toHaveBeenCalled()
-  })
-
-  it('throws when property does not belong to user', async () => {
-    mockDb.select.mockReturnValueOnce({
-      from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockResolvedValue([]),  // no property found
-    })
-
-    const { setCurrentManagementAgent } = await import('@/lib/property/services/management')
-    await expect(
-      setCurrentManagementAgent('user-1', 'other-prop', {
-        agencyName: 'New Agency',
-        statementCadence: 'monthly',
-        effectiveFrom: '2026-01-01',
-      })
-    ).rejects.toThrow('Property not found')
   })
 })
 
-describe('softDeleteManagementAgent', () => {
+describe('updateManagementAgent', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('marks agent deleted and promotes the next candidate when deleted agent was current', async () => {
-    const promotedId = 'prev-agent'
-    const txMock = {
-      update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue([]),
-      }),
-      select: vi.fn()
-        .mockReturnValueOnce({  // still-current check → none found (deleted agent was current)
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockResolvedValue([]),
-        })
-        .mockReturnValueOnce({  // candidate search
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockReturnThis(),
-          orderBy: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockResolvedValue([{ id: promotedId }]),
-        }),
-    }
-    mockOwnershipCheck()
-    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<void>) => fn(txMock))
+  it('updates fields and returns the row', async () => {
+    const updated = makeAgent({ agencyName: 'Ray White' })
+    mockDb.update.mockReturnValue(makeUpdateChain([updated]))
 
-    const { softDeleteManagementAgent } = await import('@/lib/property/services/management')
-    await softDeleteManagementAgent('user-1', 'prop-1', 'curr-agent')
-
-    expect(txMock.update).toHaveBeenCalledTimes(2)  // delete + promote
+    const { updateManagementAgent } = await import('@/lib/property/repositories/management-agents')
+    const result = await updateManagementAgent('user-1', 'agent-1', { agencyName: 'Ray White' })
+    expect(result?.agencyName).toBe('Ray White')
   })
 
-  it('does not promote when deleted agent was not the current one', async () => {
-    const txMock = {
-      update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue([]),
-      }),
-      select: vi.fn().mockReturnValueOnce({  // still-current check → another agent is still current
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue([{ id: 'other-current' }]),
-      }),
-    }
+  it('returns undefined when agent not found or not owned', async () => {
+    mockDb.update.mockReturnValue(makeUpdateChain([]))
+
+    const { updateManagementAgent } = await import('@/lib/property/repositories/management-agents')
+    const result = await updateManagementAgent('user-1', 'bad-id', { agencyName: 'Ray White' })
+    expect(result).toBeUndefined()
+  })
+})
+
+describe('deleteManagementAgent', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('sets deletedAt on the agent', async () => {
+    const deleted = makeAgent({ deletedAt: new Date() })
+    mockDb.update.mockReturnValue(makeUpdateChain([deleted]))
+
+    const { deleteManagementAgent } = await import('@/lib/property/repositories/management-agents')
+    const result = await deleteManagementAgent('user-1', 'agent-1')
+    expect(result?.deletedAt).not.toBeNull()
+  })
+})
+
+describe('addManagementAgent (service)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('ownership check + inserts agent', async () => {
+    const agent = makeAgent({ id: 'new-agent' })
     mockOwnershipCheck()
-    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<void>) => fn(txMock))
+    mockDb.insert.mockReturnValue({
+      values: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([agent]),
+    })
 
-    const { softDeleteManagementAgent } = await import('@/lib/property/services/management')
-    await softDeleteManagementAgent('user-1', 'prop-1', 'non-curr-agent')
-
-    expect(txMock.update).toHaveBeenCalledTimes(1)  // delete only, no promote
+    const { addManagementAgent } = await import('@/lib/property/services/management')
+    const result = await addManagementAgent('user-1', 'prop-1', {
+      agencyName: 'McGrath',
+      statementCadence: 'monthly',
+      effectiveFrom: '2025-01-01',
+    })
+    expect(result.id).toBe('new-agent')
   })
 
   it('throws when property does not belong to user', async () => {
@@ -200,9 +178,13 @@ describe('softDeleteManagementAgent', () => {
       limit: vi.fn().mockResolvedValue([]),
     })
 
-    const { softDeleteManagementAgent } = await import('@/lib/property/services/management')
+    const { addManagementAgent } = await import('@/lib/property/services/management')
     await expect(
-      softDeleteManagementAgent('user-1', 'other-prop', 'agent-1')
+      addManagementAgent('user-1', 'other-prop', {
+        agencyName: 'McGrath',
+        statementCadence: 'monthly',
+        effectiveFrom: '2025-01-01',
+      })
     ).rejects.toThrow('Property not found')
   })
 })

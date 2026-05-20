@@ -1,5 +1,5 @@
-import { and, desc, eq, isNull } from 'drizzle-orm'
-import { db, type DrizzleTx } from '@/lib/db'
+import { and, desc, eq, gte, isNull, or } from 'drizzle-orm'
+import { db } from '@/lib/db'
 import { propertyManagementAgents } from '@/db/schema'
 import type { PropertyManagementAgent, StatementCadence } from '@/db/schema'
 
@@ -13,6 +13,17 @@ export type CreateManagementAgentInput = {
   feePercent?: string | null
   statementCadence: StatementCadence
   effectiveFrom: string
+  effectiveTo?: string | null
+}
+
+export type UpdateManagementAgentInput = {
+  agencyName?: string
+  contactName?: string | null
+  phone?: string | null
+  email?: string | null
+  feePercent?: string | null
+  statementCadence?: StatementCadence
+  effectiveFrom?: string
   effectiveTo?: string | null
 }
 
@@ -30,13 +41,14 @@ export async function listManagementAgents(
         isNull(propertyManagementAgents.deletedAt),
       ),
     )
-    .orderBy(desc(propertyManagementAgents.isCurrent), desc(propertyManagementAgents.createdAt))
+    .orderBy(desc(propertyManagementAgents.effectiveFrom))
 }
 
-export async function findCurrentAgent(
+export async function findActiveAgent(
   userId: string,
   propertyId: string,
 ): Promise<PropertyManagementAgent | undefined> {
+  const today = new Date().toISOString().split('T')[0]
   const [row] = await db
     .select()
     .from(propertyManagementAgents)
@@ -44,19 +56,22 @@ export async function findCurrentAgent(
       and(
         eq(propertyManagementAgents.userId, userId),
         eq(propertyManagementAgents.propertyId, propertyId),
-        eq(propertyManagementAgents.isCurrent, true),
         isNull(propertyManagementAgents.deletedAt),
+        or(
+          isNull(propertyManagementAgents.effectiveTo),
+          gte(propertyManagementAgents.effectiveTo, today),
+        ),
       ),
     )
+    .orderBy(desc(propertyManagementAgents.effectiveFrom))
     .limit(1)
   return row
 }
 
 export async function createManagementAgent(
-  tx: DrizzleTx,
   input: CreateManagementAgentInput,
 ): Promise<PropertyManagementAgent> {
-  const [row] = await tx
+  const [row] = await db
     .insert(propertyManagementAgents)
     .values({
       userId: input.userId,
@@ -69,27 +84,44 @@ export async function createManagementAgent(
       statementCadence: input.statementCadence,
       effectiveFrom: input.effectiveFrom,
       effectiveTo: input.effectiveTo ?? null,
-      isCurrent: true,
     })
     .returning()
   return row
 }
 
-export async function deactivateCurrentAgents(
-  tx: DrizzleTx,
+export async function updateManagementAgent(
   userId: string,
-  propertyId: string,
-): Promise<void> {
-  await tx
+  agentId: string,
+  data: UpdateManagementAgentInput,
+): Promise<PropertyManagementAgent | undefined> {
+  const [row] = await db
     .update(propertyManagementAgents)
-    .set({ isCurrent: false })
+    .set(data)
     .where(
       and(
+        eq(propertyManagementAgents.id, agentId),
         eq(propertyManagementAgents.userId, userId),
-        eq(propertyManagementAgents.propertyId, propertyId),
-        eq(propertyManagementAgents.isCurrent, true),
         isNull(propertyManagementAgents.deletedAt),
       ),
     )
+    .returning()
+  return row
 }
 
+export async function deleteManagementAgent(
+  userId: string,
+  agentId: string,
+): Promise<PropertyManagementAgent | undefined> {
+  const [row] = await db
+    .update(propertyManagementAgents)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(
+        eq(propertyManagementAgents.id, agentId),
+        eq(propertyManagementAgents.userId, userId),
+        isNull(propertyManagementAgents.deletedAt),
+      ),
+    )
+    .returning()
+  return row
+}

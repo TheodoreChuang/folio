@@ -113,6 +113,13 @@
       "when": 1747872002000,
       "tag": "0015_property_management_agents",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1747872003000,
+      "tag": "0016_drop_is_current",
+      "breakpoints": true
     }
   ]
 }

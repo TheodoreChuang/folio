@@ -24,28 +24,29 @@ function makeTenancy(overrides: Partial<PropertyTenancy> = {}): PropertyTenancy 
     leaseEnd: '2026-01-01',
     weeklyRentCents: 60000,
     bondCents: 240000,
-    isCurrent: true,
     createdAt: new Date('2025-01-01'),
     deletedAt: null,
     ...overrides,
   }
 }
 
-function makeChain(resolvedValue: unknown) {
-  const chain = {
+function makeSelectChain(resolvedValue: unknown) {
+  return {
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockResolvedValue(resolvedValue),
-    insert: vi.fn().mockReturnThis(),
-    values: vi.fn().mockReturnThis(),
-    returning: vi.fn().mockResolvedValue(resolvedValue),
-    update: vi.fn().mockReturnThis(),
-    set: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue(resolvedValue),
   }
-  return chain
 }
 
-// Resolves ownership pre-check (mockDb.select before entering a transaction)
+function makeUpdateChain(resolvedValue: unknown) {
+  return {
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockResolvedValue(resolvedValue),
+  }
+}
+
 function mockOwnershipCheck() {
   mockDb.select.mockReturnValueOnce({
     from: vi.fn().mockReturnThis(),
@@ -57,38 +58,26 @@ function mockOwnershipCheck() {
 describe('listTenancies', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns rows ordered current-first', async () => {
-    const current = makeTenancy({ id: 'a', isCurrent: true })
-    const prev = makeTenancy({ id: 'b', isCurrent: false })
-    const chain = makeChain([current, prev])
-    mockDb.select.mockReturnValue(chain)
-
-    const { listTenancies } = await import('@/lib/property/repositories/tenancies')
-    const result = await listTenancies('user-1', 'prop-1')
-    expect(result[0].id).toBe('a')
-    expect(mockDb.select).toHaveBeenCalled()
-  })
-
-  it('returns multiple is_current=true rows (sharehouse)', async () => {
-    const t1 = makeTenancy({ id: 'a', isCurrent: true })
-    const t2 = makeTenancy({ id: 'b', isCurrent: true })
-    const chain = makeChain([t1, t2])
-    mockDb.select.mockReturnValue(chain)
+  it('returns rows ordered by created_at desc', async () => {
+    const t1 = makeTenancy({ id: 'a' })
+    const t2 = makeTenancy({ id: 'b' })
+    mockDb.select.mockReturnValue(makeSelectChain([t1, t2]))
 
     const { listTenancies } = await import('@/lib/property/repositories/tenancies')
     const result = await listTenancies('user-1', 'prop-1')
     expect(result).toHaveLength(2)
-    expect(result.every(t => t.isCurrent)).toBe(true)
   })
 })
 
 describe('createTenancy', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('inserts a new is_current=true row and returns it', async () => {
-    const newRow = makeTenancy({ id: 'new-1', isCurrent: true })
-    const chain = makeChain([newRow])
-    mockDb.insert.mockReturnValue(chain)
+  it('inserts a new row and returns it', async () => {
+    const newRow = makeTenancy({ id: 'new-1' })
+    mockDb.insert.mockReturnValue({
+      values: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([newRow]),
+    })
 
     const { createTenancy } = await import('@/lib/property/repositories/tenancies')
     const result = await createTenancy({
@@ -99,98 +88,61 @@ describe('createTenancy', () => {
       weeklyRentCents: 60000,
     })
     expect(result.id).toBe('new-1')
-    expect(result.isCurrent).toBe(true)
   })
 })
 
-describe('endTenancy', () => {
+describe('updateTenancy', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('sets is_current=false on the target row only', async () => {
-    const updated = makeTenancy({ id: 'tenancy-1', isCurrent: false })
-    const chain = makeChain([updated])
-    chain.update = vi.fn().mockReturnThis()
-    chain.set = vi.fn().mockReturnThis()
-    chain.where = vi.fn().mockReturnThis()
-    chain.returning = vi.fn().mockResolvedValue([updated])
-    mockDb.update.mockReturnValue(chain)
+  it('updates leaseEnd and returns the row', async () => {
+    const updated = makeTenancy({ leaseEnd: '2027-01-01' })
+    mockDb.update.mockReturnValue(makeUpdateChain([updated]))
 
-    const { endTenancy } = await import('@/lib/property/repositories/tenancies')
-    const result = await endTenancy('user-1', 'tenancy-1')
-    expect(result?.isCurrent).toBe(false)
+    const { updateTenancy } = await import('@/lib/property/repositories/tenancies')
+    const result = await updateTenancy('user-1', 'tenancy-1', { leaseEnd: '2027-01-01' })
+    expect(result?.leaseEnd).toBe('2027-01-01')
+  })
+
+  it('returns undefined when tenancy not found or not owned', async () => {
+    mockDb.update.mockReturnValue(makeUpdateChain([]))
+
+    const { updateTenancy } = await import('@/lib/property/repositories/tenancies')
+    const result = await updateTenancy('user-1', 'bad-id', { leaseEnd: '2027-01-01' })
+    expect(result).toBeUndefined()
   })
 })
 
-describe('softDeleteTenancy', () => {
+describe('deleteTenancy', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('sets deletedAt and isCurrent=false', async () => {
-    const updated = makeTenancy({ id: 'tenancy-1', isCurrent: false, deletedAt: new Date() })
-    const chain = makeChain([updated])
-    chain.update = vi.fn().mockReturnThis()
-    chain.set = vi.fn().mockReturnThis()
-    chain.where = vi.fn().mockReturnThis()
-    chain.returning = vi.fn().mockResolvedValue([updated])
-    mockDb.update.mockReturnValue(chain)
+  it('sets deletedAt on the row', async () => {
+    const deleted = makeTenancy({ deletedAt: new Date() })
+    mockDb.update.mockReturnValue(makeUpdateChain([deleted]))
 
-    const { softDeleteTenancy } = await import('@/lib/property/repositories/tenancies')
-    const result = await softDeleteTenancy('user-1', 'tenancy-1')
+    const { deleteTenancy } = await import('@/lib/property/repositories/tenancies')
+    const result = await deleteTenancy('user-1', 'tenancy-1')
     expect(result?.deletedAt).not.toBeNull()
-    expect(result?.isCurrent).toBe(false)
   })
 })
 
-describe('renewTenancy', () => {
+describe('addTenancy (service)', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('runs atomically: ends old tenancy and inserts new one', async () => {
-    const endedTenancy = makeTenancy({ id: 'old-tenancy', isCurrent: false })
-    const newRow = makeTenancy({ id: 'new-tenancy', isCurrent: true })
-    const txMock = {
-      update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([endedTenancy]),
-      }),
-      insert: vi.fn().mockReturnValue({
-        values: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([newRow]),
-      }),
-    }
+  it('ownership check + inserts tenancy', async () => {
+    const newRow = makeTenancy({ id: 'new-1' })
     mockOwnershipCheck()
-    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<PropertyTenancy>) => fn(txMock))
-
-    const { renewTenancy } = await import('@/lib/property/services/management')
-    const result = await renewTenancy('user-1', 'prop-1', 'old-tenancy', {
-      leaseType: 'fixed_term',
-      leaseStart: '2026-01-01',
-      weeklyRentCents: 65000,
+    mockDb.insert.mockReturnValue({
+      values: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([newRow]),
     })
-    expect(result.id).toBe('new-tenancy')
-    expect(result.isCurrent).toBe(true)
-    expect(txMock.update).toHaveBeenCalled()
-    expect(txMock.insert).toHaveBeenCalled()
-  })
 
-  it('throws when tenancyIdToEnd matches no rows', async () => {
-    const txMock = {
-      update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockResolvedValue([]),  // 0 rows updated
-      }),
-    }
-    mockOwnershipCheck()
-    mockDb.transaction.mockImplementation(async (fn: (tx: typeof txMock) => Promise<PropertyTenancy>) => fn(txMock))
-
-    const { renewTenancy } = await import('@/lib/property/services/management')
-    await expect(
-      renewTenancy('user-1', 'prop-1', 'nonexistent-id', {
-        leaseType: 'fixed_term',
-        leaseStart: '2026-01-01',
-        weeklyRentCents: 65000,
-      })
-    ).rejects.toThrow('Tenancy not found')
+    const { addTenancy } = await import('@/lib/property/services/management')
+    const result = await addTenancy('user-1', 'prop-1', {
+      leaseType: 'fixed_term',
+      leaseStart: '2025-01-01',
+      weeklyRentCents: 60000,
+    })
+    expect(result.id).toBe('new-1')
   })
 
   it('throws when property does not belong to user', async () => {
@@ -200,12 +152,12 @@ describe('renewTenancy', () => {
       limit: vi.fn().mockResolvedValue([]),
     })
 
-    const { renewTenancy } = await import('@/lib/property/services/management')
+    const { addTenancy } = await import('@/lib/property/services/management')
     await expect(
-      renewTenancy('user-1', 'other-prop', 'old-tenancy', {
+      addTenancy('user-1', 'other-prop', {
         leaseType: 'fixed_term',
-        leaseStart: '2026-01-01',
-        weeklyRentCents: 65000,
+        leaseStart: '2025-01-01',
+        weeklyRentCents: 60000,
       })
     ).rejects.toThrow('Property not found')
   })

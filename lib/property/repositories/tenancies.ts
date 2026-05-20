@@ -14,6 +14,15 @@ export type CreateTenancyInput = {
   bondCents?: number | null
 }
 
+export type UpdateTenancyInput = {
+  tenants?: string | null
+  leaseType?: LeaseType
+  leaseStart?: string
+  leaseEnd?: string | null
+  weeklyRentCents?: number
+  bondCents?: number | null
+}
+
 export async function listTenancies(userId: string, propertyId: string): Promise<PropertyTenancy[]> {
   return db
     .select()
@@ -25,7 +34,7 @@ export async function listTenancies(userId: string, propertyId: string): Promise
         isNull(propertyTenancies.deletedAt),
       ),
     )
-    .orderBy(desc(propertyTenancies.isCurrent), desc(propertyTenancies.createdAt))
+    .orderBy(desc(propertyTenancies.createdAt))
 }
 
 export async function createTenancy(input: CreateTenancyInput, tx?: DrizzleTx): Promise<PropertyTenancy> {
@@ -41,16 +50,19 @@ export async function createTenancy(input: CreateTenancyInput, tx?: DrizzleTx): 
       leaseEnd: input.leaseEnd ?? null,
       weeklyRentCents: input.weeklyRentCents,
       bondCents: input.bondCents ?? null,
-      isCurrent: true,
     })
     .returning()
   return row
 }
 
-export async function endTenancy(userId: string, tenancyId: string): Promise<PropertyTenancy | undefined> {
+export async function updateTenancy(
+  userId: string,
+  tenancyId: string,
+  data: UpdateTenancyInput,
+): Promise<PropertyTenancy | undefined> {
   const [row] = await db
     .update(propertyTenancies)
-    .set({ isCurrent: false })
+    .set(data)
     .where(
       and(
         eq(propertyTenancies.id, tenancyId),
@@ -62,10 +74,10 @@ export async function endTenancy(userId: string, tenancyId: string): Promise<Pro
   return row
 }
 
-export async function softDeleteTenancy(userId: string, tenancyId: string): Promise<PropertyTenancy | undefined> {
+export async function deleteTenancy(userId: string, tenancyId: string): Promise<PropertyTenancy | undefined> {
   const [row] = await db
     .update(propertyTenancies)
-    .set({ deletedAt: new Date(), isCurrent: false })
+    .set({ deletedAt: new Date() })
     .where(
       and(
         eq(propertyTenancies.id, tenancyId),

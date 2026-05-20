@@ -1,12 +1,20 @@
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { properties, propertyTenancies, propertyManagementAgents } from '@/db/schema'
+import { properties } from '@/db/schema'
 import type { PropertyTenancy, PropertyManagementAgent } from '@/db/schema'
-import { createTenancy, type CreateTenancyInput } from '@/lib/property/repositories/tenancies'
 import {
-  deactivateCurrentAgents,
+  createTenancy,
+  updateTenancy,
+  deleteTenancy,
+  type CreateTenancyInput,
+  type UpdateTenancyInput,
+} from '@/lib/property/repositories/tenancies'
+import {
   createManagementAgent,
+  updateManagementAgent,
+  deleteManagementAgent,
   type CreateManagementAgentInput,
+  type UpdateManagementAgentInput,
 } from '@/lib/property/repositories/management-agents'
 
 async function assertPropertyOwnership(userId: string, propertyId: string): Promise<void> {
@@ -18,6 +26,8 @@ async function assertPropertyOwnership(userId: string, propertyId: string): Prom
   if (!prop) throw new Error('Property not found')
 }
 
+// Tenancies
+
 export async function addTenancy(
   userId: string,
   propertyId: string,
@@ -27,96 +37,43 @@ export async function addTenancy(
   return createTenancy({ userId, propertyId, ...data })
 }
 
-export async function renewTenancy(
+export async function editTenancy(
   userId: string,
-  propertyId: string,
-  tenancyIdToEnd: string,
-  data: Omit<CreateTenancyInput, 'userId' | 'propertyId'>,
-): Promise<PropertyTenancy> {
-  await assertPropertyOwnership(userId, propertyId)
-  return db.transaction(async (tx) => {
-    const [ended] = await tx
-      .update(propertyTenancies)
-      .set({ isCurrent: false })
-      .where(
-        and(
-          eq(propertyTenancies.id, tenancyIdToEnd),
-          eq(propertyTenancies.userId, userId),
-          eq(propertyTenancies.propertyId, propertyId),
-          isNull(propertyTenancies.deletedAt),
-        ),
-      )
-      .returning()
-    if (!ended) throw new Error('Tenancy not found')
-    return createTenancy({ userId, propertyId, ...data }, tx)
-  })
+  tenancyId: string,
+  data: UpdateTenancyInput,
+): Promise<PropertyTenancy | undefined> {
+  return updateTenancy(userId, tenancyId, data)
 }
 
-export async function setCurrentManagementAgent(
+export async function removeTenancy(
+  userId: string,
+  tenancyId: string,
+): Promise<PropertyTenancy | undefined> {
+  return deleteTenancy(userId, tenancyId)
+}
+
+// Management agents
+
+export async function addManagementAgent(
   userId: string,
   propertyId: string,
   data: Omit<CreateManagementAgentInput, 'userId' | 'propertyId'>,
 ): Promise<PropertyManagementAgent> {
   await assertPropertyOwnership(userId, propertyId)
-  return db.transaction(async (tx) => {
-    await deactivateCurrentAgents(tx, userId, propertyId)
-    return createManagementAgent(tx, { userId, propertyId, ...data })
-  })
+  return createManagementAgent({ userId, propertyId, ...data })
 }
 
-export async function softDeleteManagementAgent(
+export async function editManagementAgent(
   userId: string,
-  propertyId: string,
   agentId: string,
-): Promise<void> {
-  await assertPropertyOwnership(userId, propertyId)
-  await db.transaction(async (tx) => {
-    await tx
-      .update(propertyManagementAgents)
-      .set({ deletedAt: new Date(), isCurrent: false })
-      .where(
-        and(
-          eq(propertyManagementAgents.id, agentId),
-          eq(propertyManagementAgents.userId, userId),
-          eq(propertyManagementAgents.propertyId, propertyId),
-          isNull(propertyManagementAgents.deletedAt),
-        ),
-      )
+  data: UpdateManagementAgentInput,
+): Promise<PropertyManagementAgent | undefined> {
+  return updateManagementAgent(userId, agentId, data)
+}
 
-    // Only promote when the deleted agent was the current one
-    const [stillCurrent] = await tx
-      .select({ id: propertyManagementAgents.id })
-      .from(propertyManagementAgents)
-      .where(
-        and(
-          eq(propertyManagementAgents.userId, userId),
-          eq(propertyManagementAgents.propertyId, propertyId),
-          eq(propertyManagementAgents.isCurrent, true),
-          isNull(propertyManagementAgents.deletedAt),
-        ),
-      )
-      .limit(1)
-
-    if (!stillCurrent) {
-      const [candidate] = await tx
-        .select({ id: propertyManagementAgents.id })
-        .from(propertyManagementAgents)
-        .where(
-          and(
-            eq(propertyManagementAgents.userId, userId),
-            eq(propertyManagementAgents.propertyId, propertyId),
-            isNull(propertyManagementAgents.deletedAt),
-          ),
-        )
-        .orderBy(desc(propertyManagementAgents.createdAt))
-        .limit(1)
-
-      if (candidate) {
-        await tx
-          .update(propertyManagementAgents)
-          .set({ isCurrent: true })
-          .where(eq(propertyManagementAgents.id, candidate.id))
-      }
-    }
-  })
+export async function removeManagementAgent(
+  userId: string,
+  agentId: string,
+): Promise<PropertyManagementAgent | undefined> {
+  return deleteManagementAgent(userId, agentId)
 }

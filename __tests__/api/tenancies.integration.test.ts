@@ -52,29 +52,28 @@ describe('listTenancies — soft-delete filter', () => {
       leaseType: 'fixed_term',
       leaseStart: '2025-01-01',
       weeklyRentCents: 60000,
-      isCurrent: true,
     }).returning()
 
     await db.update(propertyTenancies)
-      .set({ deletedAt: new Date(), isCurrent: false })
+      .set({ deletedAt: new Date() })
       .where(eq(propertyTenancies.id, tenancy.id))
 
     const result = await listTenancies(userId, propertyId)
     expect(result.find(t => t.id === tenancy.id)).toBeUndefined()
   })
 
-  it('returns both is_current=true rows (sharehouse); excludes the soft-deleted one', async () => {
+  it('returns multiple active tenancies (sharehouse) and excludes soft-deleted', async () => {
     if (!hasEnv) return
 
     const { listTenancies } = await import('@/lib/property/repositories/tenancies')
 
     const [t1] = await db.insert(propertyTenancies).values({
       userId, propertyId, leaseType: 'periodic', leaseStart: '2025-02-01',
-      weeklyRentCents: 30000, isCurrent: true,
+      weeklyRentCents: 30000,
     }).returning()
     const [t2] = await db.insert(propertyTenancies).values({
       userId, propertyId, leaseType: 'periodic', leaseStart: '2025-02-15',
-      weeklyRentCents: 35000, isCurrent: true,
+      weeklyRentCents: 35000,
     }).returning()
 
     const both = await listTenancies(userId, propertyId)
@@ -82,49 +81,66 @@ describe('listTenancies — soft-delete filter', () => {
     expect(both.some(t => t.id === t2.id)).toBe(true)
 
     await db.update(propertyTenancies)
-      .set({ deletedAt: new Date(), isCurrent: false })
+      .set({ deletedAt: new Date() })
       .where(eq(propertyTenancies.id, t1.id))
 
     const afterDelete = await listTenancies(userId, propertyId)
     expect(afterDelete.find(t => t.id === t1.id)).toBeUndefined()
     expect(afterDelete.some(t => t.id === t2.id)).toBe(true)
 
-    // cleanup
-    await db.delete(propertyTenancies).where(and(
-      eq(propertyTenancies.id, t1.id),
-    ))
+    await db.delete(propertyTenancies).where(eq(propertyTenancies.id, t1.id))
     await db.delete(propertyTenancies).where(eq(propertyTenancies.id, t2.id))
   })
 })
 
-describe('management agents — soft-delete promotes previous', () => {
-  it('promotes the most-recent non-deleted agent when current is soft-deleted', async () => {
+describe('management agents — findActiveAgent uses date range', () => {
+  it('returns an agent with no effectiveTo (open-ended)', async () => {
     if (!hasEnv) return
 
-    const { findCurrentAgent } = await import('@/lib/property/repositories/management-agents')
-    const { softDeleteManagementAgent } = await import('@/lib/property/services/management')
+    const { findActiveAgent } = await import('@/lib/property/repositories/management-agents')
 
-    const [prev] = await db.insert(propertyManagementAgents).values({
+    const [agent] = await db.insert(propertyManagementAgents).values({
+      userId, propertyId, agencyName: 'Active Agency', statementCadence: 'monthly',
+      effectiveFrom: '2025-01-01',
+    }).returning()
+
+    const result = await findActiveAgent(userId, propertyId)
+    expect(result?.id).toBe(agent.id)
+
+    await db.delete(propertyManagementAgents).where(eq(propertyManagementAgents.id, agent.id))
+  })
+
+  it('excludes an agent whose effectiveTo is in the past', async () => {
+    if (!hasEnv) return
+
+    const { findActiveAgent } = await import('@/lib/property/repositories/management-agents')
+
+    const [expired] = await db.insert(propertyManagementAgents).values({
       userId, propertyId, agencyName: 'Old Agency', statementCadence: 'monthly',
-      effectiveFrom: '2024-01-01', isCurrent: false,
+      effectiveFrom: '2020-01-01', effectiveTo: '2020-12-31',
     }).returning()
-    const [curr] = await db.insert(propertyManagementAgents).values({
+
+    const result = await findActiveAgent(userId, propertyId)
+    expect(result?.id).not.toBe(expired.id)
+
+    await db.delete(propertyManagementAgents).where(eq(propertyManagementAgents.id, expired.id))
+  })
+
+  it('soft-delete leaves no active agent — no auto-promotion', async () => {
+    if (!hasEnv) return
+
+    const { findActiveAgent, deleteManagementAgent } = await import('@/lib/property/repositories/management-agents')
+
+    const [agent] = await db.insert(propertyManagementAgents).values({
       userId, propertyId, agencyName: 'Current Agency', statementCadence: 'monthly',
-      effectiveFrom: '2025-01-01', isCurrent: true,
+      effectiveFrom: '2025-01-01',
     }).returning()
 
-    await softDeleteManagementAgent(userId, propertyId, curr.id)
+    await deleteManagementAgent(userId, agent.id)
 
-    const promoted = await findCurrentAgent(userId, propertyId)
-    expect(promoted?.id).toBe(prev.id)
-    expect(promoted?.isCurrent).toBe(true)
+    const result = await findActiveAgent(userId, propertyId)
+    expect(result?.id).not.toBe(agent.id)
 
-    const deletedRow = await db.select()
-      .from(propertyManagementAgents)
-      .where(eq(propertyManagementAgents.id, curr.id))
-    expect(deletedRow[0]?.deletedAt).not.toBeNull()
-
-    // cleanup
-    await db.delete(propertyManagementAgents).where(eq(propertyManagementAgents.propertyId, propertyId))
+    await db.delete(propertyManagementAgents).where(eq(propertyManagementAgents.id, agent.id))
   })
 })

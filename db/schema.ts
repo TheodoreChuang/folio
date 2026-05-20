@@ -1,7 +1,7 @@
 import {
   pgTable, text, integer, timestamp,
   date, pgEnum, varchar, uuid, unique, index, foreignKey,
-  boolean, numeric,
+  numeric,
 } from 'drizzle-orm/pg-core'
 
 export const entityTypeEnum = pgEnum('entity_type', [
@@ -196,7 +196,6 @@ export const propertyTenancies = pgTable('property_tenancies', {
   leaseEnd:       date('lease_end'),
   weeklyRentCents: integer('weekly_rent_cents').notNull(),
   bondCents:      integer('bond_cents'),
-  isCurrent:      boolean('is_current').notNull().default(false),
   createdAt:      timestamp('created_at').defaultNow().notNull(),
   deletedAt:      timestamp('deleted_at', { withTimezone: true }),
 }, (t) => [
@@ -216,7 +215,6 @@ export const propertyManagementAgents = pgTable('property_management_agents', {
   statementCadence: statementCadenceEnum('statement_cadence').notNull(),
   effectiveFrom:    date('effective_from').notNull(),
   effectiveTo:      date('effective_to'),
-  isCurrent:        boolean('is_current').notNull().default(false),
   createdAt:        timestamp('created_at').defaultNow().notNull(),
   deletedAt:        timestamp('deleted_at', { withTimezone: true }),
 }, (t) => [
