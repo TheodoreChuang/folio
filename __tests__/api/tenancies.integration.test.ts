@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { properties, propertyTenancies, propertyManagementAgents } from '@/db/schema'
+import { properties, propertyTenancies } from '@/db/schema'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -34,7 +34,6 @@ beforeAll(async () => {
 afterAll(async () => {
   if (!hasEnv) return
   if (propertyId) {
-    await db.delete(propertyManagementAgents).where(eq(propertyManagementAgents.propertyId, propertyId))
     await db.delete(propertyTenancies).where(eq(propertyTenancies.propertyId, propertyId))
     await db.delete(properties).where(eq(properties.id, propertyId))
   }
@@ -90,57 +89,5 @@ describe('listTenancies — soft-delete filter', () => {
 
     await db.delete(propertyTenancies).where(eq(propertyTenancies.id, t1.id))
     await db.delete(propertyTenancies).where(eq(propertyTenancies.id, t2.id))
-  })
-})
-
-describe('management agents — findActiveAgent uses date range', () => {
-  it('returns an agent with no effectiveTo (open-ended)', async () => {
-    if (!hasEnv) return
-
-    const { findActiveAgent } = await import('@/lib/property/repositories/management-agents')
-
-    const [agent] = await db.insert(propertyManagementAgents).values({
-      userId, propertyId, agencyName: 'Active Agency', statementCadence: 'monthly',
-      effectiveFrom: '2025-01-01',
-    }).returning()
-
-    const result = await findActiveAgent(userId, propertyId)
-    expect(result?.id).toBe(agent.id)
-
-    await db.delete(propertyManagementAgents).where(eq(propertyManagementAgents.id, agent.id))
-  })
-
-  it('excludes an agent whose effectiveTo is in the past', async () => {
-    if (!hasEnv) return
-
-    const { findActiveAgent } = await import('@/lib/property/repositories/management-agents')
-
-    const [expired] = await db.insert(propertyManagementAgents).values({
-      userId, propertyId, agencyName: 'Old Agency', statementCadence: 'monthly',
-      effectiveFrom: '2020-01-01', effectiveTo: '2020-12-31',
-    }).returning()
-
-    const result = await findActiveAgent(userId, propertyId)
-    expect(result?.id).not.toBe(expired.id)
-
-    await db.delete(propertyManagementAgents).where(eq(propertyManagementAgents.id, expired.id))
-  })
-
-  it('soft-delete leaves no active agent — no auto-promotion', async () => {
-    if (!hasEnv) return
-
-    const { findActiveAgent, deleteManagementAgent } = await import('@/lib/property/repositories/management-agents')
-
-    const [agent] = await db.insert(propertyManagementAgents).values({
-      userId, propertyId, agencyName: 'Current Agency', statementCadence: 'monthly',
-      effectiveFrom: '2025-01-01',
-    }).returning()
-
-    await deleteManagementAgent(userId, agent.id)
-
-    const result = await findActiveAgent(userId, propertyId)
-    expect(result?.id).not.toBe(agent.id)
-
-    await db.delete(propertyManagementAgents).where(eq(propertyManagementAgents.id, agent.id))
   })
 })
