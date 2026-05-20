@@ -39,14 +39,6 @@ function makeSelectChain(resolvedValue: unknown) {
   }
 }
 
-function makeUpdateChain(resolvedValue: unknown) {
-  return {
-    set: vi.fn().mockReturnThis(),
-    where: vi.fn().mockResolvedValue(resolvedValue),
-    returning: vi.fn().mockResolvedValue(resolvedValue),
-  }
-}
-
 describe('listManagementAgents', () => {
   beforeEach(() => vi.clearAllMocks())
 
