@@ -162,7 +162,7 @@ describe('addManagementAgent (service)', () => {
       returning: vi.fn().mockResolvedValue([agent]),
     })
 
-    const { addManagementAgent } = await import('@/lib/property/services/management')
+    const { addManagementAgent } = await import('@/lib/property/services/management-agents')
     const result = await addManagementAgent('user-1', 'prop-1', {
       agencyName: 'McGrath',
       statementCadence: 'monthly',
@@ -178,7 +178,7 @@ describe('addManagementAgent (service)', () => {
       limit: vi.fn().mockResolvedValue([]),
     })
 
-    const { addManagementAgent } = await import('@/lib/property/services/management')
+    const { addManagementAgent } = await import('@/lib/property/services/management-agents')
     await expect(
       addManagementAgent('user-1', 'other-prop', {
         agencyName: 'McGrath',

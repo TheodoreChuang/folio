@@ -3,5 +3,6 @@ export { findTrailing12mEntries, listLedgerEntriesByMonth, createLedgerEntry, up
 export { listValuations, findLatestValuation, createValuation, deleteValuation } from './repositories/valuations'
 export { listTenancies, createTenancy, updateTenancy, deleteTenancy } from './repositories/tenancies'
 export { listManagementAgents, findActiveAgent, createManagementAgent, updateManagementAgent, deleteManagementAgent } from './repositories/management-agents'
-export { addTenancy, editTenancy, removeTenancy, addManagementAgent, editManagementAgent, removeManagementAgent } from './services/management'
+export { addTenancy, editTenancy, removeTenancy } from './services/tenancies'
+export { addManagementAgent, editManagementAgent, removeManagementAgent } from './services/management-agents'
 export { getPropertyWithStats } from './services/property'

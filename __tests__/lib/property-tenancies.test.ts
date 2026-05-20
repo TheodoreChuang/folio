@@ -136,7 +136,7 @@ describe('addTenancy (service)', () => {
       returning: vi.fn().mockResolvedValue([newRow]),
     })
 
-    const { addTenancy } = await import('@/lib/property/services/management')
+    const { addTenancy } = await import('@/lib/property/services/tenancies')
     const result = await addTenancy('user-1', 'prop-1', {
       leaseType: 'fixed_term',
       leaseStart: '2025-01-01',
@@ -152,7 +152,7 @@ describe('addTenancy (service)', () => {
       limit: vi.fn().mockResolvedValue([]),
     })
 
-    const { addTenancy } = await import('@/lib/property/services/management')
+    const { addTenancy } = await import('@/lib/property/services/tenancies')
     await expect(
       addTenancy('user-1', 'other-prop', {
         leaseType: 'fixed_term',
