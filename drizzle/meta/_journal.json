@@ -120,6 +120,13 @@
       "when": 1747872003000,
       "tag": "0016_drop_is_current",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1747872004000,
+      "tag": "0017_rename_settlement_date",
+      "breakpoints": true
     }
   ]
 }

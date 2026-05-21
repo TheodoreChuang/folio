@@ -36,7 +36,7 @@ const propRow = {
   purchasePriceCents: null,
   saleDate: null,
   salePriceCents: null,
-  settlementDate: null,
+  saleSettlementDate: null,
   lvrPercent: null,
 }
 

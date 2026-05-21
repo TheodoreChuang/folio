@@ -16,7 +16,7 @@ const patchSchema = z.object({
   purchasePriceCents: z.number().int().nonnegative().nullable().optional(),
   saleDate: z.string().nullable().optional(),
   salePriceCents: z.number().int().nonnegative().nullable().optional(),
-  settlementDate: z.string().nullable().optional(),
+  saleSettlementDate: z.string().nullable().optional(),
 })
 
 export async function GET(

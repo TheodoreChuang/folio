@@ -16,7 +16,7 @@ function makeProperty(overrides: Partial<Property> = {}): Property {
     purchasePriceCents: null,
     saleDate: null,
     salePriceCents: null,
-    settlementDate: null,
+    saleSettlementDate: null,
     ...overrides,
   }
 }

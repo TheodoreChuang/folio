@@ -38,7 +38,7 @@ const propRow = {
   purchasePriceCents: null,
   saleDate: null,
   salePriceCents: null,
-  settlementDate: null,
+  saleSettlementDate: null,
 }
 
 function makeParams(id: string) {
@@ -261,7 +261,7 @@ describe('PATCH /api/properties/[id]', () => {
       purchasePriceCents: 75000000,
       saleDate: '2030-06-01',
       salePriceCents: 90000000,
-      settlementDate: '2030-06-30',
+      saleSettlementDate: '2030-06-30',
     }
     mocks.mockUpdateProperty.mockResolvedValue(updated)
     const res = await PATCH(
@@ -270,7 +270,7 @@ describe('PATCH /api/properties/[id]', () => {
         purchasePriceCents: 75000000,
         saleDate: '2030-06-01',
         salePriceCents: 90000000,
-        settlementDate: '2030-06-30',
+        saleSettlementDate: '2030-06-30',
       }),
       makeParams(VALID_UUID)
     )
@@ -280,7 +280,7 @@ describe('PATCH /api/properties/[id]', () => {
     expect(json.property.purchasePriceCents).toBe(75000000)
     expect(json.property.saleDate).toBe('2030-06-01')
     expect(json.property.salePriceCents).toBe(90000000)
-    expect(json.property.settlementDate).toBe('2030-06-30')
+    expect(json.property.saleSettlementDate).toBe('2030-06-30')
   })
 
   it('returns 400 for negative purchasePriceCents', async () => {

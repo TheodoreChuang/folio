@@ -16,7 +16,7 @@ type CreatePropertyInput = {
   purchasePriceCents?: number | null
   saleDate?: string | null
   salePriceCents?: number | null
-  settlementDate?: string | null
+  saleSettlementDate?: string | null
 }
 
 type UpdatePropertyInput = {
@@ -29,7 +29,7 @@ type UpdatePropertyInput = {
   purchasePriceCents?: number | null
   saleDate?: string | null
   salePriceCents?: number | null
-  settlementDate?: string | null
+  saleSettlementDate?: string | null
 }
 
 export async function listProperties(userId: string): Promise<PropertyWithLvr[]> {
@@ -47,7 +47,7 @@ export async function listProperties(userId: string): Promise<PropertyWithLvr[]>
       purchasePriceCents: properties.purchasePriceCents,
       saleDate: properties.saleDate,
       salePriceCents: properties.salePriceCents,
-      settlementDate: properties.settlementDate,
+      saleSettlementDate: properties.saleSettlementDate,
       lvrPercent: sql<number | null>`
         CASE
           WHEN (
