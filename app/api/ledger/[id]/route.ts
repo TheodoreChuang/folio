@@ -45,7 +45,7 @@ export async function DELETE(
     const [updated] = await db
       .update(propertyLedger)
       .set({ deletedAt: new Date() })
-      .where(eq(propertyLedger.id, id))
+      .where(and(eq(propertyLedger.id, id), eq(propertyLedger.userId, user.id)))
       .returning()
 
     return NextResponse.json({ entry: updated })

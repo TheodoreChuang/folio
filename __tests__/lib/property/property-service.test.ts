@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   mockFindById: vi.fn(),
   mockFindLatestValuation: vi.fn(),
   mockFindTrailing12m: vi.fn(),
+  mockDbWhere: vi.fn(),
+  mockDbOrderBy: vi.fn(),
 }))
 
 vi.mock('@/lib/property/repositories/properties', () => ({
@@ -17,6 +19,16 @@ vi.mock('@/lib/property/repositories/valuations', () => ({
 
 vi.mock('@/lib/property/repositories/ledger', () => ({
   findTrailing12mEntries: mocks.mockFindTrailing12m,
+}))
+
+vi.mock('@/lib/db', () => ({
+  db: {
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: mocks.mockDbWhere,
+      }),
+    }),
+  },
 }))
 
 const PROP_ID = 'prop-1111-2222-3333-4444-555555555555'
@@ -33,7 +45,11 @@ const prop = {
   createdAt: new Date(),
 }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  // Default: no installment loans for this property
+  mocks.mockDbWhere.mockResolvedValue([])
+})
 
 describe('getPropertyWithStats', () => {
   it('returns null when property not found', async () => {
@@ -94,5 +110,50 @@ describe('getPropertyWithStats', () => {
     expect(result?.latestValuation?.valueCents).toBe(65000000)
     expect(result?.latestValuation?.valuedAt).toBe('2026-03-01')
     expect(result?.latestValuation?.source).toBe('bank')
+  })
+
+  it('returns totalDebtCents=0 and null equity/lvr when no loans', async () => {
+    mocks.mockFindById.mockResolvedValue(prop)
+    mocks.mockFindLatestValuation.mockResolvedValue({
+      id: 'v1', valueCents: 80000000, valuedAt: '2026-01-01', source: null,
+    })
+    mocks.mockFindTrailing12m.mockResolvedValue([])
+    mocks.mockDbWhere.mockResolvedValue([])
+    const result = await getPropertyWithStats(USER_ID, PROP_ID)
+    expect(result?.totalDebtCents).toBe(0)
+    expect(result?.equityCents).toBe(80000000)
+    expect(result?.lvrDecimal).toBeNull()
+  })
+
+  it('computes equity, LVR and totalDebtCents when loans have balances', async () => {
+    const loanId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+    mocks.mockFindById.mockResolvedValue(prop)
+    mocks.mockFindLatestValuation.mockResolvedValue({
+      id: 'v1', valueCents: 100000000, valuedAt: '2026-01-01', source: null,
+    })
+    mocks.mockFindTrailing12m.mockResolvedValue([])
+    // First where() call: loan IDs for this property
+    mocks.mockDbWhere
+      .mockResolvedValueOnce([{ id: loanId }])
+      // Second where() call (for balances) — needs orderBy chain
+      .mockReturnValueOnce({ orderBy: mocks.mockDbOrderBy })
+    mocks.mockDbOrderBy.mockResolvedValue([
+      { installmentLoanId: loanId, balanceCents: 50000000, recordedAt: new Date() },
+    ])
+    const result = await getPropertyWithStats(USER_ID, PROP_ID)
+    expect(result?.totalDebtCents).toBe(50000000)
+    expect(result?.equityCents).toBe(50000000)
+    expect(result?.lvrDecimal).toBeCloseTo(0.5)
+  })
+
+  it('computes totalAppreciationCents when purchasePriceCents is set', async () => {
+    mocks.mockFindById.mockResolvedValue({ ...prop, purchasePriceCents: 60000000 })
+    mocks.mockFindLatestValuation.mockResolvedValue({
+      id: 'v1', valueCents: 80000000, valuedAt: '2026-01-01', source: null,
+    })
+    mocks.mockFindTrailing12m.mockResolvedValue([])
+    mocks.mockDbWhere.mockResolvedValue([])
+    const result = await getPropertyWithStats(USER_ID, PROP_ID)
+    expect(result?.totalAppreciationCents).toBe(20000000)
   })
 })

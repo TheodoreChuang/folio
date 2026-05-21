@@ -25,20 +25,14 @@ import { formatCents, recentMonths } from '@/lib/format'
 import type {
   Property, PropertyLedger, PropertyValuation, InstallmentLoan,
   Entity, PropertyTenancy, PropertyManagementAgent, PropertyType, StatementCadence,
+  LedgerCategory,
 } from '@/db/schema'
+import type { TrendPoint } from '@/app/api/properties/[id]/trends/route'
 
 type LatestValuation = { valueCents: number; valuedAt: string; source: string | null } | null
 type YieldStats = { grossPercent: number; netPercent: number; periodLabel: string } | null
 type LoanWithBalance = InstallmentLoan & {
   latestBalance: { balanceCents: number; recordedAt: string } | null
-}
-type TrendPoint = {
-  month: string
-  rentCents: number
-  expensesCents: number
-  mortgageCents: number
-  netCents: number
-  hasData: boolean
 }
 
 const MANUAL_CATEGORIES = [
@@ -46,7 +40,7 @@ const MANUAL_CATEGORIES = [
   'property_management', 'utilities', 'strata_fees', 'other_expense',
 ] as const
 
-const CATEGORY_LABELS: Record<string, string> = {
+const CATEGORY_LABELS: Record<LedgerCategory, string> = {
   rent: 'Rent', insurance: 'Insurance', rates: 'Rates', repairs: 'Repairs',
   property_management: 'Mgmt fee', utilities: 'Utilities',
   strata_fees: 'Strata', other_expense: 'Other', loan_payment: 'Loan repayment',
@@ -121,10 +115,15 @@ export default function PropertyDetailPage() {
   const [property, setProperty] = useState<Property | null>(null)
   const [latestValuation, setLatestValuation] = useState<LatestValuation>(null)
   const [yieldStats, setYieldStats] = useState<YieldStats>(null)
+  const [totalDebtCents, setTotalDebtCents] = useState(0)
+  const [equityCents, setEquityCents] = useState<number | null>(null)
+  const [lvrDecimal, setLvrDecimal] = useState<number | null>(null)
+  const [totalAppreciationCents, setTotalAppreciationCents] = useState<number | null>(null)
   const [loans, setLoans] = useState<LoanWithBalance[]>([])
   const [valuations, setValuations] = useState<PropertyValuation[]>([])
   const [entities, setEntities] = useState<Entity[]>([])
   const [trends, setTrends] = useState<TrendPoint[]>([])
+  const [avgMonthlyNetCents, setAvgMonthlyNetCents] = useState<number | null>(null)
 
   const [tenancies, setTenancies] = useState<PropertyTenancy[]>([])
   const [managementAgents, setManagementAgents] = useState<PropertyManagementAgent[]>([])
@@ -193,15 +192,16 @@ export default function PropertyDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deletingProperty, setDeletingProperty] = useState(false)
 
-  const loadEntries = useCallback(async () => {
+  const loadEntries = useCallback(async (signal: AbortSignal) => {
     setEntriesLoading(true)
     try {
-      const res = await fetch(`/api/properties/${id}/entries?month=${txMonth}`)
+      const res = await fetch(`/api/properties/${id}/entries?month=${txMonth}`, { signal })
       if (res.ok) {
         const data = await res.json() as { entries?: PropertyLedger[] }
         setEntries(data.entries ?? [])
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       toast.error('Failed to load transactions')
     } finally {
       setEntriesLoading(false)
@@ -228,10 +228,18 @@ export default function PropertyDetailPage() {
           property: Property
           latestValuation: LatestValuation
           yield: YieldStats
+          totalDebtCents: number
+          equityCents: number | null
+          lvrDecimal: number | null
+          totalAppreciationCents: number | null
         }
         setProperty(propData.property)
         setLatestValuation(propData.latestValuation)
         setYieldStats(propData.yield)
+        setTotalDebtCents(propData.totalDebtCents ?? 0)
+        setEquityCents(propData.equityCents ?? null)
+        setLvrDecimal(propData.lvrDecimal ?? null)
+        setTotalAppreciationCents(propData.totalAppreciationCents ?? null)
 
         const p = propData.property
         setEditAddress(p.address)
@@ -261,8 +269,9 @@ export default function PropertyDetailPage() {
         }
 
         if (trendsRes.ok) {
-          const data = await trendsRes.json() as { trends?: TrendPoint[] }
+          const data = await trendsRes.json() as { trends?: TrendPoint[]; avgMonthlyNetCents?: number | null }
           setTrends(data.trends ?? [])
+          setAvgMonthlyNetCents(data.avgMonthlyNetCents ?? null)
         }
       } catch {
         toast.error('Failed to load property')
@@ -274,10 +283,13 @@ export default function PropertyDetailPage() {
   }, [id, router])
 
   useEffect(() => {
-    if (!loading) loadEntries()
+    if (loading) return
+    const controller = new AbortController()
+    loadEntries(controller.signal)
+    return () => controller.abort()
   }, [txMonth, loading, loadEntries])
 
-  async function loadManagement() {
+  const loadManagement = useCallback(async () => {
     if (mgmtLoaded) return
     try {
       const [tenRes, agentRes] = await Promise.all([
@@ -292,17 +304,20 @@ export default function PropertyDetailPage() {
         const data = await agentRes.json() as { agents?: PropertyManagementAgent[] }
         setManagementAgents(data.agents ?? [])
       }
+      setMgmtLoaded(true)
     } catch {
       toast.error('Failed to load management data')
-    } finally {
-      setMgmtLoaded(true)
     }
-  }
+  }, [id, mgmtLoaded])
 
   async function handleSave() {
     setSaving(true)
     try {
       const purchaseVal = editPurchasePrice.replace(/,/g, '')
+      if (purchaseVal && isNaN(parseFloat(purchaseVal))) {
+        toast.error('Purchase price must be a number')
+        return
+      }
       const res = await fetch(`/api/properties/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -325,6 +340,8 @@ export default function PropertyDetailPage() {
       const { property: updated } = await res.json() as { property: Property }
       setProperty(updated)
       toast.success('Saved')
+    } catch {
+      toast.error('Network error — please try again')
     } finally {
       setSaving(false)
     }
@@ -375,6 +392,8 @@ export default function PropertyDetailPage() {
       setValNotes('')
       setValDate(todayIso())
       toast.success('Valuation added')
+    } catch {
+      toast.error('Network error — please try again')
     } finally {
       setAddingVal(false)
     }
@@ -389,14 +408,11 @@ export default function PropertyDetailPage() {
       if (!res.ok) { toast.error('Failed to delete'); return }
       const remaining = valuations.filter(v => v.id !== valuationId)
       setValuations(remaining)
-      const deleted = valuations.find(v => v.id === valuationId)
-      if (deleted && latestValuation && deleted.valuedAt === latestValuation.valuedAt) {
-        setLatestValuation(
-          remaining.length > 0
-            ? { valueCents: remaining[0].valueCents, valuedAt: remaining[0].valuedAt, source: remaining[0].source }
-            : null
-        )
-      }
+      setLatestValuation(
+        remaining.length > 0
+          ? { valueCents: remaining[0].valueCents, valuedAt: remaining[0].valuedAt, source: remaining[0].source }
+          : null
+      )
       toast.success('Deleted')
     } finally {
       setDeletingVal(false)
@@ -428,10 +444,14 @@ export default function PropertyDetailPage() {
         return
       }
       const { entry } = await res.json() as { entry: PropertyLedger }
-      setEntries(prev => [entry, ...prev])
+      if (entry.lineItemDate.slice(0, 7) === txMonth) {
+        setEntries(prev => [entry, ...prev])
+      }
       setEntryDate(''); setEntryDollars(''); setEntryDesc('')
       setShowAddEntry(false)
       toast.success('Transaction added')
+    } catch {
+      toast.error('Network error — please try again')
     } finally {
       setSavingEntry(false)
     }
@@ -439,9 +459,13 @@ export default function PropertyDetailPage() {
 
   async function handleDeleteEntry(entry: PropertyLedger) {
     if (!confirm('Delete this transaction?')) return
-    const res = await fetch(`/api/ledger/${entry.id}`, { method: 'DELETE' })
-    if (!res.ok) { toast.error('Failed to delete transaction'); return }
-    setEntries(prev => prev.filter(e => e.id !== entry.id))
+    try {
+      const res = await fetch(`/api/ledger/${entry.id}`, { method: 'DELETE' })
+      if (!res.ok) { toast.error('Failed to delete transaction'); return }
+      setEntries(prev => prev.filter(e => e.id !== entry.id))
+    } catch {
+      toast.error('Failed to delete transaction')
+    }
   }
 
   async function handleAddTenancy() {
@@ -473,6 +497,8 @@ export default function PropertyDetailPage() {
       setTenLeaseStart(''); setTenLeaseEnd(''); setTenRent('')
       setTenTenants(''); setTenBond('')
       toast.success('Tenancy added')
+    } catch {
+      toast.error('Network error — please try again')
     } finally {
       setSavingTenancy(false)
     }
@@ -480,16 +506,23 @@ export default function PropertyDetailPage() {
 
   async function handleDeleteTenancy(tenancyId: string) {
     if (!confirm('Delete this tenancy record?')) return
-    const res = await fetch(`/api/properties/${id}/tenancies/${tenancyId}`, {
-      method: 'DELETE',
-    })
-    if (!res.ok) { toast.error('Failed to delete tenancy'); return }
-    setTenancies(prev => prev.filter(t => t.id !== tenancyId))
+    try {
+      const res = await fetch(`/api/properties/${id}/tenancies/${tenancyId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) { toast.error('Failed to delete tenancy'); return }
+      setTenancies(prev => prev.filter(t => t.id !== tenancyId))
+    } catch {
+      toast.error('Failed to delete tenancy')
+    }
   }
 
   async function handleAddAgent() {
     if (!agentAgency.trim() || !agentFrom) {
       toast.error('Agency name and effective from date are required'); return
+    }
+    if (agentFee && (isNaN(parseFloat(agentFee)) || parseFloat(agentFee) < 0 || parseFloat(agentFee) > 100)) {
+      toast.error('Management fee must be a number between 0 and 100'); return
     }
     setSavingAgent(true)
     try {
@@ -517,6 +550,8 @@ export default function PropertyDetailPage() {
       setAgentAgency(''); setAgentContact(''); setAgentPhone('')
       setAgentEmail(''); setAgentFee(''); setAgentFrom(''); setAgentTo('')
       toast.success('Agent added')
+    } catch {
+      toast.error('Network error — please try again')
     } finally {
       setSavingAgent(false)
     }
@@ -524,11 +559,15 @@ export default function PropertyDetailPage() {
 
   async function handleDeleteAgent(agentId: string) {
     if (!confirm('Delete this management agent record?')) return
-    const res = await fetch(`/api/properties/${id}/management-agents/${agentId}`, {
-      method: 'DELETE',
-    })
-    if (!res.ok) { toast.error('Failed to delete agent'); return }
-    setManagementAgents(prev => prev.filter(a => a.id !== agentId))
+    try {
+      const res = await fetch(`/api/properties/${id}/management-agents/${agentId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) { toast.error('Failed to delete agent'); return }
+      setManagementAgents(prev => prev.filter(a => a.id !== agentId))
+    } catch {
+      toast.error('Failed to delete agent')
+    }
   }
 
   async function handleMarkAsSold() {
@@ -555,6 +594,8 @@ export default function PropertyDetailPage() {
       setProperty(updated)
       setShowSoldModal(false)
       toast.success('Marked as sold')
+    } catch {
+      toast.error('Network error — please try again')
     } finally {
       setMarkingSold(false)
     }
@@ -568,32 +609,17 @@ export default function PropertyDetailPage() {
       router.push('/properties')
     } finally {
       setDeletingProperty(false)
+      setShowDeleteModal(false)
     }
   }
 
-  // Computed
-  const totalDebt = loans.reduce((sum, l) => sum + (l.latestBalance?.balanceCents ?? 0), 0)
-  const lvrDecimal =
-    latestValuation && latestValuation.valueCents > 0 && totalDebt > 0
-      ? totalDebt / latestValuation.valueCents
-      : null
-  const equity = latestValuation ? latestValuation.valueCents - totalDebt : null
   const entityName = property?.entityId
     ? (entities.find(e => e.id === property.entityId)?.name ?? null)
     : null
-  const activeMonths = trends.filter(t => t.hasData)
-  const avgMonthlyNetCents =
-    activeMonths.length > 0
-      ? Math.round(activeMonths.reduce((sum, t) => sum + t.netCents, 0) / activeMonths.length)
-      : null
   const chartData = valuations
     .slice()
     .sort((a, b) => a.valuedAt.localeCompare(b.valuedAt))
     .map(v => ({ date: formatDate(v.valuedAt), value: v.valueCents / 100 }))
-  const totalAppreciation =
-    latestValuation && property?.purchasePriceCents
-      ? latestValuation.valueCents - property.purchasePriceCents
-      : null
 
   if (loading) {
     return (
@@ -717,7 +743,7 @@ export default function PropertyDetailPage() {
               : '—'
           }
           valueClassName={avgMonthlyNetCents !== null && avgMonthlyNetCents < 0 ? 'text-red-500' : undefined}
-          foot={activeMonths.length > 0 ? <span className="text-xs text-muted">avg / month · 12 mo</span> : undefined}
+          foot={avgMonthlyNetCents !== null ? <span className="text-xs text-muted">avg / month · 12 mo</span> : undefined}
           secondary
         />
         <MetricTile
@@ -868,13 +894,13 @@ export default function PropertyDetailPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-muted">Total debt</span>
                       <span className="font-medium tabular-nums text-muted">
-                        {totalDebt > 0 ? `− ${formatCents(totalDebt)}` : '—'}
+                        {totalDebtCents > 0 ? `− ${formatCents(totalDebtCents)}` : '—'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between border-t border-ruled pt-2">
                       <span className="font-medium text-ink">Equity</span>
                       <span className="font-semibold tabular-nums">
-                        {equity !== null ? formatCents(equity) : '—'}
+                        {equityCents !== null ? formatCents(equityCents) : '—'}
                       </span>
                     </div>
                   </div>
@@ -1254,21 +1280,21 @@ export default function PropertyDetailPage() {
                   : '—'
               }
               valueClassName={avgMonthlyNetCents !== null && avgMonthlyNetCents < 0 ? 'text-red-500' : undefined}
-              foot={activeMonths.length > 0 ? <span className="text-xs text-muted">12 month average</span> : undefined}
+              foot={avgMonthlyNetCents !== null ? <span className="text-xs text-muted">12 month average</span> : undefined}
               secondary
             />
             <MetricTile
               label="Capital growth"
               value={
-                totalAppreciation !== null
-                  ? (totalAppreciation < 0
-                    ? `−${formatCents(Math.abs(totalAppreciation))}`
-                    : formatCents(totalAppreciation))
+                totalAppreciationCents !== null
+                  ? (totalAppreciationCents < 0
+                    ? `−${formatCents(Math.abs(totalAppreciationCents))}`
+                    : formatCents(totalAppreciationCents))
                   : '—'
               }
-              valueClassName={totalAppreciation !== null && totalAppreciation < 0 ? 'text-red-500' : undefined}
+              valueClassName={totalAppreciationCents !== null && totalAppreciationCents < 0 ? 'text-red-500' : undefined}
               foot={
-                totalAppreciation !== null && property.purchasePriceCents
+                totalAppreciationCents !== null && property.purchasePriceCents
                   ? <span className="text-xs text-muted">since {formatCents(property.purchasePriceCents)} purchase</span>
                   : undefined
               }
@@ -1296,7 +1322,7 @@ export default function PropertyDetailPage() {
                           />
                           <YAxis hide />
                           <Tooltip
-                            formatter={(v: number) => [formatCents(v * 100), 'Value']}
+                            formatter={(v) => typeof v === 'number' ? [formatCents(v * 100), 'Value'] : [String(v), 'Value']}
                             contentStyle={{
                               fontSize: 12,
                               borderRadius: 6,
