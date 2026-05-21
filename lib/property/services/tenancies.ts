@@ -32,7 +32,8 @@ export async function editTenancy(
 
 export async function removeTenancy(
   userId: string,
+  propertyId: string,
   tenancyId: string,
 ): Promise<PropertyTenancy | undefined> {
-  return deleteTenancy(userId, tenancyId)
+  return deleteTenancy(userId, propertyId, tenancyId)
 }

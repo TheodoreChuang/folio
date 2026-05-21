@@ -55,7 +55,7 @@ export const properties = pgTable('properties', {
   purchasePriceCents: integer('purchase_price_cents'),
   saleDate:           date('sale_date'),
   salePriceCents:     integer('sale_price_cents'),
-  settlementDate:     date('settlement_date'),
+  saleSettlementDate: date('sale_settlement_date'),
 }, (t) => [
   index('idx_properties_user').on(t.userId),
   index('idx_properties_entity').on(t.entityId),

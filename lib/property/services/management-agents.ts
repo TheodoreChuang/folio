@@ -32,7 +32,8 @@ export async function editManagementAgent(
 
 export async function removeManagementAgent(
   userId: string,
+  propertyId: string,
   agentId: string,
 ): Promise<PropertyManagementAgent | undefined> {
-  return deleteManagementAgent(userId, agentId)
+  return deleteManagementAgent(userId, propertyId, agentId)
 }

@@ -84,7 +84,7 @@ describe('deleteManagementAgent — no auto-promotion', () => {
       effectiveFrom: '2025-01-01',
     }).returning()
 
-    await deleteManagementAgent(userId, agent.id)
+    await deleteManagementAgent(userId, propertyId, agent.id)
 
     const result = await findActiveAgent(userId, propertyId)
     expect(result?.id).not.toBe(agent.id)

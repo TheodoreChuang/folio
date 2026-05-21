@@ -34,3 +34,31 @@ export async function fetchTrendData(
       propertyLedger.category,
     )
 }
+
+export async function fetchPropertyTrendData(
+  userId: string,
+  propertyId: string,
+  from: string,
+  to: string,
+): Promise<TrendRow[]> {
+  return db
+    .select({
+      month: sql<string>`to_char(date_trunc('month', ${propertyLedger.lineItemDate}), 'YYYY-MM')`,
+      category: propertyLedger.category,
+      totalCents: sql<number>`SUM(${propertyLedger.amountCents})::int`,
+    })
+    .from(propertyLedger)
+    .where(
+      and(
+        eq(propertyLedger.userId, userId),
+        eq(propertyLedger.propertyId, propertyId),
+        gte(propertyLedger.lineItemDate, from),
+        lte(propertyLedger.lineItemDate, to),
+        isNull(propertyLedger.deletedAt),
+      )
+    )
+    .groupBy(
+      sql`date_trunc('month', ${propertyLedger.lineItemDate})`,
+      propertyLedger.category,
+    )
+}

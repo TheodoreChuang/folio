@@ -4,7 +4,7 @@ export type { ReportTotals, ReportFlags, PropertyTotals, MissingMortgage } from 
 export { computePortfolioLVR } from './services/portfolio'
 export type { PortfolioLVR } from './services/portfolio'
 
-export { fetchTrendData } from './repositories/trends'
+export { fetchTrendData, fetchPropertyTrendData } from './repositories/trends'
 export type { TrendRow } from './repositories/trends'
 
 export { fetchPortfolioData } from './repositories/portfolio'
