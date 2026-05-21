@@ -113,88 +113,93 @@ export default function NewPropertyPage() {
   const valueSummary = valueDollars.trim() ? formatDollars(valueDollars) : null
   if (valueSummary) summaryParts.push(`value ${valueSummary}`)
 
-  async function handleSubmit() {
-    if (!isValid) return
-    setSaving(true)
+  async function createPropertyWithDetails(): Promise<string | null> {
+    const purchasePriceCents = parseCents(purchasePriceDollars)
 
-    try {
-      const purchasePriceCents = parseCents(purchasePriceDollars)
+    const res = await fetch('/api/properties', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        address: address.trim(),
+        nickname: nickname.trim() || null,
+        startDate,
+        endDate: endDate || null,
+        entityId,
+        propertyType: propertyType ?? undefined,
+        purchasePriceCents: purchasePriceCents ?? undefined,
+      }),
+    })
 
-      const res = await fetch('/api/properties', {
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as { error?: string }
+      toast.error(err.error ?? 'Failed to create property')
+      return null
+    }
+
+    const { property } = await res.json() as { property: { id: string } }
+
+    const parsedValue = parseFloat(valueDollars.replace(/,/g, ''))
+    if (valueDollars.trim() && !isNaN(parsedValue) && parsedValue > 0) {
+      const valuationRes = await fetch(`/api/properties/${property.id}/valuations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          address: address.trim(),
-          nickname: nickname.trim() || null,
-          startDate,
-          endDate: endDate || null,
-          entityId,
-          propertyType: propertyType ?? undefined,
-          purchasePriceCents: purchasePriceCents ?? undefined,
+          valuedAt,
+          valueCents: Math.round(parsedValue * 100),
+          source: valuationSource,
         }),
       })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string }
-        toast.error(err.error ?? 'Failed to create property')
-        return
+      if (!valuationRes.ok) {
+        toast.warning('Property created but opening valuation could not be saved')
       }
+    }
 
-      const { property } = await res.json() as { property: { id: string } }
-
-      const parsedValue = parseFloat(valueDollars.replace(/,/g, ''))
-      if (valueDollars.trim() && !isNaN(parsedValue) && parsedValue > 0) {
-        const valuationRes = await fetch(`/api/properties/${property.id}/valuations`, {
+    if (leaseExpanded && leaseStart && weeklyRentDollars.trim()) {
+      const weeklyRentCents = Math.round(parseFloat(weeklyRentDollars.replace(/,/g, '')) * 100)
+      if (!isNaN(weeklyRentCents) && weeklyRentCents > 0) {
+        const tenancyRes = await fetch(`/api/properties/${property.id}/tenancies`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            valuedAt,
-            valueCents: Math.round(parsedValue * 100),
-            source: valuationSource,
+            leaseType,
+            leaseStart,
+            weeklyRentCents,
+            leaseEnd: leaseEnd || null,
+            tenants: tenantName.trim() || null,
           }),
         })
-        if (!valuationRes.ok) {
-          toast.warning('Property created but opening valuation could not be saved')
+        if (!tenancyRes.ok) {
+          toast.warning('Property created but lease details could not be saved')
         }
       }
+    }
 
-      if (leaseExpanded && leaseStart && weeklyRentDollars.trim()) {
-        const weeklyRentCents = Math.round(parseFloat(weeklyRentDollars.replace(/,/g, '')) * 100)
-        if (!isNaN(weeklyRentCents) && weeklyRentCents > 0) {
-          const tenancyRes = await fetch(`/api/properties/${property.id}/tenancies`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              leaseType,
-              leaseStart,
-              weeklyRentCents,
-              leaseEnd: leaseEnd || null,
-              tenants: tenantName.trim() || null,
-            }),
-          })
-          if (!tenancyRes.ok) {
-            toast.warning('Property created but lease details could not be saved')
-          }
-        }
+    if (leaseExpanded && agencyName.trim()) {
+      const agentRes = await fetch(`/api/properties/${property.id}/management-agents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agencyName: agencyName.trim(),
+          statementCadence: 'monthly',
+          effectiveFrom: leaseStart || todayIso(),
+        }),
+      })
+      if (!agentRes.ok) {
+        toast.warning('Property created but management agent could not be saved')
       }
+    }
 
-      if (leaseExpanded && agencyName.trim()) {
-        const agentRes = await fetch(`/api/properties/${property.id}/management-agents`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            agencyName: agencyName.trim(),
-            statementCadence: 'monthly',
-            effectiveFrom: leaseStart || todayIso(),
-          }),
-        })
-        if (!agentRes.ok) {
-          toast.warning('Property created but management agent could not be saved')
-        }
-      }
+    return property.id
+  }
 
+  async function handleSubmit() {
+    if (!isValid) return
+    setSaving(true)
+    try {
+      const id = await createPropertyWithDetails()
+      if (!id) return
       toast.success('Property added')
-      router.push(`/properties/${property.id}`)
+      router.push(`/properties/${id}`)
     } finally {
       setSaving(false)
     }
@@ -203,33 +208,11 @@ export default function NewPropertyPage() {
   async function handleSubmitAndAddLoan() {
     if (!isValid) return
     setSaving(true)
-
     try {
-      const purchasePriceCents = parseCents(purchasePriceDollars)
-
-      const res = await fetch('/api/properties', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: address.trim(),
-          nickname: nickname.trim() || null,
-          startDate,
-          endDate: endDate || null,
-          entityId,
-          propertyType: propertyType ?? undefined,
-          purchasePriceCents: purchasePriceCents ?? undefined,
-        }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string }
-        toast.error(err.error ?? 'Failed to create property')
-        return
-      }
-
-      const { property } = await res.json() as { property: { id: string } }
+      const id = await createPropertyWithDetails()
+      if (!id) return
       toast.success('Property added')
-      router.push(`/properties/${property.id}`)
+      router.push(`/properties/${id}`)
     } finally {
       setSaving(false)
     }
