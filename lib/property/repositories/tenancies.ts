@@ -74,7 +74,7 @@ export async function updateTenancy(
   return row
 }
 
-export async function deleteTenancy(userId: string, tenancyId: string): Promise<PropertyTenancy | undefined> {
+export async function deleteTenancy(userId: string, propertyId: string, tenancyId: string): Promise<PropertyTenancy | undefined> {
   const [row] = await db
     .update(propertyTenancies)
     .set({ deletedAt: new Date() })
@@ -82,6 +82,7 @@ export async function deleteTenancy(userId: string, tenancyId: string): Promise<
       and(
         eq(propertyTenancies.id, tenancyId),
         eq(propertyTenancies.userId, userId),
+        eq(propertyTenancies.propertyId, propertyId),
         isNull(propertyTenancies.deletedAt),
       ),
     )

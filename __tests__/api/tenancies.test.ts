@@ -103,6 +103,13 @@ describe('GET /api/properties/[id]/tenancies', () => {
     expect(res.status).toBe(401)
   })
 
+  it('returns 400 for invalid property UUID', async () => {
+    const res = await GET(makeGetRequest(), makeParams('not-a-uuid'))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/invalid property/i)
+  })
+
   it('returns 404 when findPropertyById returns undefined', async () => {
     ;(findPropertyById as ReturnType<typeof vi.fn>).mockResolvedValue(undefined)
     const res = await GET(makeGetRequest(), makeParams(PROP_ID))
@@ -166,6 +173,11 @@ describe('POST /api/properties/[id]/tenancies', () => {
     expect(res.status).toBe(400)
   })
 
+  it('returns 400 for invalid leaseType', async () => {
+    const res = await POST(makePostRequest({ ...validBody, leaseType: 'month_to_month' }), makeParams(PROP_ID))
+    expect(res.status).toBe(400)
+  })
+
   it('returns 404 when addTenancy throws Property not found', async () => {
     ;(addTenancy as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Property not found'))
     const res = await POST(makePostRequest(validBody), makeParams(PROP_ID))
@@ -196,10 +208,29 @@ describe('DELETE /api/properties/[id]/tenancies/[tenancyId]', () => {
     expect(res.status).toBe(401)
   })
 
+  it('returns 400 for invalid property UUID', async () => {
+    const res = await DELETE(makeDeleteRequest(), makeTenancyParams('not-a-uuid', TENANCY_ID))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/invalid property/i)
+  })
+
+  it('returns 400 for invalid tenancy UUID', async () => {
+    const res = await DELETE(makeDeleteRequest(), makeTenancyParams(PROP_ID, 'not-a-uuid'))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/invalid tenancy/i)
+  })
+
   it('returns 404 when removeTenancy returns undefined', async () => {
     ;(removeTenancy as ReturnType<typeof vi.fn>).mockResolvedValue(undefined)
     const res = await DELETE(makeDeleteRequest(), makeTenancyParams(PROP_ID, TENANCY_ID))
     expect(res.status).toBe(404)
+  })
+
+  it('passes propertyId to removeTenancy for cross-property isolation', async () => {
+    await DELETE(makeDeleteRequest(), makeTenancyParams(PROP_ID, TENANCY_ID))
+    expect(removeTenancy as ReturnType<typeof vi.fn>).toHaveBeenCalledWith(USER_ID, PROP_ID, TENANCY_ID)
   })
 
   it('returns success true on successful delete', async () => {

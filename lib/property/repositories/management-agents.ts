@@ -110,6 +110,7 @@ export async function updateManagementAgent(
 
 export async function deleteManagementAgent(
   userId: string,
+  propertyId: string,
   agentId: string,
 ): Promise<PropertyManagementAgent | undefined> {
   const [row] = await db
@@ -119,6 +120,7 @@ export async function deleteManagementAgent(
       and(
         eq(propertyManagementAgents.id, agentId),
         eq(propertyManagementAgents.userId, userId),
+        eq(propertyManagementAgents.propertyId, propertyId),
         isNull(propertyManagementAgents.deletedAt),
       ),
     )

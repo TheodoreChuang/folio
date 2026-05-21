@@ -120,7 +120,7 @@ describe('deleteTenancy', () => {
     mockDb.update.mockReturnValue(makeUpdateChain([deleted]))
 
     const { deleteTenancy } = await import('@/lib/property/repositories/tenancies')
-    const result = await deleteTenancy('user-1', 'tenancy-1')
+    const result = await deleteTenancy('user-1', 'prop-1', 'tenancy-1')
     expect(result?.deletedAt).not.toBeNull()
   })
 })

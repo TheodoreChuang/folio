@@ -22,7 +22,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid agent ID' }, { status: 400 })
     }
 
-    const deleted = await removeManagementAgent(user.id, agentId)
+    const deleted = await removeManagementAgent(user.id, id, agentId)
     if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

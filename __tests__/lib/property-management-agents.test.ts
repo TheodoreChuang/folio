@@ -146,7 +146,7 @@ describe('deleteManagementAgent', () => {
     mockDb.update.mockReturnValue(makeUpdateChain([deleted]))
 
     const { deleteManagementAgent } = await import('@/lib/property/repositories/management-agents')
-    const result = await deleteManagementAgent('user-1', 'agent-1')
+    const result = await deleteManagementAgent('user-1', 'prop-1', 'agent-1')
     expect(result?.deletedAt).not.toBeNull()
   })
 })

@@ -15,7 +15,7 @@ const postSchema = z.object({
   contactName: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
-  feePercent: z.union([z.string(), z.number()]).nullable().optional().transform(v =>
+  feePercent: z.union([z.string().min(1), z.number()]).nullable().optional().transform(v =>
     v === null || v === undefined ? null : String(v)
   ),
   effectiveTo: z.string().nullable().optional(),

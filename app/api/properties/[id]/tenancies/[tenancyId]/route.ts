@@ -22,7 +22,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid tenancy ID' }, { status: 400 })
     }
 
-    const deleted = await removeTenancy(user.id, tenancyId)
+    const deleted = await removeTenancy(user.id, id, tenancyId)
     if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

@@ -140,6 +140,13 @@ describe('POST /api/properties/[id]/management-agents', () => {
     expect(res.status).toBe(401)
   })
 
+  it('returns 400 for invalid property UUID', async () => {
+    const res = await POST(makePostRequest(validPostBody), makeParams('not-a-uuid'))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/invalid property/i)
+  })
+
   it('returns 400 when agencyName is missing', async () => {
     const { agencyName: _a, ...body } = validPostBody
     const res = await POST(makePostRequest(body), makeParams(PROP_ID))
@@ -241,6 +248,11 @@ describe('DELETE /api/properties/[id]/management-agents/[agentId]', () => {
     mocks.mockRemoveManagementAgent.mockResolvedValue(undefined)
     const res = await DELETE(makeDeleteRequest(), makeAgentParams(PROP_ID, AGENT_ID))
     expect(res.status).toBe(404)
+  })
+
+  it('passes propertyId to removeManagementAgent for cross-property isolation', async () => {
+    await DELETE(makeDeleteRequest(), makeAgentParams(PROP_ID, AGENT_ID))
+    expect(mocks.mockRemoveManagementAgent).toHaveBeenCalledWith('user-123', PROP_ID, AGENT_ID)
   })
 
   it('returns 200 with success true on successful delete', async () => {
