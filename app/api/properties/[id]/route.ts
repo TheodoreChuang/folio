@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { and, eq } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { entities } from '@/db/schema'
 import { getPropertyWithStats, updateProperty, deleteProperty } from '@/lib/property'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
@@ -42,6 +45,10 @@ export async function GET(
       property: result.property,
       latestValuation: result.latestValuation,
       yield: result.yield,
+      totalDebtCents: result.totalDebtCents,
+      equityCents: result.equityCents,
+      lvrDecimal: result.lvrDecimal,
+      totalAppreciationCents: result.totalAppreciationCents,
     })
   } catch (err) {
     captureError(err, { route: 'GET /api/properties/[id]' })
@@ -81,6 +88,17 @@ export async function PATCH(
 
     if (updates.startDate && updates.endDate && updates.endDate < updates.startDate) {
       return NextResponse.json({ error: 'endDate cannot be before startDate' }, { status: 400 })
+    }
+
+    if (updates.entityId) {
+      const [entity] = await db
+        .select({ id: entities.id })
+        .from(entities)
+        .where(and(eq(entities.id, updates.entityId), eq(entities.userId, user.id)))
+        .limit(1)
+      if (!entity) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
     }
 
     const updated = await updateProperty(user.id, id, updates)

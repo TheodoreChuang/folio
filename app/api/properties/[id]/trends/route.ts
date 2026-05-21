@@ -99,7 +99,13 @@ export async function GET(
       }
     })
 
-    return NextResponse.json({ trends })
+    const activeMonths = trends.filter(t => t.hasData)
+    const avgMonthlyNetCents =
+      activeMonths.length > 0
+        ? Math.round(activeMonths.reduce((sum, t) => sum + t.netCents, 0) / activeMonths.length)
+        : null
+
+    return NextResponse.json({ trends, avgMonthlyNetCents })
   } catch (err) {
     captureError(err, { route: 'GET /api/properties/[id]/trends' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
