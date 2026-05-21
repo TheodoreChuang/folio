@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   mockGetPropertyWithStats: vi.fn(),
   mockUpdateProperty: vi.fn(),
   mockDeleteProperty: vi.fn(),
+  mockDbLimit: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -22,6 +23,18 @@ vi.mock('@/lib/property', () => ({
   updateProperty: mocks.mockUpdateProperty,
   deleteProperty: mocks.mockDeleteProperty,
   getPropertyWithStats: mocks.mockGetPropertyWithStats,
+}))
+
+vi.mock('@/lib/db', () => ({
+  db: {
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: mocks.mockDbLimit,
+        }),
+      }),
+    }),
+  },
 }))
 
 const VALID_UUID = 'a1b2c3d4-e5f6-4789-a012-345678901234'
@@ -152,6 +165,8 @@ describe('PATCH /api/properties/[id]', () => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
     mocks.mockUpdateProperty.mockResolvedValue(propRow)
+    // entityId ownership check: entity exists by default
+    mocks.mockDbLimit.mockResolvedValue([{ id: 'entity-uuid' }])
   })
 
   it('returns 401 when not authenticated', async () => {
@@ -286,6 +301,12 @@ describe('PATCH /api/properties/[id]', () => {
   it('returns 400 for negative purchasePriceCents', async () => {
     const res = await PATCH(makePatchRequest({ purchasePriceCents: -1 }), makeParams(VALID_UUID))
     expect(res.status).toBe(400)
+  })
+
+  it('returns 404 when entityId does not belong to the user', async () => {
+    mocks.mockDbLimit.mockResolvedValue([])
+    const res = await PATCH(makePatchRequest({ entityId: VALID_UUID }), makeParams(VALID_UUID))
+    expect(res.status).toBe(404)
   })
 })
 
