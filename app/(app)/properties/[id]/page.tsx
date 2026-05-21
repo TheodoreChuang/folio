@@ -27,7 +27,6 @@ import type {
   Entity, PropertyTenancy, PropertyManagementAgent, PropertyType, StatementCadence,
   LedgerCategory,
 } from '@/db/schema'
-import type { TrendPoint } from '@/app/api/properties/[id]/trends/route'
 
 type LatestValuation = { valueCents: number; valuedAt: string; source: string | null } | null
 type YieldStats = { grossPercent: number; netPercent: number; periodLabel: string } | null
@@ -122,7 +121,6 @@ export default function PropertyDetailPage() {
   const [loans, setLoans] = useState<LoanWithBalance[]>([])
   const [valuations, setValuations] = useState<PropertyValuation[]>([])
   const [entities, setEntities] = useState<Entity[]>([])
-  const [trends, setTrends] = useState<TrendPoint[]>([])
   const [avgMonthlyNetCents, setAvgMonthlyNetCents] = useState<number | null>(null)
 
   const [tenancies, setTenancies] = useState<PropertyTenancy[]>([])
@@ -269,8 +267,7 @@ export default function PropertyDetailPage() {
         }
 
         if (trendsRes.ok) {
-          const data = await trendsRes.json() as { trends?: TrendPoint[]; avgMonthlyNetCents?: number | null }
-          setTrends(data.trends ?? [])
+          const data = await trendsRes.json() as { avgMonthlyNetCents?: number | null }
           setAvgMonthlyNetCents(data.avgMonthlyNetCents ?? null)
         }
       } catch {
