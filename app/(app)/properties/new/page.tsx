@@ -10,20 +10,14 @@ import { Label } from '@/components/ui/label'
 import type { Entity, PropertyType } from '@/db/schema'
 
 const VALUATION_SOURCES = [
-  'manual_estimate',
-  'bank_valuation',
-  'agent_appraisal',
-  'independent_valuer',
-  'comparable_sale',
+  { value: 'manual_estimate', label: 'Manual estimate' },
+  { value: 'bank_valuation', label: 'Bank valuation' },
+  { value: 'agent_appraisal', label: 'Agent appraisal' },
+  { value: 'independent_valuer', label: 'Independent valuer' },
+  { value: 'comparable_sale', label: 'Recent comparable sale' },
 ] as const
 
-const VALUATION_SOURCE_LABELS: Record<string, string> = {
-  manual_estimate: 'Manual estimate',
-  bank_valuation: 'Bank valuation',
-  agent_appraisal: 'Agent appraisal',
-  independent_valuer: 'Independent valuer',
-  comparable_sale: 'Recent comparable sale',
-}
+type ValuationSource = typeof VALUATION_SOURCES[number]['value']
 
 const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
   { value: 'house', label: 'House' },
@@ -38,7 +32,8 @@ const LEASE_TYPES = [
 ] as const
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
+  const d = new Date()
+  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-')
 }
 
 function formatDollars(value: string): string {
@@ -70,7 +65,7 @@ export default function NewPropertyPage() {
   // Section 4 — Opening valuation
   const [valueDollars, setValueDollars] = useState('')
   const [valuedAt, setValuedAt] = useState(todayIso)
-  const [valuationSource, setValuationSource] = useState<typeof VALUATION_SOURCES[number]>('manual_estimate')
+  const [valuationSource, setValuationSource] = useState<ValuationSource>('manual_estimate')
 
   // Section 5 — Lease & management
   const [leaseExpanded, setLeaseExpanded] = useState(false)
@@ -99,7 +94,9 @@ export default function NewPropertyPage() {
       .finally(() => setLoadingEntities(false))
   }, [router])
 
-  const isValid = address.trim().length > 0 && startDate !== ''
+  const leaseTouched = leaseExpanded && (weeklyRentDollars.trim() !== '' || tenantName.trim() !== '' || agencyName.trim() !== '' || leaseStart !== '')
+  const leaseValid = !leaseTouched || (leaseStart !== '' && weeklyRentDollars.trim() !== '')
+  const isValid = address.trim().length > 0 && startDate !== '' && leaseValid
 
   const selectedEntity = entities.find(e => e.id === entityId)
 
@@ -138,14 +135,14 @@ export default function NewPropertyPage() {
 
     const { property } = await res.json() as { property: { id: string } }
 
-    const parsedValue = parseFloat(valueDollars.replace(/,/g, ''))
-    if (valueDollars.trim() && !isNaN(parsedValue) && parsedValue > 0) {
+    const valueCents = parseCents(valueDollars)
+    if (valueCents !== null) {
       const valuationRes = await fetch(`/api/properties/${property.id}/valuations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           valuedAt,
-          valueCents: Math.round(parsedValue * 100),
+          valueCents,
           source: valuationSource,
         }),
       })
@@ -155,8 +152,8 @@ export default function NewPropertyPage() {
     }
 
     if (leaseExpanded && leaseStart && weeklyRentDollars.trim()) {
-      const weeklyRentCents = Math.round(parseFloat(weeklyRentDollars.replace(/,/g, '')) * 100)
-      if (!isNaN(weeklyRentCents) && weeklyRentCents > 0) {
+      const weeklyRentCents = parseCents(weeklyRentDollars)
+      if (weeklyRentCents !== null) {
         const tenancyRes = await fetch(`/api/properties/${property.id}/tenancies`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -164,7 +161,7 @@ export default function NewPropertyPage() {
             leaseType,
             leaseStart,
             weeklyRentCents,
-            leaseEnd: leaseEnd || null,
+            leaseEnd: leaseType === 'fixed_term' ? leaseEnd || null : null,
             tenants: tenantName.trim() || null,
           }),
         })
@@ -212,7 +209,7 @@ export default function NewPropertyPage() {
       const id = await createPropertyWithDetails()
       if (!id) return
       toast.success('Property added')
-      router.push(`/properties/${id}`)
+      router.push(`/loans/new?propertyId=${id}`)
     } finally {
       setSaving(false)
     }
@@ -246,7 +243,6 @@ export default function NewPropertyPage() {
 
         <div className="space-y-6">
 
-          {/* ===== 1. Address ===== */}
           <div className="bg-surface border border-border rounded-lg p-6">
             <div className="flex items-start gap-3 mb-5">
               <span className="w-6 h-6 rounded-full bg-accent text-white text-xs font-semibold flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
@@ -303,7 +299,6 @@ export default function NewPropertyPage() {
             </div>
           </div>
 
-          {/* ===== 2. Acquisition ===== */}
           <div className="bg-surface border border-border rounded-lg p-6">
             <div className="flex items-start gap-3 mb-5">
               <span className="w-6 h-6 rounded-full bg-accent text-white text-xs font-semibold flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
@@ -355,7 +350,6 @@ export default function NewPropertyPage() {
             </div>
           </div>
 
-          {/* ===== 3. Ownership ===== */}
           <div className="bg-surface border border-border rounded-lg p-6">
             <div className="flex items-start gap-3 mb-5">
               <span className="w-6 h-6 rounded-full bg-accent text-white text-xs font-semibold flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
@@ -409,7 +403,6 @@ export default function NewPropertyPage() {
             )}
           </div>
 
-          {/* ===== 4. Opening valuation ===== */}
           <div className="bg-surface border border-border rounded-lg p-6">
             <div className="flex items-start gap-3 mb-5">
               <span className="w-6 h-6 rounded-full bg-accent text-white text-xs font-semibold flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
@@ -452,17 +445,16 @@ export default function NewPropertyPage() {
                   id="val-source"
                   className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={valuationSource}
-                  onChange={e => setValuationSource(e.target.value as typeof VALUATION_SOURCES[number])}
+                  onChange={e => setValuationSource(e.target.value as ValuationSource)}
                 >
                   {VALUATION_SOURCES.map(s => (
-                    <option key={s} value={s}>{VALUATION_SOURCE_LABELS[s]}</option>
+                    <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
               </div>
             </div>
           </div>
 
-          {/* ===== 5. Lease & management ===== */}
           <div className="bg-surface border border-border rounded-lg p-6">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-start gap-3">
@@ -482,6 +474,10 @@ export default function NewPropertyPage() {
                 {leaseExpanded ? 'Collapse' : 'Expand'}
               </button>
             </div>
+
+            {leaseExpanded && leaseTouched && !leaseValid && (
+              <p className="mt-3 text-xs text-amber-600">Lease start and weekly rent are required when adding lease details.</p>
+            )}
 
             {leaseExpanded && (
               <div className="mt-5 space-y-4">
@@ -575,7 +571,6 @@ export default function NewPropertyPage() {
         </div>
       </div>
 
-      {/* ===== Sticky commit bar ===== */}
       <div className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-10">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
           <div className="flex-1 min-w-0">
