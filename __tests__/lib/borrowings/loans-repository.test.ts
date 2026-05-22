@@ -84,27 +84,35 @@ describe('listInstallmentLoans', () => {
     mocks.mockBalancesSelect.mockResolvedValue([balanceRow])
   })
 
-  it('returns loans with latestBalance attached', async () => {
+  it('returns loans with latestBalance and recentBalances attached', async () => {
     const result = await listInstallmentLoans('user-123', PROP_ID)
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe(LOAN_ID)
     expect(result[0].latestBalance).toEqual({ balanceCents: 45000000, recordedAt: '2026-03-01' })
+    expect(result[0].recentBalances).toHaveLength(1)
+    expect(result[0].recentBalances[0]).toMatchObject({ id: BAL_ID, balanceCents: 45000000, recordedAt: '2026-03-01' })
   })
 
-  it('returns null latestBalance when no balance exists for the loan', async () => {
+  it('returns null latestBalance and empty recentBalances when no balance exists', async () => {
     mocks.mockBalancesSelect.mockResolvedValue([])
     const result = await listInstallmentLoans('user-123', PROP_ID)
     expect(result[0].latestBalance).toBeNull()
+    expect(result[0].recentBalances).toEqual([])
   })
 
-  it('picks the most recent balance when multiple exist', async () => {
-    mocks.mockBalancesSelect.mockResolvedValue([
-      { ...balanceRow, balanceCents: 45000000, recordedAt: '2026-03-01' },
-      { ...balanceRow, id: 'older', balanceCents: 50000000, recordedAt: '2025-01-01' },
-    ])
+  it('picks the most recent balance for latestBalance and returns up to 4 in recentBalances', async () => {
+    const rows = [
+      { ...balanceRow, id: 'b1', balanceCents: 45000000, recordedAt: '2026-03-01' },
+      { ...balanceRow, id: 'b2', balanceCents: 46000000, recordedAt: '2026-02-01' },
+      { ...balanceRow, id: 'b3', balanceCents: 47000000, recordedAt: '2026-01-01' },
+      { ...balanceRow, id: 'b4', balanceCents: 48000000, recordedAt: '2025-12-01' },
+      { ...balanceRow, id: 'b5', balanceCents: 49000000, recordedAt: '2025-11-01' },
+    ]
+    mocks.mockBalancesSelect.mockResolvedValue(rows)
     const result = await listInstallmentLoans('user-123', PROP_ID)
-    // First row in the ordered-by-desc result wins
     expect(result[0].latestBalance!.balanceCents).toBe(45000000)
+    expect(result[0].recentBalances).toHaveLength(4)
+    expect(result[0].recentBalances.map((b: { id: string }) => b.id)).toEqual(['b1', 'b2', 'b3', 'b4'])
   })
 
   it('returns empty array when no loans exist', async () => {

@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import type { Property, Entity } from '@/db/schema'
 import { formatCents } from '@/lib/format'
 
-type PropertyWithEntity = Property & { entityName: string | null }
+type PropertyWithEntity = Property & { entityName: string | null; lvrPercent: number | null }
 
 type LedgerSummaryFlags = {
   missingStatements: string[]
@@ -40,7 +40,7 @@ export default function PropertiesPage() {
       try {
         const propsRes = await fetch('/api/properties')
         if (propsRes.status === 401) { router.push('/login'); return }
-        const { properties: rawProps = [] } = await propsRes.json() as { properties?: Property[] }
+        const { properties: rawProps = [] } = await propsRes.json() as { properties?: (Property & { lvrPercent: number | null })[] }
 
         const [entitiesRes, portfolioRes, ledgerRes] = await Promise.all([
           fetch('/api/entities'),
@@ -55,7 +55,7 @@ export default function PropertiesPage() {
         const entityMap = new Map(rawEntities.map((e: Entity) => [e.id, e.name]))
 
         setEntities(rawEntities)
-        setProperties(rawProps.map((p: Property) => ({
+        setProperties(rawProps.map(p => ({
           ...p,
           entityName: p.entityId ? (entityMap.get(p.entityId) ?? null) : null,
         })))
@@ -168,23 +168,38 @@ export default function PropertiesPage() {
             <tbody>
               {filtered.map(prop => {
                 const hasMissing = missingStatements.has(prop.id)
+                const isSold = !!prop.saleDate
                 return (
                   <tr
                     key={prop.id}
-                    className="border-b border-ruled last:border-b-0 hover:bg-screen-bg cursor-pointer transition-colors"
+                    className={[
+                      'border-b border-ruled last:border-b-0 hover:bg-screen-bg cursor-pointer transition-colors',
+                      isSold ? 'opacity-60' : '',
+                    ].join(' ')}
                     onClick={() => router.push(`/properties/${prop.id}`)}
                   >
                     <td className="py-3 px-4">
-                      <p className="font-medium text-ink">{prop.address}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-ink">{prop.address}</p>
+                        {isSold && (
+                          <Badge variant="complete">Sold</Badge>
+                        )}
+                      </div>
                       {prop.nickname && <p className="text-xs text-muted mt-0.5">{prop.nickname}</p>}
                     </td>
                     <td className="py-3 px-4 text-muted">{prop.entityName ?? '—'}</td>
                     <td className="py-3 px-4 text-center">
-                      <Badge variant={hasMissing ? 'missing' : 'complete'}>
-                        {hasMissing ? 'Missing' : 'Complete'}
-                      </Badge>
+                      {isSold ? (
+                        <span className="text-xs text-muted">—</span>
+                      ) : (
+                        <Badge variant={hasMissing ? 'missing' : 'complete'}>
+                          {hasMissing ? 'Missing' : 'Complete'}
+                        </Badge>
+                      )}
                     </td>
-                    <td className="py-3 px-4 text-right text-muted">—</td>
+                    <td className="py-3 px-4 text-right text-muted">
+                      {prop.lvrPercent !== null ? `${prop.lvrPercent}%` : '—'}
+                    </td>
                   </tr>
                 )
               })}
