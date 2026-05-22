@@ -50,6 +50,9 @@ function makeLoanAccount(overrides: Partial<InstallmentLoan> = {}): InstallmentL
     startDate: '2020-01-01',
     endDate: '2050-01-01',
     entityId: null,
+    loanType: null,
+    ioEndDate: null,
+    interestRate: null,
     createdAt: new Date(),
     ...overrides,
   }

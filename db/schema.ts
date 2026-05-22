@@ -80,20 +80,46 @@ export const sourceDocuments = pgTable('source_documents', {
   unique().on(t.userId, t.fileHash),
 ])
 
+export const loanTypeEnum = pgEnum('loan_type', [
+  'interest_only', 'principal_and_interest',
+])
+
 export const installmentLoans = pgTable('installment_loans', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  userId:     uuid('user_id').notNull(),
-  propertyId: uuid('property_id')
-                .references(() => properties.id, { onDelete: 'set null' }),
-  lender:     text('lender').notNull(),
-  nickname:   text('nickname'),
-  startDate:  date('start_date').notNull(),
-  endDate:    date('end_date').notNull(),
-  entityId:   uuid('entity_id').references(() => entities.id, { onDelete: 'set null' }),
-  createdAt:  timestamp('created_at').defaultNow().notNull(),
+  id:           uuid('id').primaryKey().defaultRandom(),
+  userId:       uuid('user_id').notNull(),
+  propertyId:   uuid('property_id')
+                  .references(() => properties.id, { onDelete: 'set null' }),
+  lender:       text('lender').notNull(),
+  nickname:     text('nickname'),
+  startDate:    date('start_date').notNull(),
+  endDate:      date('end_date').notNull(),
+  entityId:     uuid('entity_id').references(() => entities.id, { onDelete: 'set null' }),
+  loanType:     loanTypeEnum('loan_type'),
+  ioEndDate:    date('io_end_date'),
+  interestRate: numeric('interest_rate', { precision: 5, scale: 2 }),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
 }, (t) => [
   index('idx_installment_loans_user').on(t.userId),
   index('idx_installment_loans_property').on(t.propertyId),
+])
+
+export const loanLedger = pgTable('loan_ledger', {
+  id:                uuid('id').primaryKey().defaultRandom(),
+  userId:            uuid('user_id').notNull(),
+  installmentLoanId: uuid('installment_loan_id').notNull()
+                       .references(() => installmentLoans.id, { onDelete: 'cascade' }),
+  paymentDate:       date('payment_date').notNull(),
+  amountCents:       integer('amount_cents').notNull(),
+  interestCents:     integer('interest_cents'),
+  principalCents:    integer('principal_cents'),
+  description:       text('description'),
+  sourceDocumentId:  uuid('source_document_id')
+                       .references(() => sourceDocuments.id, { onDelete: 'set null' }),
+  deletedAt:         timestamp('deleted_at', { withTimezone: true }),
+  createdAt:         timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  index('idx_loan_ledger_loan_date').on(t.installmentLoanId, t.paymentDate),
+  index('idx_loan_ledger_user').on(t.userId),
 ])
 
 export const propertyLedger = pgTable('property_ledger', {
@@ -239,6 +265,10 @@ export type PropertyManagementAgent = typeof propertyManagementAgents.$inferSele
 export type PropertyType           = typeof propertyTypeEnum.enumValues[number]
 export type LeaseType              = typeof leaseTypeEnum.enumValues[number]
 export type StatementCadence       = typeof statementCadenceEnum.enumValues[number]
+
+export type LoanType    = typeof loanTypeEnum.enumValues[number]
+export type LoanLedger  = typeof loanLedger.$inferSelect
+export type NewLoanLedger = typeof loanLedger.$inferInsert
 
 // Backward-compatible aliases — used by frontend pages pending the Frontend rebuild phase
 export type LoanBalance = InstallmentLoanBalance

@@ -34,6 +34,9 @@ export async function PATCH(
       startDate?: string
       endDate?: string
       entityId?: string | null
+      loanType?: 'interest_only' | 'principal_and_interest' | null
+      ioEndDate?: string | null
+      interestRate?: string | null
     } = {}
 
     if ('lender' in raw) {
@@ -69,6 +72,30 @@ export async function PATCH(
 
     if ('entityId' in raw) {
       updates.entityId = typeof raw.entityId === 'string' && raw.entityId ? raw.entityId : null
+    }
+
+    if ('loanType' in raw) {
+      if (raw.loanType === null) {
+        updates.loanType = null
+      } else if (raw.loanType === 'interest_only' || raw.loanType === 'principal_and_interest') {
+        updates.loanType = raw.loanType
+      } else {
+        return NextResponse.json({ error: 'loanType must be interest_only, principal_and_interest, or null' }, { status: 400 })
+      }
+    }
+
+    if ('ioEndDate' in raw) {
+      updates.ioEndDate = typeof raw.ioEndDate === 'string' && raw.ioEndDate ? raw.ioEndDate : null
+    }
+
+    if ('interestRate' in raw) {
+      if (raw.interestRate === null) {
+        updates.interestRate = null
+      } else if (typeof raw.interestRate === 'number' && isFinite(raw.interestRate) && raw.interestRate >= 0) {
+        updates.interestRate = String(raw.interestRate)
+      } else {
+        return NextResponse.json({ error: 'interestRate must be a non-negative number or null' }, { status: 400 })
+      }
     }
 
     if (Object.keys(updates).length === 0) {
