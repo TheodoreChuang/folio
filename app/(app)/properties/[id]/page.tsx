@@ -32,6 +32,7 @@ type LatestValuation = { valueCents: number; valuedAt: string; source: string | 
 type YieldStats = { grossPercent: number; netPercent: number; periodLabel: string } | null
 type LoanWithBalance = InstallmentLoan & {
   latestBalance: { balanceCents: number; recordedAt: string } | null
+  recentBalances: { id: string; balanceCents: number; recordedAt: string }[]
 }
 
 const MANUAL_CATEGORIES = [
@@ -189,6 +190,12 @@ export default function PropertyDetailPage() {
   // Delete property modal
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deletingProperty, setDeletingProperty] = useState(false)
+
+  // Inline balance snapshot form (per-loan, only one open at a time)
+  const [balanceFormLoanId, setBalanceFormLoanId] = useState<string | null>(null)
+  const [balanceDate, setBalanceDate] = useState('')
+  const [balanceDollars, setBalanceDollars] = useState('')
+  const [savingBalance, setSavingBalance] = useState(false)
 
   const loadEntries = useCallback(async (signal: AbortSignal) => {
     setEntriesLoading(true)
@@ -607,6 +614,42 @@ export default function PropertyDetailPage() {
     } finally {
       setDeletingProperty(false)
       setShowDeleteModal(false)
+    }
+  }
+
+  async function handleAddBalance(loanId: string) {
+    const parsedAmount = parseFloat(balanceDollars.replace(/,/g, ''))
+    if (!balanceDate || isNaN(parsedAmount) || parsedAmount < 0) {
+      toast.error('Date and a valid balance are required'); return
+    }
+    setSavingBalance(true)
+    try {
+      const res = await fetch(`/api/properties/${id}/loans/${loanId}/balances`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recordedAt: balanceDate,
+          balanceCents: Math.round(parsedAmount * 100),
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        toast.error(err.error ?? 'Failed to add balance'); return
+      }
+      // Re-fetch loans to update balance history
+      const loansRes = await fetch(`/api/properties/${id}/loans`)
+      if (loansRes.ok) {
+        const data = await loansRes.json() as { loans?: LoanWithBalance[] }
+        setLoans(data.loans ?? [])
+      }
+      setBalanceFormLoanId(null)
+      setBalanceDate('')
+      setBalanceDollars('')
+      toast.success('Balance added')
+    } catch {
+      toast.error('Network error — please try again')
+    } finally {
+      setSavingBalance(false)
     }
   }
 
@@ -1096,24 +1139,74 @@ export default function PropertyDetailPage() {
                       View in Loans →
                     </Button>
                   </div>
-                  {loan.latestBalance && (
-                    <div className="mt-4 pt-4 border-t border-ruled flex items-center justify-between text-sm">
-                      <span className="text-muted">Current balance</span>
-                      <span className="font-medium tabular-nums">
-                        {formatCents(loan.latestBalance.balanceCents)}
-                      </span>
+
+                  {/* Balance history */}
+                  {loan.recentBalances.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-ruled space-y-1">
+                      <p className="text-xs font-medium text-muted uppercase tracking-wide mb-2">Balance history</p>
+                      {loan.recentBalances.map((b, i) => (
+                        <div key={b.id} className="flex items-center justify-between text-sm">
+                          <span className="text-muted">{formatDate(b.recordedAt)}</span>
+                          <span className={`font-medium tabular-nums ${i === 0 ? 'text-ink' : 'text-muted'}`}>
+                            {formatCents(b.balanceCents)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  <p className="text-xs text-muted mt-3">
-                    <svg
-                      className="inline mr-1" width="11" height="11"
-                      viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden
-                    >
-                      <rect x="3" y="5.5" width="6" height="4.5" rx="0.6"/>
-                      <path d="M4.2 5.5V4a1.8 1.8 0 0 1 3.6 0v1.5"/>
-                    </svg>
-                    Loan record lives in the Loans section · balance snapshots can be added there.
-                  </p>
+
+                  {/* Inline add balance form */}
+                  {balanceFormLoanId === loan.id ? (
+                    <div className="mt-4 pt-4 border-t border-ruled">
+                      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Add balance snapshot</p>
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`bal-date-${loan.id}`}>Date</Label>
+                          <Input
+                            id={`bal-date-${loan.id}`} type="date"
+                            value={balanceDate}
+                            onChange={e => setBalanceDate(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`bal-amount-${loan.id}`}>Balance ($)</Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                            <Input
+                              id={`bal-amount-${loan.id}`} type="text" inputMode="decimal"
+                              placeholder="480,000" className="pl-7"
+                              value={balanceDollars}
+                              onChange={e => setBalanceDollars(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleAddBalance(loan.id)}
+                          disabled={savingBalance || !balanceDate || !balanceDollars.trim()}
+                        >
+                          {savingBalance ? 'Adding…' : 'Add snapshot'}
+                        </Button>
+                        <button
+                          onClick={() => { setBalanceFormLoanId(null); setBalanceDate(''); setBalanceDollars('') }}
+                          className="text-xs text-muted hover:text-ink transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-3 pt-3 border-t border-ruled">
+                      <button
+                        onClick={() => { setBalanceFormLoanId(loan.id); setBalanceDate(todayIso()); setBalanceDollars('') }}
+                        className="text-xs text-muted hover:text-accent transition-colors"
+                      >
+                        + Add balance snapshot
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
               <div className="text-center pt-2">

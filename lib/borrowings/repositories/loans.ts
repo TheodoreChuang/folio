@@ -19,10 +19,17 @@ type UpdateInstallmentLoanInput = {
   entityId?: string | null
 }
 
+type RecentBalance = { id: string; balanceCents: number; recordedAt: string }
+
+export type LoanWithBalances = InstallmentLoan & {
+  latestBalance: { balanceCents: number; recordedAt: string } | null
+  recentBalances: RecentBalance[]
+}
+
 export async function listInstallmentLoans(
   userId: string,
   propertyId: string,
-): Promise<Array<InstallmentLoan & { latestBalance: { balanceCents: number; recordedAt: string } | null }>> {
+): Promise<LoanWithBalances[]> {
   const loans = await db
     .select()
     .from(installmentLoans)
@@ -35,6 +42,7 @@ export async function listInstallmentLoans(
     .orderBy(installmentLoanBalances.installmentLoanId, desc(installmentLoanBalances.recordedAt))
 
   const latestBalanceMap = new Map<string, { balanceCents: number; recordedAt: string }>()
+  const recentBalancesMap = new Map<string, RecentBalance[]>()
   for (const row of balanceRows) {
     if (!latestBalanceMap.has(row.installmentLoanId)) {
       latestBalanceMap.set(row.installmentLoanId, {
@@ -42,11 +50,17 @@ export async function listInstallmentLoans(
         recordedAt: row.recordedAt,
       })
     }
+    const recent = recentBalancesMap.get(row.installmentLoanId) ?? []
+    if (recent.length < 4) {
+      recent.push({ id: row.id, balanceCents: row.balanceCents, recordedAt: row.recordedAt })
+      recentBalancesMap.set(row.installmentLoanId, recent)
+    }
   }
 
   return loans.map(loan => ({
     ...loan,
     latestBalance: latestBalanceMap.get(loan.id) ?? null,
+    recentBalances: recentBalancesMap.get(loan.id) ?? [],
   }))
 }
 
