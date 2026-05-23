@@ -13,6 +13,9 @@ const loanRow = {
   startDate: '2020-01-01',
   endDate: '2050-01-01',
   entityId: null,
+  loanType: null,
+  ioEndDate: null,
+  interestRate: null,
   createdAt: new Date(),
 }
 
@@ -151,6 +154,99 @@ describe('PATCH /api/properties/[id]/loans/[loanId]', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.loan.nickname).toBeNull()
+  })
+
+  it('returns 200 when loanType is interest_only', async () => {
+    mocks.mockUpdateInstallmentLoan.mockResolvedValueOnce({ ...loanRow, loanType: 'interest_only' })
+    const res = await PATCH(
+      makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { loanType: 'interest_only' }),
+      { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.loan.loanType).toBe('interest_only')
+  })
+
+  it('returns 200 when loanType is principal_and_interest', async () => {
+    mocks.mockUpdateInstallmentLoan.mockResolvedValueOnce({ ...loanRow, loanType: 'principal_and_interest' })
+    const res = await PATCH(
+      makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { loanType: 'principal_and_interest' }),
+      { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.loan.loanType).toBe('principal_and_interest')
+  })
+
+  it('returns 200 and clears loanType when set to null', async () => {
+    mocks.mockUpdateInstallmentLoan.mockResolvedValueOnce({ ...loanRow, loanType: null })
+    const res = await PATCH(
+      makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { loanType: null }),
+      { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.loan.loanType).toBeNull()
+  })
+
+  it('returns 400 when loanType is an invalid value', async () => {
+    const res = await PATCH(
+      makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { loanType: 'fixed_rate' }),
+      { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 200 when ioEndDate is set', async () => {
+    mocks.mockUpdateInstallmentLoan.mockResolvedValueOnce({ ...loanRow, ioEndDate: '2027-06-30' })
+    const res = await PATCH(
+      makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { ioEndDate: '2027-06-30' }),
+      { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.loan.ioEndDate).toBe('2027-06-30')
+  })
+
+  it('returns 200 and clears ioEndDate when set to null', async () => {
+    mocks.mockUpdateInstallmentLoan.mockResolvedValueOnce({ ...loanRow, ioEndDate: null })
+    const res = await PATCH(
+      makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { ioEndDate: null }),
+      { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.loan.ioEndDate).toBeNull()
+  })
+
+  it('returns 200 when interestRate is a positive number', async () => {
+    mocks.mockUpdateInstallmentLoan.mockResolvedValueOnce({ ...loanRow, interestRate: '6.35' })
+    const res = await PATCH(
+      makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { interestRate: 6.35 }),
+      { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.loan.interestRate).toBe('6.35')
+  })
+
+  it('returns 400 when interestRate is negative', async () => {
+    const res = await PATCH(
+      makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { interestRate: -1 }),
+      { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 200 and clears interestRate when set to null', async () => {
+    mocks.mockUpdateInstallmentLoan.mockResolvedValueOnce({ ...loanRow, interestRate: null })
+    const res = await PATCH(
+      makePatchRequest(VALID_PROP_ID, VALID_LOAN_ID, { interestRate: null }),
+      { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.loan.interestRate).toBeNull()
   })
 })
 

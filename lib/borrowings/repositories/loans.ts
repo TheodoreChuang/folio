@@ -17,6 +17,9 @@ type UpdateInstallmentLoanInput = {
   startDate?: string
   endDate?: string
   entityId?: string | null
+  loanType?: 'interest_only' | 'principal_and_interest' | null
+  ioEndDate?: string | null
+  interestRate?: string | null
 }
 
 type RecentBalance = { id: string; balanceCents: number; recordedAt: string }
