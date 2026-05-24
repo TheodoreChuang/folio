@@ -9,26 +9,26 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { MetricTile } from '@/components/ui/metric-tile'
-import type { InstallmentLoan, InstallmentLoanBalance, Property } from '@/db/schema'
-
-type LoanWithProperty = InstallmentLoan & {
-  latestBalance: { balanceCents: number; recordedAt: string } | null
-  propertyAddress: string
-}
-
 import { formatCents } from '@/lib/format'
+import type { InstallmentLoanBalance } from '@/db/schema'
+import type { InstallmentLoanDetail } from '@/lib/borrowings'
+import type { LoanLedgerWithSource } from '@/lib/borrowings'
 
 function formatDate(d: string): string {
   const [y, m, day] = d.split('-')
   return `${day}/${m}/${y}`
 }
 
+function ioCountdownMonths(ioEndDate: string): number {
+  const msRemaining = new Date(ioEndDate).getTime() - Date.now()
+  return Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24 * 30.44)))
+}
+
 export default function LoanDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
 
-  const [loan, setLoan] = useState<LoanWithProperty | null>(null)
-  const [propertyId, setPropertyId] = useState<string | null>(null)
+  const [loan, setLoan] = useState<InstallmentLoanDetail | null>(null)
   const [balances, setBalances] = useState<InstallmentLoanBalance[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -37,56 +37,48 @@ export default function LoanDetailPage() {
   const [editNickname, setEditNickname] = useState('')
   const [editStartDate, setEditStartDate] = useState('')
   const [editEndDate, setEditEndDate] = useState('')
+  const [editLoanType, setEditLoanType] = useState<'interest_only' | 'principal_and_interest' | null>(null)
+  const [editIoEndDate, setEditIoEndDate] = useState('')
+  const [editInterestRate, setEditInterestRate] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const [addBalanceCents, setAddBalanceCents] = useState('')
+  const [addBalanceDollars, setAddBalanceDollars] = useState('')
   const [addBalanceDate, setAddBalanceDate] = useState('')
   const [addingBalance, setAddingBalance] = useState(false)
+
+  const [repayments, setRepayments] = useState<LoanLedgerWithSource[]>([])
+  const [repaymentsLoading, setRepaymentsLoading] = useState(false)
+  const [repaymentsFetched, setRepaymentsFetched] = useState(false)
+  const [addDate, setAddDate] = useState('')
+  const [addAmount, setAddAmount] = useState('')
+  const [addInterest, setAddInterest] = useState('')
+  const [addPrincipal, setAddPrincipal] = useState('')
+  const [addingRepayment, setAddingRepayment] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const propsRes = await fetch('/api/properties')
-      if (propsRes.status === 401) { router.push('/login'); return }
-      const { properties = [] } = await propsRes.json() as { properties?: Property[] }
+      const [loanRes, balRes] = await Promise.all([
+        fetch(`/api/loans/${id}`),
+        fetch(`/api/loans/${id}/balances`),
+      ])
+      if (loanRes.status === 401) { router.push('/login'); return }
+      if (loanRes.status === 404) { setNotFound(true); return }
+      if (!loanRes.ok) { toast.error('Failed to load loan'); return }
 
-      const loanArrays = await Promise.all(
-        properties.map(async (prop) => {
-          const res = await fetch(`/api/properties/${prop.id}/loans`)
-          if (!res.ok) return []
-          const data = await res.json() as {
-            loans?: Array<InstallmentLoan & { latestBalance: { balanceCents: number; recordedAt: string } | null }>
-          }
-          return (data.loans ?? []).map(l => ({
-            ...l,
-            propertyAddress: prop.nickname ?? prop.address,
-            _propertyId: prop.id,
-          }))
-        })
-      )
-
-      const allLoans = loanArrays.flat()
-      const found = allLoans.find(l => l.id === id)
-
-      if (!found) {
-        setNotFound(true)
-        return
-      }
-
-      const { _propertyId, ...loanData } = found
+      const { loan: loanData } = await loanRes.json() as { loan: InstallmentLoanDetail }
       setLoan(loanData)
-      setPropertyId(_propertyId)
       setEditLender(loanData.lender)
       setEditNickname(loanData.nickname ?? '')
       setEditStartDate(loanData.startDate)
       setEditEndDate(loanData.endDate)
+      setEditLoanType(loanData.loanType ?? null)
+      setEditIoEndDate(loanData.ioEndDate ?? '')
+      setEditInterestRate(loanData.interestRate ?? '')
 
-      const balRes = await fetch(`/api/properties/${_propertyId}/loans/${id}/balances`)
       if (balRes.ok) {
         const balData = await balRes.json() as { balances?: InstallmentLoanBalance[] }
-        setBalances((balData.balances ?? []).sort(
-          (a, b) => b.recordedAt.localeCompare(a.recordedAt)
-        ))
+        setBalances(balData.balances ?? [])
       }
     } catch {
       toast.error('Failed to load loan')
@@ -97,11 +89,26 @@ export default function LoanDetailPage() {
 
   useEffect(() => { loadData() }, [loadData])
 
+  async function loadRepayments() {
+    if (repaymentsFetched || repaymentsLoading) return
+    setRepaymentsLoading(true)
+    try {
+      const res = await fetch(`/api/loans/${id}/repayments`)
+      if (!res.ok) { toast.error('Failed to load repayments'); return }
+      const data = await res.json() as { repayments: LoanLedgerWithSource[] }
+      setRepayments(data.repayments ?? [])
+      setRepaymentsFetched(true)
+    } catch {
+      toast.error('Failed to load repayments')
+    } finally {
+      setRepaymentsLoading(false)
+    }
+  }
+
   async function handleSave() {
-    if (!propertyId) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/properties/${propertyId}/loans/${id}`, {
+      const res = await fetch(`/api/loans/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -109,14 +116,26 @@ export default function LoanDetailPage() {
           nickname: editNickname.trim() || null,
           startDate: editStartDate,
           endDate: editEndDate,
+          loanType: editLoanType,
+          ioEndDate: editLoanType === 'interest_only' ? (editIoEndDate || null) : null,
+          interestRate: editInterestRate ? parseFloat(editInterestRate) : null,
         }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string }
         toast.error(err.error ?? 'Failed to save')
+        if (loan) {
+          setEditLender(loan.lender)
+          setEditNickname(loan.nickname ?? '')
+          setEditStartDate(loan.startDate)
+          setEditEndDate(loan.endDate)
+          setEditLoanType(loan.loanType ?? null)
+          setEditIoEndDate(loan.ioEndDate ?? '')
+          setEditInterestRate(loan.interestRate ?? '')
+        }
         return
       }
-      const { loan: updated } = await res.json() as { loan: InstallmentLoan }
+      const { loan: updated } = await res.json() as { loan: InstallmentLoanDetail }
       setLoan(prev => prev ? { ...prev, ...updated } : null)
       toast.success('Saved')
     } finally {
@@ -125,14 +144,14 @@ export default function LoanDetailPage() {
   }
 
   async function handleAddBalance() {
-    if (!propertyId || !addBalanceCents.trim() || !addBalanceDate) return
-    const dollars = parseFloat(addBalanceCents.replace(/,/g, ''))
+    if (!addBalanceDollars.trim() || !addBalanceDate) return
+    const dollars = parseFloat(addBalanceDollars.replace(/,/g, ''))
     if (isNaN(dollars)) { toast.error('Invalid amount'); return }
     const balanceCents = Math.round(dollars * 100)
 
     setAddingBalance(true)
     try {
-      const res = await fetch(`/api/properties/${propertyId}/loans/${id}/balances`, {
+      const res = await fetch(`/api/loans/${id}/balances`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ balanceCents, recordedAt: addBalanceDate }),
@@ -144,13 +163,50 @@ export default function LoanDetailPage() {
       }
       const { balance } = await res.json() as { balance: InstallmentLoanBalance }
       setBalances(prev => [balance, ...prev].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)))
-      if (!loan) return
-      setLoan({ ...loan, latestBalance: { balanceCents: balance.balanceCents, recordedAt: balance.recordedAt } })
-      setAddBalanceCents('')
+      setLoan(prev => prev ? { ...prev, latestBalance: { balanceCents: balance.balanceCents, recordedAt: balance.recordedAt } } : null)
+      setAddBalanceDollars('')
       setAddBalanceDate('')
       toast.success('Balance added')
     } finally {
       setAddingBalance(false)
+    }
+  }
+
+  async function handleAddRepayment() {
+    if (!addDate || !addAmount.trim()) return
+    const dollars = parseFloat(addAmount.replace(/,/g, ''))
+    if (isNaN(dollars) || dollars <= 0) { toast.error('Invalid amount'); return }
+    const amountCents = Math.round(dollars * 100)
+
+    const interestDollars = addInterest.trim() ? parseFloat(addInterest.replace(/,/g, '')) : null
+    const principalDollars = addPrincipal.trim() ? parseFloat(addPrincipal.replace(/,/g, '')) : null
+
+    setAddingRepayment(true)
+    try {
+      const res = await fetch(`/api/loans/${id}/repayments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentDate: addDate,
+          amountCents,
+          interestCents: interestDollars !== null && !isNaN(interestDollars) ? Math.round(interestDollars * 100) : null,
+          principalCents: principalDollars !== null && !isNaN(principalDollars) ? Math.round(principalDollars * 100) : null,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        toast.error(err.error ?? 'Failed to add repayment')
+        return
+      }
+      const { repayment } = await res.json() as { repayment: LoanLedgerWithSource }
+      setRepayments(prev => [repayment, ...prev])
+      setAddDate('')
+      setAddAmount('')
+      setAddInterest('')
+      setAddPrincipal('')
+      toast.success('Repayment added')
+    } finally {
+      setAddingRepayment(false)
     }
   }
 
@@ -173,6 +229,36 @@ export default function LoanDetailPage() {
 
   const currentBalance = loan.latestBalance?.balanceCents ?? null
 
+  // IO countdown tile
+  let ioTileValue: string
+  let ioTileFoot: React.ReactNode
+  let ioMonths = 0
+  if (loan.loanType === 'interest_only' && loan.ioEndDate) {
+    ioMonths = ioCountdownMonths(loan.ioEndDate)
+    ioTileValue = `${ioMonths} months`
+    ioTileFoot = (
+      <span className="flex items-center gap-2 text-xs text-muted">
+        <span>{formatDate(loan.ioEndDate)}</span>
+        {ioMonths <= 18 && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-100 text-amber-700 border border-amber-200">
+            <span className="w-1 h-1 rounded-full bg-amber-500 inline-block" />
+            Plan ahead
+          </span>
+        )}
+      </span>
+    )
+  } else if (loan.loanType === 'principal_and_interest') {
+    ioTileValue = 'P&I'
+    ioTileFoot = <span className="text-xs text-muted">Principal &amp; interest</span>
+  } else {
+    ioTileValue = '—'
+    ioTileFoot = <span className="text-xs text-muted">Loan type not set</span>
+  }
+
+  // Repayments summary
+  const totalPaidCents = repayments.reduce((sum, r) => sum + r.amountCents, 0)
+  const allInterestOnly = repayments.length > 0 && repayments.every(r => r.principalCents === null || r.principalCents === 0)
+
   return (
     <div>
       <div className="mb-2">
@@ -189,8 +275,12 @@ export default function LoanDetailPage() {
           <h1 className="font-serif text-2xl text-ink">{loan.nickname ?? loan.lender}</h1>
           <div className="flex items-center gap-2 mt-1 text-sm text-muted">
             <span>{loan.lender}</span>
-            <span>·</span>
-            <span>{loan.propertyAddress}</span>
+            {loan.propertyAddress && (
+              <>
+                <span>·</span>
+                <span>{loan.propertyAddress}</span>
+              </>
+            )}
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={() => router.push('/upload')}>
@@ -208,9 +298,9 @@ export default function LoanDetailPage() {
           foot={loan.latestBalance ? <span className="text-xs text-muted">as of {formatDate(loan.latestBalance.recordedAt)}</span> : undefined}
         />
         <MetricTile
-          label="Loan type"
-          value="—"
-          foot={<span className="text-xs text-muted">Not tracked yet</span>}
+          label={loan.loanType === 'interest_only' ? 'IO period ends in' : 'Loan type'}
+          value={ioTileValue}
+          foot={ioTileFoot}
           secondary
         />
       </div>
@@ -218,7 +308,7 @@ export default function LoanDetailPage() {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="repayments">Repayments</TabsTrigger>
+          <TabsTrigger value="repayments" onClick={loadRepayments}>Repayments</TabsTrigger>
           <TabsTrigger value="statements">Statements</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
@@ -241,8 +331,50 @@ export default function LoanDetailPage() {
                   <Input id="nickname" value={editNickname} onChange={e => setEditNickname(e.target.value)} placeholder="e.g. Inv Loan · Elm St" />
                 </div>
                 <div className="space-y-1.5">
+                  <Label>Loan type</Label>
+                  <div className="flex rounded-md border border-border overflow-hidden w-fit">
+                    {(['interest_only', 'principal_and_interest'] as const).map(type => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setEditLoanType(editLoanType === type ? null : type)}
+                        className={[
+                          'px-3 h-8 text-xs font-medium transition-colors',
+                          editLoanType === type
+                            ? 'bg-ink text-surface'
+                            : 'bg-surface text-muted hover:text-ink',
+                          type === 'principal_and_interest' ? 'border-l border-border' : '',
+                        ].join(' ')}
+                      >
+                        {type === 'interest_only' ? 'IO' : 'P&I'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {editLoanType === 'interest_only' && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="io-end-date">IO end date</Label>
+                    <Input id="io-end-date" type="date" value={editIoEndDate} onChange={e => setEditIoEndDate(e.target.value)} />
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label htmlFor="interest-rate">Rate (est.) <span className="font-normal text-muted">(optional)</span></Label>
+                  <div className="relative">
+                    <Input
+                      id="interest-rate"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="6.35"
+                      className="pr-7"
+                      value={editInterestRate}
+                      onChange={e => setEditInterestRate(e.target.value)}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-sm">%</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
                   <Label htmlFor="security">Security</Label>
-                  <p className="text-sm text-ink">{loan.propertyAddress}</p>
+                  <p className="text-sm text-ink">{loan.propertyAddress ?? 'No property linked'}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -291,8 +423,8 @@ export default function LoanDetailPage() {
                           inputMode="decimal"
                           placeholder="615,000"
                           className="pl-7"
-                          value={addBalanceCents}
-                          onChange={e => setAddBalanceCents(e.target.value)}
+                          value={addBalanceDollars}
+                          onChange={e => setAddBalanceDollars(e.target.value)}
                         />
                       </div>
                     </div>
@@ -310,7 +442,7 @@ export default function LoanDetailPage() {
                     size="sm"
                     variant="outline"
                     onClick={handleAddBalance}
-                    disabled={addingBalance || !addBalanceCents.trim() || !addBalanceDate}
+                    disabled={addingBalance || !addBalanceDollars.trim() || !addBalanceDate}
                   >
                     {addingBalance ? 'Adding…' : '+ Add snapshot'}
                   </Button>
@@ -322,8 +454,132 @@ export default function LoanDetailPage() {
         </TabsContent>
 
         <TabsContent value="repayments" className="mt-6">
-          <div className="text-sm text-muted py-8 text-center">Repayments coming soon.</div>
+          {repaymentsLoading ? (
+            <div className="text-sm text-muted py-8 text-center">Loading repayments…</div>
+          ) : (
+            <div>
+              {repayments.length === 0 && repaymentsFetched ? (
+                <p className="text-sm text-muted mb-6">No repayments recorded yet.</p>
+              ) : (
+                <>
+                  {/* Table */}
+                  <div className="w-full">
+                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1.5fr] text-xs font-semibold text-muted uppercase tracking-wider pb-2 border-b border-border">
+                      <span>Date</span>
+                      <span className="text-right">Amount</span>
+                      <span className="text-right">Interest</span>
+                      <span className="text-right">Principal</span>
+                      <span className="pl-4">Source</span>
+                    </div>
+                    {repayments.map(r => (
+                      <div key={r.id} className="grid grid-cols-[1fr_1fr_1fr_1fr_1.5fr] py-2.5 border-b border-ruled last:border-b-0 items-center">
+                        <span className="text-sm text-muted">{formatDate(r.paymentDate)}</span>
+                        <span className="text-sm font-medium tabular-nums text-right">
+                          −{formatCents(r.amountCents)}
+                        </span>
+                        <span className={['text-sm tabular-nums text-right', r.interestCents === null ? 'text-faint' : 'text-muted'].join(' ')}>
+                          {r.interestCents !== null ? formatCents(r.interestCents) : '—'}
+                        </span>
+                        <span className={['text-sm tabular-nums text-right', r.principalCents === null ? 'text-faint' : 'text-muted'].join(' ')}>
+                          {r.principalCents !== null ? formatCents(r.principalCents) : '—'}
+                        </span>
+                        <span className="pl-4 text-sm flex items-center gap-1.5">
+                          {r.sourceDocumentId ? (
+                            <>
+                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" className="text-muted shrink-0" aria-hidden>
+                                <path d="M2 1h7l2 2v8H2z"/><path d="M9 1v2h2M5 8h3"/>
+                              </svg>
+                              <span className="text-muted truncate">{r.sourceFileName ?? 'Statement'}</span>
+                            </>
+                          ) : (
+                            <span className="text-faint">Manual</span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Summary footer */}
+                  {repayments.length > 0 && (
+                    <div className="flex items-center justify-between pt-3 text-sm text-muted border-t border-border">
+                      <span>{formatCents(totalPaidCents)} paid · {repayments.length} {repayments.length === 1 ? 'entry' : 'entries'}</span>
+                      {allInterestOnly && <span>100% interest</span>}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Add repayment form */}
+              <div className="mt-7 pt-6 border-t border-dashed border-border">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-ink">Add repayment</h3>
+                    <p className="text-xs text-muted mt-0.5">Record a one-off entry, or upload a lender statement to import them in bulk.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1.1fr_1fr_1fr_1fr_auto] gap-3 items-end">
+                  <div className="space-y-1">
+                    <Label htmlFor="rep-date" className="text-[11px]">Date <span className="text-red-500">*</span></Label>
+                    <Input id="rep-date" type="date" value={addDate} onChange={e => setAddDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="rep-amount" className="text-[11px]">Amount <span className="text-red-500">*</span></Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                      <Input
+                        id="rep-amount"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="2,167.00"
+                        className="pl-7"
+                        value={addAmount}
+                        onChange={e => setAddAmount(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="rep-interest" className="text-[11px]">Interest <span className="text-muted font-normal">(optional)</span></Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                      <Input
+                        id="rep-interest"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="2,167.00"
+                        className="pl-7"
+                        value={addInterest}
+                        onChange={e => setAddInterest(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="rep-principal" className="text-[11px]">Principal <span className="text-muted font-normal">(optional)</span></Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                      <Input
+                        id="rep-principal"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        className="pl-7"
+                        value={addPrincipal}
+                        onChange={e => setAddPrincipal(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleAddRepayment}
+                    disabled={addingRepayment || !addDate || !addAmount.trim()}
+                  >
+                    {addingRepayment ? 'Adding…' : 'Add'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </TabsContent>
+
         <TabsContent value="statements" className="mt-6">
           <div className="text-sm text-muted py-8 text-center">Statements coming soon.</div>
         </TabsContent>

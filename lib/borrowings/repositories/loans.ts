@@ -1,6 +1,6 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { installmentLoans, installmentLoanBalances } from '@/db/schema'
+import { installmentLoans, installmentLoanBalances, properties } from '@/db/schema'
 import type { InstallmentLoan } from '@/db/schema'
 
 type CreateInstallmentLoanInput = {
@@ -103,6 +103,82 @@ export async function updateInstallmentLoan(
     .where(and(
       eq(installmentLoans.id, loanId),
       eq(installmentLoans.propertyId, propertyId),
+      eq(installmentLoans.userId, userId),
+    ))
+    .returning()
+  return row
+}
+
+export type InstallmentLoanDetail = InstallmentLoan & {
+  propertyAddress: string | null
+  latestBalance: { balanceCents: number; recordedAt: string } | null
+}
+
+export async function findInstallmentLoanDetail(
+  userId: string,
+  loanId: string,
+): Promise<InstallmentLoanDetail | undefined> {
+  const [row] = await db
+    .select({
+      id:           installmentLoans.id,
+      userId:       installmentLoans.userId,
+      propertyId:   installmentLoans.propertyId,
+      lender:       installmentLoans.lender,
+      nickname:     installmentLoans.nickname,
+      startDate:    installmentLoans.startDate,
+      endDate:      installmentLoans.endDate,
+      entityId:     installmentLoans.entityId,
+      loanType:     installmentLoans.loanType,
+      ioEndDate:    installmentLoans.ioEndDate,
+      interestRate: installmentLoans.interestRate,
+      createdAt:    installmentLoans.createdAt,
+      propertyAddress: sql<string | null>`CASE
+        WHEN ${properties.nickname} IS NOT NULL AND ${properties.nickname} != ''
+          THEN ${properties.nickname}
+        WHEN ${properties.address} IS NOT NULL
+          THEN ${properties.address}
+        ELSE NULL
+      END`,
+    })
+    .from(installmentLoans)
+    .leftJoin(properties, eq(installmentLoans.propertyId, properties.id))
+    .where(and(
+      eq(installmentLoans.id, loanId),
+      eq(installmentLoans.userId, userId),
+    ))
+    .limit(1)
+
+  if (!row) return undefined
+
+  const [balRow] = await db
+    .select({
+      balanceCents: installmentLoanBalances.balanceCents,
+      recordedAt:   installmentLoanBalances.recordedAt,
+    })
+    .from(installmentLoanBalances)
+    .where(and(
+      eq(installmentLoanBalances.installmentLoanId, loanId),
+      eq(installmentLoanBalances.userId, userId),
+    ))
+    .orderBy(desc(installmentLoanBalances.recordedAt))
+    .limit(1)
+
+  return {
+    ...row,
+    latestBalance: balRow ?? null,
+  }
+}
+
+export async function updateInstallmentLoanById(
+  userId: string,
+  loanId: string,
+  updates: UpdateInstallmentLoanInput,
+): Promise<InstallmentLoan | undefined> {
+  const [row] = await db
+    .update(installmentLoans)
+    .set(updates)
+    .where(and(
+      eq(installmentLoans.id, loanId),
       eq(installmentLoans.userId, userId),
     ))
     .returning()

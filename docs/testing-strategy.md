@@ -18,6 +18,14 @@ Unit tests mock the DB at the query boundary. They can verify that the route cal
 
 Anything that depends on a WHERE clause being correct — soft-delete filters, date-range filters, RLS user-scoping — needs an integration test or an explicit code-review checkpoint. Writing a unit test that "covers" a soft-delete query is insufficient; if the `isNull(deletedAt)` condition is missing, the unit test will still pass.
 
+### Route tests that use `@/lib/db` directly must mock it
+
+`lib/db.ts` imports `lib/env.ts`, which calls `requireEnv('DATABASE_URL')` at module load time. If a route handler imports `db` directly and the test does not mock `@/lib/db`, the test will throw `Missing required environment variable: DATABASE_URL` in CI (where `.env.local` is absent).
+
+**Rule:** any test that imports a route which has `import { db } from '@/lib/db'` must include a `vi.mock('@/lib/db', ...)` call. See `__tests__/api/entities.test.ts` for the established mock pattern.
+
+**Preferred fix:** avoid importing `db` in route handlers at all. Route handlers are thin adapters — any query that needs to go direct to the DB belongs in a repository function in `lib/{domain}/repositories/`. That keeps the mock boundary clean and prevents this class of failure entirely.
+
 ---
 
 ## Critical Paths
@@ -93,4 +101,4 @@ All integration tests use an `if (!hasEnv) return` guard — they silently skip 
 | Gap | Rationale | When to fix |
 |-----|-----------|------------|
 | `hasStatement` semantics | Any non-`loan_payment` entry counts as "has statement" — a manual expense entry satisfies the flag even without a PM statement. Deferred pending UX review of health check status display. | V4 UX refresh |
-| Integration tests skipped in CI | No `TEST_USER_EMAIL` GitHub secret configured. All integration tests pass locally. | W7 (deploy) — wire test user creation via admin API |
+| Integration tests in CI | CI creates the test user via admin API; `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` are injected as workflow env vars. | Done |
