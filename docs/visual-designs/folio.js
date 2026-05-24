@@ -115,6 +115,83 @@
     });
   });
 
+  // --- Entity filter dropdown (properties page) ---------------------
+  // Click the chip to toggle the menu; click outside or Esc to close.
+  // Selecting an option updates the chip label and closes.
+  document.querySelectorAll('.entity-filter').forEach(wrap => {
+    const chip = wrap.querySelector('.chip-select');
+    const clearBtn = wrap.querySelector('.chip-clear');
+    const labelEl = chip && chip.querySelector('.label');
+    const defaultOpt = wrap.querySelector('.entity-opt[data-default]');
+
+    // Returns the text node inside the chip that holds the current value
+    // (the sibling after .label / before .chevron / .chip-clear). Stays
+    // robust if the chip is rewritten by an edit.
+    const getValueNode = () => {
+      if (!chip) return null;
+      for (const n of chip.childNodes) {
+        if (n.nodeType === 3 && n.nodeValue.trim()) return n;
+      }
+      return null;
+    };
+
+    const setChipValue = (text) => {
+      const node = getValueNode();
+      if (node) node.nodeValue = ' ' + text + ' ';
+    };
+
+    const applySelection = (opt) => {
+      wrap.querySelectorAll('.entity-opt').forEach(o => o.classList.remove('is-selected'));
+      opt.classList.add('is-selected');
+      const name = opt.querySelector('.opt-name');
+      const clone = name.cloneNode(true);
+      clone.querySelectorAll('.opt-kind').forEach(k => k.remove());
+      setChipValue(clone.textContent.trim());
+      // Active accent state when a non-default option is selected
+      const isDefault = opt.hasAttribute('data-default');
+      chip.classList.toggle('is-active', !isDefault);
+    };
+
+    chip && chip.addEventListener('click', e => {
+      // Don't open when the user clicked the inline clear button
+      if (clearBtn && clearBtn.contains(e.target)) return;
+      e.stopPropagation();
+      wrap.classList.toggle('is-open');
+      chip.classList.toggle('is-open', wrap.classList.contains('is-open'));
+    });
+
+    clearBtn && clearBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (defaultOpt) applySelection(defaultOpt);
+    });
+
+    wrap.querySelectorAll('.entity-opt:not(.is-action)').forEach(opt => {
+      opt.addEventListener('click', e => {
+        e.stopPropagation();
+        applySelection(opt);
+        wrap.classList.remove('is-open');
+        chip.classList.remove('is-open');
+      });
+    });
+  });
+  document.addEventListener('click', e => {
+    document.querySelectorAll('.entity-filter.is-open').forEach(wrap => {
+      if (!wrap.contains(e.target)) {
+        wrap.classList.remove('is-open');
+        const chip = wrap.querySelector('.chip-select');
+        chip && chip.classList.remove('is-open');
+      }
+    });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('.entity-filter.is-open').forEach(wrap => {
+      wrap.classList.remove('is-open');
+      const chip = wrap.querySelector('.chip-select');
+      chip && chip.classList.remove('is-open');
+    });
+  });
+
   // --- Plan: scroll to a calculator from the lede CTA ---------------
   document.querySelectorAll('[data-jump]').forEach(b => {
     b.addEventListener('click', e => {

@@ -44,12 +44,129 @@
         <!-- Filters -->
         <div class="filter-bar">
           <span class="label-set">Filter</span>
-          <span class="chip-select" style="background: hsl(var(--accent-soft)); border-color: hsl(var(--accent) / 0.2); color: hsl(var(--accent));">
-            <span class="label" style="color: hsl(var(--accent) / 0.7);">Entity</span>Okafor Family Trust
-            <svg width="10" height="10" viewBox="0 0 10 10" style="margin-left: 4px;"><line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" stroke-width="1.4"/><line x1="2" y1="8" x2="8" y2="2" stroke="currentColor" stroke-width="1.4"/></svg>
+
+          <!-- Entity (active filter — accent chip with inline clear, plus dropdown) -->
+          <span class="entity-filter" data-filter="entity">
+            <span class="chip-select is-active">
+              <span class="label">Entity</span>Okafor Family Trust
+              <span class="chevron"></span>
+              <button type="button" class="chip-clear" aria-label="Clear entity filter">
+                <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" stroke-width="1.4"/><line x1="2" y1="8" x2="8" y2="2" stroke="currentColor" stroke-width="1.4"/></svg>
+              </button>
+            </span>
+
+            <div class="entity-menu" role="listbox" aria-label="Filter by entity">
+              <div class="menu-label">Filter by entity</div>
+
+              <button type="button" class="entity-opt" role="option" data-default>
+                <span class="glyph">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"/></svg>
+                </span>
+                <span class="opt-name">All entities</span>
+                <span class="opt-meta num">3</span>
+              </button>
+
+              <div class="sep"></div>
+
+              <button type="button" class="entity-opt is-selected" role="option" aria-selected="true">
+                <span class="glyph">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="4" width="10" height="8" rx="0.5"/><path d="M5 4V2.5h4V4"/><path d="M2 8h10"/></svg>
+                </span>
+                <span class="opt-name">Okafor Family Trust <span class="opt-kind">Discretionary trust</span></span>
+                <span class="opt-meta num">2</span>
+              </button>
+
+              <button type="button" class="entity-opt" role="option">
+                <span class="glyph">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="5.2" r="2.2"/><path d="M2.5 12c.7-2.3 2.4-3.4 4.5-3.4S10.8 9.7 11.5 12"/></svg>
+                </span>
+                <span class="opt-name">Personal · Theo <span class="opt-kind">Individual</span></span>
+                <span class="opt-meta num">1</span>
+              </button>
+
+              <button type="button" class="entity-opt is-empty" role="option">
+                <span class="glyph">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="3" width="9" height="9"/><path d="M2.5 6h9M5 12V6M9 12V6"/></svg>
+                </span>
+                <span class="opt-name">Okafor Holdings Pty Ltd <span class="opt-kind">Company</span></span>
+                <span class="opt-meta">No loans</span>
+              </button>
+
+              <div class="sep"></div>
+
+              <a class="entity-opt is-action" href="entities.html">
+                <span class="glyph">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M7 3v8M3 7h8"/></svg>
+                </span>
+                <span class="opt-name">Add or manage entities</span>
+                <span class="opt-meta">↗</span>
+              </a>
+            </div>
           </span>
-          <span class="chip-select"><span class="label">Lender</span>All lenders <span class="chevron"></span></span>
-          <span class="chip-select"><span class="label">Type</span>All types <span class="chevron"></span></span>
+
+          <!-- Lender (no active filter) -->
+          <span class="entity-filter entity-filter--simple" data-filter="lender">
+            <span class="chip-select">
+              <span class="label">Lender</span>All lenders
+              <span class="chevron"></span>
+              <button type="button" class="chip-clear" aria-label="Clear lender filter">
+                <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" stroke-width="1.4"/><line x1="2" y1="8" x2="8" y2="2" stroke="currentColor" stroke-width="1.4"/></svg>
+              </button>
+            </span>
+
+            <div class="entity-menu" role="listbox" aria-label="Filter by lender">
+              <div class="menu-label">Filter by lender</div>
+
+              <button type="button" class="entity-opt is-selected" role="option" aria-selected="true" data-default>
+                <span class="opt-name">All lenders</span>
+                <span class="opt-meta num">3</span>
+              </button>
+
+              <div class="sep"></div>
+
+              <button type="button" class="entity-opt" role="option">
+                <span class="opt-name">CBA <span class="opt-kind">Commonwealth Bank</span></span>
+                <span class="opt-meta num">2</span>
+              </button>
+
+              <button type="button" class="entity-opt" role="option">
+                <span class="opt-name">Westpac</span>
+                <span class="opt-meta num">1</span>
+              </button>
+            </div>
+          </span>
+
+          <!-- Type (no active filter) -->
+          <span class="entity-filter entity-filter--simple" data-filter="type">
+            <span class="chip-select">
+              <span class="label">Type</span>All types
+              <span class="chevron"></span>
+              <button type="button" class="chip-clear" aria-label="Clear type filter">
+                <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" stroke-width="1.4"/><line x1="2" y1="8" x2="8" y2="2" stroke="currentColor" stroke-width="1.4"/></svg>
+              </button>
+            </span>
+
+            <div class="entity-menu" role="listbox" aria-label="Filter by loan type">
+              <div class="menu-label">Filter by loan type</div>
+
+              <button type="button" class="entity-opt is-selected" role="option" aria-selected="true" data-default>
+                <span class="opt-name">All types</span>
+                <span class="opt-meta num">3</span>
+              </button>
+
+              <div class="sep"></div>
+
+              <button type="button" class="entity-opt" role="option">
+                <span class="opt-name">IO <span class="opt-kind">Interest only</span></span>
+                <span class="opt-meta num">2</span>
+              </button>
+
+              <button type="button" class="entity-opt" role="option">
+                <span class="opt-name">P&amp;I <span class="opt-kind">Principal &amp; interest</span></span>
+                <span class="opt-meta num">1</span>
+              </button>
+            </div>
+          </span>
         </div>
 
         <!-- Summary strip -->
@@ -62,7 +179,7 @@
               <div class="footrow"><span class="subtle">2 loans</span><span class="subtle">−$1.2k vs Jan</span></div>
             </div>
             <div class="metric">
-              <div class="label">Monthly repayments</div>
+              <div class="label">Monthly repayments <span class="tag-est">est</span></div>
               <div class="value"><span class="unit">$</span>3,857</div>
               <div class="footrow"><span class="subtle">$46.3k / yr</span></div>
             </div>
@@ -96,8 +213,8 @@
               <div></div>
             </div>
 
-            <!-- Row 1: expanded -->
-            <div class="loan-row expanded">
+            <!-- Row 1 -->
+            <div class="loan-row" data-goto="loan">
               <div class="lender">CBA</div>
               <div>
                 <div class="nickname">Inv Loan · Elm St</div>
@@ -105,89 +222,15 @@
               </div>
               <div>Okafor Family Trust</div>
               <div>14 Elm St</div>
-              <div class="num balance">$615,000</div>
+              <div class="num balance" title="as of 1 Mar 2026">$615,000</div>
               <div class="num">6.35%</div>
               <div>IO</div>
-              <div class="num">$2,167</div>
-              <div class="chev">▾</div>
-            </div>
-
-            <div class="loan-expand">
-              <div class="col">
-                <h4>Loan details</h4>
-                <div class="field-list">
-                  <div class="field-row">
-                    <div class="k">Lender</div>
-                    <div class="v">Commonwealth Bank</div>
-                  </div>
-                  <div class="field-row">
-                    <div class="k">Account</div>
-                    <div class="v editable">ending 4821</div>
-                  </div>
-                  <div class="field-row">
-                    <div class="k">Entity</div>
-                    <div class="v"><span class="is-dropdown">Okafor Family Trust</span></div>
-                  </div>
-                  <div class="field-row">
-                    <div class="k">Security</div>
-                    <div class="v"><span class="is-dropdown">14 Elm St</span></div>
-                  </div>
-                  <div class="field-row">
-                    <div class="k">Type</div>
-                    <div class="v"><span class="is-dropdown">Interest only</span></div>
-                  </div>
-                  <div class="field-row">
-                    <div class="k">Rate</div>
-                    <div class="v editable num">6.35%</div>
-                  </div>
-                  <div class="field-row">
-                    <div class="k">Repayment</div>
-                    <div class="v editable num">$2,167 / mo</div>
-                  </div>
-                  <div class="field-row">
-                    <div class="k">IO period ends</div>
-                    <div class="v editable">30 Jun 2027</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col">
-                <h4>Balance history</h4>
-                <div class="history">
-                  <div class="snap is-current">
-                    <span class="when">1 Mar 2026 <span class="badge badge--complete" style="margin-left: 8px; height: 18px;">Current</span></span>
-                    <span class="amt">$615,000</span>
-                  </div>
-                  <div class="snap">
-                    <span class="when">1 Dec 2025</span>
-                    <span class="amt">$615,000</span>
-                  </div>
-                  <div class="snap">
-                    <span class="when">1 Sep 2025</span>
-                    <span class="amt">$616,200</span>
-                  </div>
-                  <div class="snap">
-                    <span class="when">1 Jun 2025</span>
-                    <span class="amt">$616,200</span>
-                  </div>
-                </div>
-                <a href="#" class="add-snap">
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><line x1="6" y1="2" x2="6" y2="10"/><line x1="2" y1="6" x2="10" y2="6"/></svg>
-                  Add balance snapshot
-                </a>
-              </div>
-
-              <div class="row-actions">
-                <a href="#" data-goto="loan">Open loan detail →</a>
-                <div class="right">
-                  <button class="btn btn--ghost btn--sm">Archive</button>
-                  <button class="btn btn--secondary btn--sm">Edit</button>
-                </div>
-              </div>
+              <div class="num">$2,167 <span class="tag-est">est</span></div>
+              <div class="chev">›</div>
             </div>
 
             <!-- Row 2 -->
-            <div class="loan-row">
+            <div class="loan-row" data-goto="loan">
               <div class="lender">CBA</div>
               <div>
                 <div class="nickname">Inv Loan · Daley St</div>
@@ -195,15 +238,15 @@
               </div>
               <div>Okafor Family Trust</div>
               <div>8 Daley St</div>
-              <div class="num balance">$480,000</div>
+              <div class="num balance" title="as of 1 Mar 2026">$480,000</div>
               <div class="num">6.35%</div>
               <div>IO</div>
-              <div class="num">$1,690</div>
-              <div class="chev">▾</div>
+              <div class="num">$1,690 <span class="tag-est">est</span></div>
+              <div class="chev">›</div>
             </div>
 
             <!-- Row 3 - hidden by filter, shown faded -->
-            <div class="loan-row" style="opacity: 0.4;">
+            <div class="loan-row" data-goto="loan" style="opacity: 0.4;">
               <div class="lender">Westpac</div>
               <div>
                 <div class="nickname">Line of Credit</div>
@@ -211,17 +254,16 @@
               </div>
               <div>Personal · Theo</div>
               <div class="muted">Unsecured</div>
-              <div class="num balance">$45,000</div>
+              <div class="num balance" title="as of 18 Feb 2026">$45,000</div>
               <div class="num">8.20%</div>
               <div>P&amp;I</div>
-              <div class="num">$890</div>
-              <div class="chev">▾</div>
+              <div class="num">$890 <span class="tag-est">est</span></div>
+              <div class="chev">›</div>
             </div>
           </div>
 
           <div class="table-foot" style="display: flex; justify-content: space-between; align-items: center;">
             <span>Filtered: 1 loan hidden by entity filter.</span>
-            <span>Balance shown is most recent snapshot. <a href="#" class="muted">Hover for date.</a></span>
           </div>
         </div>
 

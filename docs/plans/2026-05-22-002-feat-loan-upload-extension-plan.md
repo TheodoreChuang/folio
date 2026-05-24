@@ -109,7 +109,7 @@ Commit (new)
 
 ### U1. Schema — loan_staging_items table + migration + RLS
 
-**For consideration:** Should `document_staging_items` be generic and handle all types of uploaded files or do we have different normalised staging tables for each type of file. If normalised staging tables consider renaming `document_staging_items` into `property_ledger_staging_items` and update Ingestion Domain in `docs/data-model.md`.
+**For consideration:** Should `document_staging_items` be generic and handle all types of uploaded files or do we have different normalised staging tables for each type of file. If normalised staging tables consider renaming `document_staging_items` into `property_ledger_staging_items` and update Ingestion Domain in `docs/data-model.md`. This plan is assuming normalised staging tables.
 
 **Goal:** Define `loan_staging_items` in `db/schema.ts`, generate the migration, and add RLS.
 

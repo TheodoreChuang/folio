@@ -44,18 +44,11 @@
             <span style="color: hsl(var(--foreground-subtle)); font-size: var(--text-xs);">Interest only · IO ends 30 Jun 2027</span>
           </div>
         </div>
-        <div class="actions">
-          <button class="btn btn--secondary">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 11v2h10v-2"/><path d="M8 3v8M5 6l3-3 3 3"/></svg>
-            Upload statement
-          </button>
-          <button class="btn btn--ghost">+ Add balance snapshot</button>
-          <button class="btn btn--ghost btn--icon" aria-label="More">⋯</button>
-        </div>
+        <div class="actions"></div>
       </div>
 
-      <!-- Metrics strip (4) -->
-      <div class="metric-strip" data-cols="4" style="margin-bottom: var(--space-7);">
+      <!-- Metrics strip (2) -->
+      <div class="metric-strip" style="grid-template-columns: minmax(0, 320px) minmax(0, 320px); margin-bottom: var(--space-7);">
         <div class="metric">
           <div class="label">Current balance</div>
           <div class="value"><span class="unit">$</span>615,000</div>
@@ -65,26 +58,7 @@
           </div>
         </div>
         <div class="metric">
-          <div class="label">Interest rate</div>
-          <div class="value">6.35<span class="unit">%</span></div>
-          <div class="footrow">
-            <span class="trend trend--down">
-              <svg viewBox="0 0 10 10"><polyline points="1,3 4,6 6,4 9,8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              −0.10% vs Sep
-            </span>
-            <span class="subtle">variable</span>
-          </div>
-        </div>
-        <div class="metric">
-          <div class="label">Monthly repayment</div>
-          <div class="value"><span class="unit">$</span>2,167</div>
-          <div class="footrow">
-            <span class="subtle">interest only</span>
-            <span class="subtle">$26,004 / yr</span>
-          </div>
-        </div>
-        <div class="metric">
-          <div class="label">IO period ends</div>
+          <div class="label">IO period ends in</div>
           <div class="countdown">
             <span class="num-big">14</span>
             <span class="unit-suf">months</span>
@@ -100,34 +74,13 @@
       <div class="tabs" data-tabs="loan">
         <button class="tab is-active" data-tab="overview">Overview</button>
         <button class="tab" data-tab="repayments">Repayments <span class="count">36</span></button>
-        <button class="tab" data-tab="statements">Statements <span class="count">8</span></button>
-        <button class="tab" data-tab="documents">Documents</button>
-        <button class="tab" data-tab="settings">Settings</button>
       </div>
 
       <!-- OVERVIEW PANEL -->
       <div class="tab-panel is-active" data-tab="overview">
 
-        <!-- Heads-up prompt: IO period rolling off -->
-        <article class="prompt" data-tone="heads-up" style="margin-bottom: var(--space-7);">
-          <div class="head">
-            <span class="severity"><span class="glyph">i</span>Heads up</span>
-            <span class="timestamp">Reviewed Apr 2026</span>
-          </div>
-          <p class="message">IO period ends in 14 months. At today's rate, your repayment will jump to ~$3,825 / mo — an extra $1,658 / mo to service.</p>
-          <div class="context">
-            <span class="kv"><span class="k">Current</span><span class="v">$2,167 / mo · IO</span></span>
-            <span class="kv"><span class="k">After 30 Jun 2027</span><span class="v">$3,825 / mo · P&amp;I</span></span>
-            <span class="kv"><span class="k">Remaining term</span><span class="v">25 years</span></span>
-          </div>
-          <div class="actions">
-            <button class="btn btn--primary btn--sm">Model P&amp;I transition</button>
-            <button class="btn btn--ghost btn--sm">Extend IO with CBA →</button>
-          </div>
-        </article>
-
-        <!-- Three column layout -->
-        <div class="three-col loan">
+        <!-- Two column layout: Loan terms / Balance history -->
+        <div class="three-col loan" style="grid-template-columns: 1fr 1fr;">
 
           <!-- LEFT: Loan terms -->
           <div class="detail-card">
@@ -141,127 +94,51 @@
                 <div class="v"><span class="is-dropdown">Commonwealth Bank</span></div>
               </div>
               <div class="field-row">
-                <div class="k">Account</div>
+                <div class="k">Account / loan reference <span style="color: hsl(var(--foreground-faint)); font-weight: 400;">optional</span></div>
                 <div class="v editable">ending 4821</div>
               </div>
               <div class="field-row">
-                <div class="k">Entity</div>
-                <div class="v"><span class="is-dropdown">Okafor Family Trust</span></div>
+                <div class="k">Nickname <span style="color: hsl(var(--foreground-faint)); font-weight: 400;">optional</span></div>
+                <div class="v editable">Inv Loan · Elm St</div>
               </div>
               <div class="field-row">
-                <div class="k">Security</div>
-                <div class="v"><span class="is-dropdown">14 Elm Street</span></div>
+                <div class="k">Loan type</div>
+                <div class="v" style="padding: 0;">
+                  <div class="seg" style="height: 26px;">
+                    <button type="button" class="is-on" style="height: 22px; padding: 0 var(--space-3); font-size: var(--text-xs);">IO</button>
+                    <button type="button" style="height: 22px; padding: 0 var(--space-3); font-size: var(--text-xs);">P&amp;I</button>
+                  </div>
+                </div>
               </div>
               <div class="field-row">
-                <div class="k">Type</div>
-                <div class="v"><span class="is-dropdown">Interest only</span></div>
-              </div>
-              <div class="field-row">
-                <div class="k">Rate</div>
+                <div class="k">Rate (est.) <span style="color: hsl(var(--foreground-faint)); font-weight: 400;">optional</span></div>
                 <div class="v editable num">6.35%</div>
               </div>
               <div class="field-row">
-                <div class="k">Rate type</div>
-                <div class="v"><span class="is-dropdown">Variable</span></div>
-              </div>
-              <div class="field-row">
-                <div class="k">Original amount</div>
-                <div class="v editable num">$650,000</div>
-              </div>
-              <div class="field-row">
-                <div class="k">Loan start</div>
+                <div class="k">Start date</div>
                 <div class="v editable">24 Apr 2021</div>
               </div>
               <div class="field-row">
-                <div class="k">IO ends</div>
+                <div class="k">IO end date</div>
                 <div class="v editable">30 Jun 2027</div>
               </div>
               <div class="field-row">
-                <div class="k">Repayment</div>
-                <div class="v editable num">$2,167 / mo</div>
-              </div>
-              <div class="field-row">
-                <div class="k">Frequency</div>
-                <div class="v"><span class="is-dropdown">Monthly</span></div>
+                <div class="k">Security</div>
+                <div class="v" style="display: flex; align-items: center; gap: var(--space-2); color: hsl(var(--foreground));">
+                  <a href="#" data-goto="property" style="font-weight: 500;">14 Elm Street</a>
+                  <span style="color: hsl(var(--foreground-faint));">›</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- MIDDLE: Balance trajectory -->
+          <!-- RIGHT: Balance history -->
           <div class="detail-card">
             <div class="card-header">
-              <h3>Balance trajectory</h3>
-              <span class="chip-select" style="height: 24px; font-size: var(--text-xs); padding: 0 8px;">5 yrs <span class="chevron"></span></span>
+              <h3>Balance history</h3>
+              <span class="card-sub-link muted">4 snapshots</span>
             </div>
-
-            <div class="balance-callout">
-              <span class="v">$615,000</span>
-              <span class="as-of">as of 1 Mar 2026</span>
-            </div>
-            <div class="balance-callout effective" style="margin-bottom: var(--space-5);">
-              Effective with offset: <span class="num">$600,180</span> · saving <span class="num">~$78</span> / mo in interest
-            </div>
-
-            <svg viewBox="0 0 360 200" preserveAspectRatio="none" style="width: 100%; height: 200px;">
-              <!-- Grid lines -->
-              <line x1="20" y1="160" x2="360" y2="160" stroke="hsl(36 12% 86%)" stroke-width="1"/>
-              <line x1="20" y1="120" x2="360" y2="120" stroke="hsl(36 14% 92%)" stroke-width="1" stroke-dasharray="2 3"/>
-              <line x1="20" y1="80"  x2="360" y2="80"  stroke="hsl(36 14% 92%)" stroke-width="1" stroke-dasharray="2 3"/>
-              <line x1="20" y1="40"  x2="360" y2="40"  stroke="hsl(36 14% 92%)" stroke-width="1" stroke-dasharray="2 3"/>
-
-              <!-- Y axis labels -->
-              <text x="16" y="44"  text-anchor="end" font-size="9" fill="hsl(34 5% 56%)" font-family="Inter">$700k</text>
-              <text x="16" y="84"  text-anchor="end" font-size="9" fill="hsl(34 5% 56%)" font-family="Inter">$650k</text>
-              <text x="16" y="124" text-anchor="end" font-size="9" fill="hsl(34 5% 56%)" font-family="Inter">$600k</text>
-              <text x="16" y="164" text-anchor="end" font-size="9" fill="hsl(34 5% 56%)" font-family="Inter">$550k</text>
-
-              <!-- IO period shading (now → end) — implies P&I paydown after -->
-              <rect x="240" y="30" width="60" height="130" fill="hsl(34 70% 42% / 0.06)"/>
-              <text x="270" y="42" text-anchor="middle" font-size="9" font-family="Inter" fill="hsl(34 70% 42%)" font-weight="500">IO ends</text>
-
-              <!-- Historic balance line — flat then small drop -->
-              <!-- Apr 2021: $650k (y=84), Sep 2025: $616k (y=88), Mar 2026: $615k (y=88) -->
-              <polyline
-                fill="none"
-                stroke="hsl(188 32% 32%)"
-                stroke-width="1.8"
-                points="40,84 80,84 120,86 160,87 200,88 240,88"/>
-
-              <!-- Projected line: flat until IO ends, then accelerating paydown -->
-              <polyline
-                fill="none"
-                stroke="hsl(188 32% 32%)"
-                stroke-width="1.6"
-                stroke-dasharray="3 3"
-                points="240,88 280,88 300,82 320,68 340,52"/>
-
-              <!-- Original purchase price baseline -->
-              <line x1="40" y1="84" x2="340" y2="84" stroke="hsl(var(--foreground-faint))" stroke-width="1" stroke-dasharray="2 3" opacity="0.6"/>
-
-              <!-- Data points -->
-              <g fill="hsl(188 32% 32%)">
-                <circle cx="40"  cy="84" r="2.5"/>
-                <circle cx="120" cy="86" r="2.5"/>
-                <circle cx="200" cy="88" r="2.5"/>
-                <circle cx="240" cy="88" r="3.5" fill="white" stroke="hsl(188 32% 32%)" stroke-width="1.5"/>
-              </g>
-
-              <!-- Annotations -->
-              <text x="40"  y="78" text-anchor="middle" font-size="9" font-family="Inter" fill="hsl(var(--foreground-muted))">$650k</text>
-              <text x="240" y="78" text-anchor="middle" font-size="10" font-family="Inter" fill="hsl(188 32% 32%)" font-weight="600">$615k now</text>
-
-              <!-- X labels -->
-              <g font-size="9" fill="hsl(34 5% 56%)" font-family="Inter" text-anchor="middle">
-                <text x="40"  y="180">2021</text>
-                <text x="120" y="180">2023</text>
-                <text x="200" y="180">2025</text>
-                <text x="280" y="180">2027</text>
-                <text x="340" y="180">2030</text>
-              </g>
-            </svg>
-
-            <div class="sub-section-label" style="margin-top: var(--space-5);">Recent balance snapshots</div>
-            <div class="snap-list">
+            <div class="snap-list" style="margin-top: 0;">
               <div class="row">
                 <span class="when">1 Mar 2026</span>
                 <span class="amt">$615,000</span>
@@ -275,215 +152,187 @@
               <div class="row">
                 <span class="when">1 Sep 2025</span>
                 <span class="amt">$616,200</span>
-                <span class="delta negative">−$1,200</span>
+                <span class="delta negative">−$1,200 vs Jun</span>
               </div>
               <div class="row">
                 <span class="when">1 Jun 2025</span>
-                <span class="amt">$616,200</span>
-                <span class="delta">no change</span>
+                <span class="amt">$617,400</span>
+                <span class="delta negative">−$1,100 vs Mar</span>
               </div>
-              <a href="#" class="add-snap-link">
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><line x1="6" y1="2" x2="6" y2="10"/><line x1="2" y1="6" x2="10" y2="6"/></svg>
-                Add balance snapshot
-              </a>
             </div>
-          </div>
 
-          <!-- RIGHT: Security & offset -->
-          <div class="detail-card">
-            <div class="sub-section-label">Security</div>
-            <div class="security-tile">
-              <span class="ico">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 13V7l6-4 6 4v6"/><path d="M6 13V9h4v4"/></svg>
-              </span>
+            <!-- Inline add form -->
+            <form class="snap-add" onsubmit="return false;" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: var(--space-3); margin-top: var(--space-5); padding-top: var(--space-5); border-top: 1px dashed hsl(var(--rule));">
               <div>
-                <div class="name">14 Elm Street <span class="pct">· 100%</span></div>
-                <div class="sub">Randwick NSW 2031 · House · 3 bed</div>
+                <label class="input-label" style="font-size: var(--text-2xs); margin-bottom: 4px; display: block;">Date</label>
+                <input class="input" placeholder="dd / mm / yyyy" />
               </div>
-              <div class="stats">
-                <div class="stat">
-                  <div class="k">Value</div>
-                  <div class="v">$920k</div>
-                </div>
-                <div class="stat">
-                  <div class="k">LVR</div>
-                  <div class="v">67%</div>
+              <div>
+                <label class="input-label" style="font-size: var(--text-2xs); margin-bottom: 4px; display: block;">Balance</label>
+                <div class="input-affix">
+                  <span class="prefix">$</span>
+                  <input class="input num" placeholder="615,000" />
                 </div>
               </div>
-              <div style="grid-column: 1 / -1; margin-top: var(--space-3);">
-                <a href="#" data-goto="property" style="font-size: var(--text-xs);">View property →</a>
+              <div style="display: flex; align-items: flex-end;">
+                <button class="btn btn--secondary" type="submit" style="height: 32px;">
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><line x1="6" y1="2" x2="6" y2="10"/><line x1="2" y1="6" x2="10" y2="6"/></svg>
+                  Add
+                </button>
               </div>
-            </div>
-
-            <div class="sub-section-label">Offset &amp; redraw</div>
-            <div class="offset-row">
-              <span class="k">Offset balance</span>
-              <span class="v">$14,820</span>
-            </div>
-            <div class="offset-row is-effective">
-              <span class="k">Effective balance</span>
-              <span class="v">$600,180</span>
-            </div>
-            <div class="offset-row">
-              <span class="k">Interest saved · this mo</span>
-              <span class="v" style="color: hsl(var(--positive));">$78</span>
-            </div>
-            <div class="offset-row">
-              <span class="k">Redraw available</span>
-              <span class="v" style="color: hsl(var(--foreground-faint));">—</span>
-            </div>
-
-            <div class="sub-section-label">Rate history</div>
-            <div class="rate-history">
-              <div class="row">
-                <span class="when">Sep 2025 → now</span>
-                <span class="rate">6.35%</span>
-                <span class="delta down">−0.10</span>
-              </div>
-              <div class="row">
-                <span class="when">Feb 2024 → Sep 2025</span>
-                <span class="rate">6.45%</span>
-                <span class="delta up">+0.25</span>
-              </div>
-              <div class="row">
-                <span class="when">Aug 2023 → Feb 2024</span>
-                <span class="rate">6.20%</span>
-                <span class="delta up">+0.50</span>
-              </div>
-              <div class="row">
-                <span class="when">Apr 2021 → Aug 2023</span>
-                <span class="rate">2.69%</span>
-                <span class="delta">opening</span>
-              </div>
-            </div>
+            </form>
           </div>
 
-        </div>
-
-        <!-- Recent repayments at bottom of overview -->
-        <div style="margin-top: var(--space-8);">
-          <div class="section-label" style="display: flex; justify-content: space-between; align-items: center;">
-            <span>Recent repayments · last 6 months</span>
-            <a href="#" data-tab-goto="repayments" style="font-size: var(--text-xs); text-transform: none; letter-spacing: 0; color: hsl(var(--foreground-muted));">View all 36 →</a>
-          </div>
-          <div class="repayment-list">
-            <div class="row-r header">
-              <div>Date</div>
-              <div>Description</div>
-              <div style="text-align: right;">Amount</div>
-              <div>Source</div>
-              <div></div>
-            </div>
-            <div class="row-r">
-              <span class="when">1 Mar 2026</span>
-              <div class="desc">
-                Monthly repayment
-                <span class="quote">CBA HOME LOAN REPAY · ref 4821</span>
-              </div>
-              <div class="amt">
-                −$2,167.00
-                <span class="breakdown">Interest $2,167 · Principal $0</span>
-              </div>
-              <span class="source">
-                <svg class="ico" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 1h7l2 2v8H2z"/><path d="M9 1v2h2M5 8h3"/></svg>
-                CBA Apr stmt
-              </span>
-              <span class="more">⋯</span>
-            </div>
-            <div class="row-r">
-              <span class="when">1 Feb 2026</span>
-              <div class="desc">
-                Monthly repayment
-                <span class="quote">CBA HOME LOAN REPAY · ref 4821</span>
-              </div>
-              <div class="amt">
-                −$2,167.00
-                <span class="breakdown">Interest $2,167 · Principal $0</span>
-              </div>
-              <span class="source">
-                <svg class="ico" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 1h7l2 2v8H2z"/><path d="M9 1v2h2M5 8h3"/></svg>
-                CBA Mar stmt
-              </span>
-              <span class="more">⋯</span>
-            </div>
-            <div class="row-r">
-              <span class="when">1 Jan 2026</span>
-              <div class="desc">
-                Monthly repayment
-                <span class="quote">CBA HOME LOAN REPAY · ref 4821</span>
-              </div>
-              <div class="amt">
-                −$2,167.00
-                <span class="breakdown">Interest $2,167 · Principal $0</span>
-              </div>
-              <span class="source">
-                <svg class="ico" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 1h7l2 2v8H2z"/><path d="M9 1v2h2M5 8h3"/></svg>
-                CBA Feb stmt
-              </span>
-              <span class="more">⋯</span>
-            </div>
-            <div class="row-r">
-              <span class="when">1 Dec 2025</span>
-              <div class="desc">
-                Monthly repayment
-                <span class="quote">CBA HOME LOAN REPAY · ref 4821</span>
-              </div>
-              <div class="amt">
-                −$2,167.00
-                <span class="breakdown">Interest $2,167 · Principal $0</span>
-              </div>
-              <span class="source">
-                <svg class="ico" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 1h7l2 2v8H2z"/><path d="M9 1v2h2M5 8h3"/></svg>
-                CBA Jan stmt
-              </span>
-              <span class="more">⋯</span>
-            </div>
-            <div class="row-r">
-              <span class="when">1 Nov 2025</span>
-              <div class="desc">
-                Monthly repayment
-                <span class="quote">CBA HOME LOAN REPAY · ref 4821</span>
-              </div>
-              <div class="amt">
-                −$2,182.00
-                <span class="breakdown">Interest $2,182 · Principal $0 · rate 6.45%</span>
-              </div>
-              <span class="source">
-                <svg class="ico" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 1h7l2 2v8H2z"/><path d="M9 1v2h2M5 8h3"/></svg>
-                CBA Dec stmt
-              </span>
-              <span class="more">⋯</span>
-            </div>
-            <div class="row-r">
-              <span class="when">1 Oct 2025</span>
-              <div class="desc">
-                Monthly repayment
-                <span class="quote">CBA HOME LOAN REPAY · ref 4821</span>
-              </div>
-              <div class="amt">
-                −$2,182.00
-                <span class="breakdown">Interest $2,182 · Principal $0 · rate 6.45%</span>
-              </div>
-              <span class="source">
-                <svg class="ico" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 1h7l2 2v8H2z"/><path d="M9 1v2h2M5 8h3"/></svg>
-                CBA Nov stmt
-              </span>
-              <span class="more">⋯</span>
-            </div>
-          </div>
-          <div class="table-foot" style="display: flex; justify-content: space-between;">
-            <span>$13,033 paid · 100% interest · 6 months</span>
-            <span>Auto-matched by description &amp; account · <a href="#" class="muted">manage rules</a></span>
-          </div>
         </div>
 
       </div> <!-- /tab-panel overview -->
 
-      <!-- Placeholder tab panels -->
-      <div class="tab-panel" data-tab="repayments"></div>
-      <div class="tab-panel" data-tab="statements"></div>
-      <div class="tab-panel" data-tab="documents"></div>
-      <div class="tab-panel" data-tab="settings"></div>
+      <!-- REPAYMENTS PANEL -->
+      <div class="tab-panel" data-tab="repayments">
+
+        <style>
+          /* Local override: 5-col repayment table for this tab */
+          .tab-panel[data-tab="repayments"] .repayment-list .row-r {
+            grid-template-columns: 130px 140px 130px 130px 1fr;
+            align-items: center;
+          }
+          .tab-panel[data-tab="repayments"] .repayment-list .row-r .amt-cell {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+          }
+          .tab-panel[data-tab="repayments"] .repayment-list .row-r .num-muted {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            color: hsl(var(--foreground-muted));
+            font-weight: 400;
+          }
+          .tab-panel[data-tab="repayments"] .repayment-list .row-r .num-muted.is-empty {
+            color: hsl(var(--foreground-faint));
+          }
+          .tab-panel[data-tab="repayments"] .add-repayment {
+            margin-top: var(--space-7);
+            padding-top: var(--space-6);
+            border-top: 1px dashed hsl(var(--rule));
+          }
+          .tab-panel[data-tab="repayments"] .add-repayment .grid {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr 1fr 1fr auto;
+            gap: var(--space-4);
+            align-items: end;
+            margin-top: var(--space-4);
+          }
+          .tab-panel[data-tab="repayments"] .add-repayment h3 {
+            font-size: var(--text-md);
+            font-weight: 600;
+          }
+          .tab-panel[data-tab="repayments"] .add-repayment .sub {
+            font-size: var(--text-xs);
+            color: hsl(var(--foreground-muted));
+            margin-top: 2px;
+          }
+        </style>
+
+        <div class="repayment-list">
+          <div class="row-r header">
+            <div>Date</div>
+            <div style="text-align: right;">Amount</div>
+            <div style="text-align: right;">Interest</div>
+            <div style="text-align: right;">Principal</div>
+            <div>Source</div>
+          </div>
+
+          <div class="row-r">
+            <span class="when">1 Oct 2025</span>
+            <div class="amt-cell">−$2,167.00</div>
+            <div class="num-muted">$2,167.00</div>
+            <div class="num-muted is-empty">—</div>
+            <span class="source">
+              <svg class="ico" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 1h7l2 2v8H2z"/><path d="M9 1v2h2M5 8h3"/></svg>
+              CBA Oct 2025 statement
+            </span>
+          </div>
+
+          <div class="row-r">
+            <span class="when">1 Sep 2025</span>
+            <div class="amt-cell">−$2,167.00</div>
+            <div class="num-muted">$2,167.00</div>
+            <div class="num-muted is-empty">—</div>
+            <span class="source">
+              <svg class="ico" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 1h7l2 2v8H2z"/><path d="M9 1v2h2M5 8h3"/></svg>
+              CBA Sep 2025 statement
+            </span>
+          </div>
+
+          <div class="row-r">
+            <span class="when">1 Aug 2025</span>
+            <div class="amt-cell">−$2,167.00</div>
+            <div class="num-muted">$2,167.00</div>
+            <div class="num-muted is-empty">—</div>
+            <span class="source">
+              <svg class="ico" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 1h7l2 2v8H2z"/><path d="M9 1v2h2M5 8h3"/></svg>
+              CBA Aug 2025 statement
+            </span>
+          </div>
+
+          <div class="row-r">
+            <span class="when">1 Mar 2025</span>
+            <div class="amt-cell">−$2,167.00</div>
+            <div class="num-muted is-empty">—</div>
+            <div class="num-muted is-empty">—</div>
+            <span class="source" style="color: hsl(var(--foreground-faint));">Manual</span>
+          </div>
+        </div>
+
+        <div class="table-foot" style="display: flex; justify-content: space-between;">
+          <span>$8,668 paid · last 4 months</span>
+          <span>100% interest</span>
+        </div>
+
+        <!-- Add repayment -->
+        <div class="add-repayment">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4);">
+            <div>
+              <h3>Add repayment</h3>
+              <div class="sub">Record a one-off entry, or upload a lender statement to import them in bulk.</div>
+            </div>
+            <button class="btn btn--secondary" type="button">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 11v2h10v-2"/><path d="M8 3v8M5 6l3-3 3 3"/></svg>
+              Upload statement
+            </button>
+          </div>
+
+          <form class="grid" onsubmit="return false;">
+            <div>
+              <label class="input-label" style="font-size: var(--text-2xs); margin-bottom: 4px; display: block;">Date <span style="color: hsl(var(--negative));">*</span></label>
+              <input class="input" placeholder="dd / mm / yyyy" />
+            </div>
+            <div>
+              <label class="input-label" style="font-size: var(--text-2xs); margin-bottom: 4px; display: block;">Amount <span style="color: hsl(var(--negative));">*</span></label>
+              <div class="input-affix">
+                <span class="prefix">$</span>
+                <input class="input num" placeholder="2,167.00" />
+              </div>
+            </div>
+            <div>
+              <label class="input-label" style="font-size: var(--text-2xs); margin-bottom: 4px; display: block;">Interest <span style="color: hsl(var(--foreground-faint)); font-weight: 400;">optional</span></label>
+              <div class="input-affix">
+                <span class="prefix">$</span>
+                <input class="input num" placeholder="0.00" />
+              </div>
+            </div>
+            <div>
+              <label class="input-label" style="font-size: var(--text-2xs); margin-bottom: 4px; display: block;">Principal <span style="color: hsl(var(--foreground-faint)); font-weight: 400;">optional</span></label>
+              <div class="input-affix">
+                <span class="prefix">$</span>
+                <input class="input num" placeholder="0.00" />
+              </div>
+            </div>
+            <button class="btn btn--primary" type="submit" style="height: 32px;">+ Add repayment</button>
+          </form>
+        </div>
+
+      </div>
 
     </section>
 
