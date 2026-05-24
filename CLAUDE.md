@@ -33,7 +33,7 @@ After all work is done and verified: commit to the branch, push, open a PR via `
 | DB codegen | `pnpm db:generate` |
 | DB migrate | `pnpm db:migrate` |
 | Seed | `pnpm seed` |
-| Supabase reset | `npx supabase db reset --local` |
+| Supabase reset | `pnpm db:reset` |
 
 ## Project Layout
 ```
@@ -89,6 +89,7 @@ Integration tests (`pnpm test:integration`) require `supabase start`; run them w
 - `StorageApiError`: check `.statusCode` (string, e.g. `'409'`) not `.status`
   (numeric — can be wrong, confirmed in error logs)
 - After schema changes run `pnpm db:generate` then `pnpm db:migrate`
+- **Never run `supabase db reset --local` directly** — use `pnpm db:reset` instead. The bare supabase reset wipes the `public` schema but leaves `drizzle.__drizzle_migrations` intact, causing drizzle to believe old migrations are applied when they aren't. `pnpm db:reset` drops the drizzle tracking schema first so the subsequent migrate starts clean.
 - Supabase migration applied ≠ bucket visible in Studio storage browser sometimes;
   use `curl` with secret key to verify
 - **unpdf / pdfjs-dist**: must be in `serverExternalPackages` in `next.config.ts`

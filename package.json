@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:reset": "supabase db reset --local && npx supabase db query \"DROP SCHEMA IF EXISTS drizzle CASCADE;\" --local && drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "seed": "tsx scripts/seed.ts",
     "storage:clear": "tsx scripts/storage-clear.ts",
