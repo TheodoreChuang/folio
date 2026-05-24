@@ -34,9 +34,22 @@ function makePatchRequest(loanId: string, body: unknown) {
 }
 
 const mocks = vi.hoisted(() => ({
-  mockGetUser:                 vi.fn(),
+  mockGetUser:                   vi.fn(),
   mockFindInstallmentLoanDetail: vi.fn(),
   mockUpdateInstallmentLoanById: vi.fn(),
+  mockDbSelect:                  vi.fn(),
+}))
+
+vi.mock('@/lib/db', () => ({
+  db: {
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockImplementation(() => mocks.mockDbSelect()),
+        }),
+      }),
+    }),
+  },
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -105,6 +118,7 @@ describe('PATCH /api/loans/[id]', () => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
     mocks.mockUpdateInstallmentLoanById.mockResolvedValue(loanDetail)
+    mocks.mockDbSelect.mockResolvedValue([{ id: 'entity-1' }])
   })
 
   it('returns 401 when unauthenticated', async () => {
