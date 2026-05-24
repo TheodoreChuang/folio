@@ -56,7 +56,7 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const raw = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
+    const raw = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {}
 
     const recordedAt = typeof raw.recordedAt === 'string' ? raw.recordedAt.trim() : ''
     if (!DATE_REGEX.test(recordedAt)) {
@@ -89,7 +89,7 @@ export async function POST(
       err &&
       typeof err === 'object' &&
       'code' in err &&
-      (err as { code: string }).code === '23505'
+      (err as Record<string, unknown>).code === '23505'
     ) {
       return NextResponse.json(
         { error: 'A balance for this date already exists' },

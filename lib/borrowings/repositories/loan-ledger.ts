@@ -59,5 +59,6 @@ export async function createLoanLedgerEntry(
       description:    input.description ?? null,
     })
     .returning()
+  if (!row) throw new Error('insert returned no row')
   return row
 }

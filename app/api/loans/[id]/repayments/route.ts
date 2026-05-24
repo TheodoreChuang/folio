@@ -56,7 +56,7 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const raw = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
+    const raw = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {}
 
     const paymentDate = typeof raw.paymentDate === 'string' ? raw.paymentDate.trim() : ''
     if (!DATE_REGEX.test(paymentDate)) {
@@ -68,17 +68,15 @@ export async function POST(
       return NextResponse.json({ error: 'amountCents must be a positive integer' }, { status: 400 })
     }
 
-    const interestCents = raw.interestCents != null
-      ? (typeof raw.interestCents === 'number' && Number.isInteger(raw.interestCents) && raw.interestCents >= 0
-          ? raw.interestCents
-          : null)
-      : null
+    if (raw.interestCents != null && !(typeof raw.interestCents === 'number' && Number.isInteger(raw.interestCents) && raw.interestCents >= 0)) {
+      return NextResponse.json({ error: 'interestCents must be a non-negative integer or null' }, { status: 400 })
+    }
+    const interestCents = raw.interestCents != null ? (raw.interestCents as number) : null
 
-    const principalCents = raw.principalCents != null
-      ? (typeof raw.principalCents === 'number' && Number.isInteger(raw.principalCents) && raw.principalCents >= 0
-          ? raw.principalCents
-          : null)
-      : null
+    if (raw.principalCents != null && !(typeof raw.principalCents === 'number' && Number.isInteger(raw.principalCents) && raw.principalCents >= 0)) {
+      return NextResponse.json({ error: 'principalCents must be a non-negative integer or null' }, { status: 400 })
+    }
+    const principalCents = raw.principalCents != null ? (raw.principalCents as number) : null
 
     const description = raw.description != null
       ? (typeof raw.description === 'string' ? raw.description.trim().slice(0, 500) || null : null)

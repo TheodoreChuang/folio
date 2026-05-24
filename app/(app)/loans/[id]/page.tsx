@@ -42,7 +42,7 @@ export default function LoanDetailPage() {
   const [editInterestRate, setEditInterestRate] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const [addBalanceCents, setAddBalanceCents] = useState('')
+  const [addBalanceDollars, setAddBalanceDollars] = useState('')
   const [addBalanceDate, setAddBalanceDate] = useState('')
   const [addingBalance, setAddingBalance] = useState(false)
 
@@ -90,7 +90,7 @@ export default function LoanDetailPage() {
   useEffect(() => { loadData() }, [loadData])
 
   async function loadRepayments() {
-    if (repaymentsFetched) return
+    if (repaymentsFetched || repaymentsLoading) return
     setRepaymentsLoading(true)
     try {
       const res = await fetch(`/api/loans/${id}/repayments`)
@@ -98,6 +98,8 @@ export default function LoanDetailPage() {
       const data = await res.json() as { repayments: LoanLedgerWithSource[] }
       setRepayments(data.repayments ?? [])
       setRepaymentsFetched(true)
+    } catch {
+      toast.error('Failed to load repayments')
     } finally {
       setRepaymentsLoading(false)
     }
@@ -122,6 +124,15 @@ export default function LoanDetailPage() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string }
         toast.error(err.error ?? 'Failed to save')
+        if (loan) {
+          setEditLender(loan.lender)
+          setEditNickname(loan.nickname ?? '')
+          setEditStartDate(loan.startDate)
+          setEditEndDate(loan.endDate)
+          setEditLoanType(loan.loanType ?? null)
+          setEditIoEndDate(loan.ioEndDate ?? '')
+          setEditInterestRate(loan.interestRate ?? '')
+        }
         return
       }
       const { loan: updated } = await res.json() as { loan: InstallmentLoanDetail }
@@ -133,8 +144,8 @@ export default function LoanDetailPage() {
   }
 
   async function handleAddBalance() {
-    if (!addBalanceCents.trim() || !addBalanceDate) return
-    const dollars = parseFloat(addBalanceCents.replace(/,/g, ''))
+    if (!addBalanceDollars.trim() || !addBalanceDate) return
+    const dollars = parseFloat(addBalanceDollars.replace(/,/g, ''))
     if (isNaN(dollars)) { toast.error('Invalid amount'); return }
     const balanceCents = Math.round(dollars * 100)
 
@@ -153,7 +164,7 @@ export default function LoanDetailPage() {
       const { balance } = await res.json() as { balance: InstallmentLoanBalance }
       setBalances(prev => [balance, ...prev].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)))
       setLoan(prev => prev ? { ...prev, latestBalance: { balanceCents: balance.balanceCents, recordedAt: balance.recordedAt } } : null)
-      setAddBalanceCents('')
+      setAddBalanceDollars('')
       setAddBalanceDate('')
       toast.success('Balance added')
     } finally {
@@ -412,8 +423,8 @@ export default function LoanDetailPage() {
                           inputMode="decimal"
                           placeholder="615,000"
                           className="pl-7"
-                          value={addBalanceCents}
-                          onChange={e => setAddBalanceCents(e.target.value)}
+                          value={addBalanceDollars}
+                          onChange={e => setAddBalanceDollars(e.target.value)}
                         />
                       </div>
                     </div>
@@ -431,7 +442,7 @@ export default function LoanDetailPage() {
                     size="sm"
                     variant="outline"
                     onClick={handleAddBalance}
-                    disabled={addingBalance || !addBalanceCents.trim() || !addBalanceDate}
+                    disabled={addingBalance || !addBalanceDollars.trim() || !addBalanceDate}
                   >
                     {addingBalance ? 'Adding…' : '+ Add snapshot'}
                   </Button>

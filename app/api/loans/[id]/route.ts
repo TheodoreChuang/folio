@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server'
+import { and, eq } from 'drizzle-orm'
 import { findInstallmentLoanDetail, updateInstallmentLoanById } from '@/lib/borrowings'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
+import { db } from '@/lib/db'
+import { entities } from '@/db/schema'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
 export async function GET(
   _request: Request,
@@ -50,7 +54,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const raw = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
+    const raw = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {}
 
     const updates: {
       lender?: string
@@ -80,22 +84,31 @@ export async function PATCH(
 
     if ('startDate' in raw) {
       const startDate = typeof raw.startDate === 'string' ? raw.startDate.trim() : ''
-      if (!startDate) {
-        return NextResponse.json({ error: 'startDate cannot be empty' }, { status: 400 })
+      if (!DATE_REGEX.test(startDate)) {
+        return NextResponse.json({ error: 'startDate must be YYYY-MM-DD' }, { status: 400 })
       }
       updates.startDate = startDate
     }
 
     if ('endDate' in raw) {
       const endDate = typeof raw.endDate === 'string' ? raw.endDate.trim() : ''
-      if (!endDate) {
-        return NextResponse.json({ error: 'endDate cannot be empty' }, { status: 400 })
+      if (!DATE_REGEX.test(endDate)) {
+        return NextResponse.json({ error: 'endDate must be YYYY-MM-DD' }, { status: 400 })
       }
       updates.endDate = endDate
     }
 
     if ('entityId' in raw) {
-      updates.entityId = typeof raw.entityId === 'string' && raw.entityId ? raw.entityId : null
+      const entityId = typeof raw.entityId === 'string' && UUID_REGEX.test(raw.entityId) ? raw.entityId : null
+      if (entityId) {
+        const [ent] = await db
+          .select({ id: entities.id })
+          .from(entities)
+          .where(and(eq(entities.id, entityId), eq(entities.userId, user.id)))
+          .limit(1)
+        if (!ent) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+      updates.entityId = entityId
     }
 
     if ('loanType' in raw) {
@@ -112,13 +125,21 @@ export async function PATCH(
     }
 
     if ('ioEndDate' in raw) {
-      updates.ioEndDate = typeof raw.ioEndDate === 'string' && raw.ioEndDate ? raw.ioEndDate : null
+      if (raw.ioEndDate === null) {
+        updates.ioEndDate = null
+      } else {
+        const ioEndDate = typeof raw.ioEndDate === 'string' ? raw.ioEndDate.trim() : ''
+        if (!DATE_REGEX.test(ioEndDate)) {
+          return NextResponse.json({ error: 'ioEndDate must be YYYY-MM-DD' }, { status: 400 })
+        }
+        updates.ioEndDate = ioEndDate
+      }
     }
 
     if ('interestRate' in raw) {
       if (raw.interestRate === null) {
         updates.interestRate = null
-      } else if (typeof raw.interestRate === 'number' && isFinite(raw.interestRate) && raw.interestRate >= 0) {
+      } else if (typeof raw.interestRate === 'number' && isFinite(raw.interestRate) && raw.interestRate >= 0 && raw.interestRate <= 100) {
         updates.interestRate = String(raw.interestRate)
       } else {
         return NextResponse.json(
@@ -130,6 +151,14 @@ export async function PATCH(
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
+    }
+
+    if (updates.startDate && updates.endDate && updates.endDate < updates.startDate) {
+      return NextResponse.json({ error: 'endDate must be on or after startDate' }, { status: 400 })
+    }
+
+    if (updates.loanType === 'principal_and_interest' && 'ioEndDate' in updates && updates.ioEndDate !== null) {
+      return NextResponse.json({ error: 'ioEndDate cannot be set for principal_and_interest loans' }, { status: 400 })
     }
 
     const updated = await updateInstallmentLoanById(user.id, id, updates)

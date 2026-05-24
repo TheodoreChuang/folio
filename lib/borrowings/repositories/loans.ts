@@ -132,7 +132,6 @@ export async function findInstallmentLoanDetail(
       ioEndDate:    installmentLoans.ioEndDate,
       interestRate: installmentLoans.interestRate,
       createdAt:    installmentLoans.createdAt,
-      // prefer nickname over address; null when no property linked
       propertyAddress: sql<string | null>`CASE
         WHEN ${properties.nickname} IS NOT NULL AND ${properties.nickname} != ''
           THEN ${properties.nickname}
