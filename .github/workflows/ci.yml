@@ -10,6 +10,7 @@ jobs:
   migrate:
     name: Migrate database
     runs-on: ubuntu-latest
+    needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
@@ -27,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Migrate production database
+      - name: Migrate database
         run: pnpm db:migrate
         env:
           DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
