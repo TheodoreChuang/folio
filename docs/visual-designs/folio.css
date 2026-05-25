@@ -2396,6 +2396,7 @@ a:hover { text-decoration: underline; }
 }
 .form-grid .full { grid-column: 1 / -1; }
 .form-grid .field { display: flex; flex-direction: column; gap: var(--space-2); }
+.form-grid .field[hidden] { display: none; }
 .form-grid .field .input-label { margin-bottom: 0; }
 .form-grid .field .input-help { margin-top: 0; }
 
@@ -2536,6 +2537,30 @@ a:hover { text-decoration: underline; }
   font-weight: 500;
 }
 .combo .opt.is-add .check { border-style: dashed; }
+
+/* Inline "+ add new …" link — pairs with selects/inputs as a softer
+   alternative to the .combo .opt.is-add row. */
+.inline-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: hsl(var(--accent));
+  text-decoration: none;
+  width: max-content;
+}
+.inline-add:hover { text-decoration: underline; }
+.inline-add-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1px dashed hsl(var(--accent) / 0.55);
+  font-size: 11px;
+  line-height: 1;
+  color: hsl(var(--accent));
+}
 
 /* Help / why panel — right rail */
 .rail-card {
@@ -2726,6 +2751,19 @@ a:hover { text-decoration: underline; }
 .lender-glyph[data-lender="NAB"]     { background: hsl(2 60% 36%);   color: white; border-color: transparent; }
 .lender-glyph[data-lender="Macquarie"] { background: hsl(0 0% 12%); color: white; border-color: transparent; }
 .lender-glyph[data-lender="Other"]   { color: hsl(var(--foreground-muted)); }
+
+/* Lender radio group — single-select pills used on Add loan */
+.lender-radio .lender-opt {
+  transition: opacity 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  opacity: 0.55;
+}
+.lender-radio .lender-opt:hover { opacity: 0.85; }
+.lender-radio .lender-opt.is-selected {
+  opacity: 1;
+  border-color: hsl(var(--foreground) / 0.55);
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.35) inset, var(--shadow-rest);
+}
+.lender-radio .lender-opt.is-selected > span:nth-child(2) { font-weight: 500; }
 
 /* Step header / progress hint */
 .crumb-back {

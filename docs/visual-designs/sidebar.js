@@ -38,9 +38,9 @@
       </button>
     </div>
     <div class="nav-children" data-key="properties">
-      <button class="nav-item" data-goto="property">14 Elm St</button>
-      <button class="nav-item">8 Daley St</button>
-      <button class="nav-item">Sutherland Ct</button>
+      <button class="nav-item" data-goto="property" data-id="elm">14 Elm St</button>
+      <button class="nav-item" data-goto="property" data-id="daley">8 Daley St</button>
+      <button class="nav-item" data-goto="property" data-id="sutherland">Sutherland Ct</button>
       <button class="nav-item is-add" data-goto="add-property">+ Add property</button>
     </div>
 
@@ -54,9 +54,9 @@
       </button>
     </div>
     <div class="nav-children" data-key="loans">
-      <button class="nav-item" data-goto="loan">CBA · Elm St</button>
-      <button class="nav-item" data-goto="loan">CBA · Daley St</button>
-      <button class="nav-item" data-goto="loan">Westpac · LOC</button>
+      <button class="nav-item" data-goto="loan" data-id="cba-elm">CBA · Elm St</button>
+      <button class="nav-item" data-goto="loan" data-id="cba-daley">CBA · Daley St</button>
+      <button class="nav-item" data-goto="loan" data-id="westpac-loc">Westpac · LOC</button>
       <button class="nav-item is-add" data-goto="add-loan">+ Add loan</button>
     </div>
 
@@ -91,9 +91,15 @@
     app.insertBefore(tpl.content, app.firstChild);
 
     const page = document.body.dataset.page;
+    const current = document.body.dataset.current || null;
     if (!page) return;
     document.querySelectorAll('.sidebar .nav-item[data-goto]').forEach(n => {
-      n.classList.toggle('is-active', n.dataset.goto === page);
+      // If a nav-item has a data-id, it only activates when both the
+      // page matches AND the per-page "current" id matches. This keeps
+      // sibling items (e.g. three loans all linking to loan.html) from
+      // all lighting up at once.
+      const idMatches = !n.dataset.id || n.dataset.id === current;
+      n.classList.toggle('is-active', n.dataset.goto === page && idMatches);
     });
 
     // If the active nav lives inside a collapsed section, expand it

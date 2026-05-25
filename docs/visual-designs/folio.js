@@ -192,6 +192,101 @@
     });
   });
 
+  // --- Lender radio group (Add loan) --------------------------------
+  // Single-select group of lender pills. "Other" toggles a free-text
+  // input directly below the group so the user can name a lender that
+  // isn't in the curated list.
+  document.querySelectorAll('[data-lender-group]').forEach(group => {
+    const opts = group.querySelectorAll('.lender-opt');
+    const otherWrap = group.parentElement.querySelector('[data-lender-other]');
+    const otherInput = otherWrap && otherWrap.querySelector('[data-lender-other-input]');
+
+    const select = (btn) => {
+      opts.forEach(o => o.classList.toggle('is-selected', o === btn));
+      const isOther = btn.dataset.lenderValue === 'Other';
+      if (otherWrap) {
+        otherWrap.hidden = !isOther;
+        if (isOther && otherInput) {
+          // Defer focus so the layout settles before scrolling/caret.
+          requestAnimationFrame(() => otherInput.focus());
+        }
+      }
+    };
+
+    opts.forEach(btn => {
+      btn.addEventListener('click', () => select(btn));
+    });
+  });
+
+  // --- Security toggle (Add loan) -----------------------------------
+  // Secured / Unsecured segmented control. Hides the property picker
+  // when "Unsecured" is selected, swaps the entity helper text, and
+  // updates the commit-bar summary so it doesn't claim "secured by ..."
+  // when no property is attached.
+  document.querySelectorAll('[data-security-toggle]').forEach(group => {
+    const buttons = group.querySelectorAll('button[data-security]');
+    const section = group.closest('.form-section');
+    const securedPanel = section && section.querySelector('[data-security-panel="secured"]');
+    const helpSecured = section && section.querySelector('[data-entity-help-secured]');
+    const helpUnsecured = section && section.querySelector('[data-entity-help-unsecured]');
+    const summary = document.querySelector('.commit-bar .summary');
+    const summarySecured = summary ? summary.innerHTML : null;
+    const summaryUnsecured = '<span>Will add <strong>CBA Inv Loan · Elm St</strong> as an <strong>unsecured</strong> loan · <span class="muted">$615k balance · interest only @ 6.35%</span></span>';
+
+    const setSecurity = (mode) => {
+      buttons.forEach(b => b.classList.toggle('is-on', b.dataset.security === mode));
+      const secured = mode === 'secured';
+      if (securedPanel) securedPanel.hidden = !secured;
+      if (helpSecured) helpSecured.hidden = !secured;
+      if (helpUnsecured) helpUnsecured.hidden = secured;
+      if (summary && summarySecured) {
+        summary.innerHTML = secured ? summarySecured : summaryUnsecured;
+      }
+    };
+
+    buttons.forEach(b => b.addEventListener('click', () => setSecurity(b.dataset.security)));
+  });
+
+  // --- Repayment-type toggle (Add loan) -----------------------------
+  // Interest only / Principal & interest / Line of credit. Each option
+  // hides the fields that don't apply (IO end date only matters for IO;
+  // LOC drops start date + loan term and reframes "Original loan amount"
+  // as "Credit limit").
+  document.querySelectorAll('[data-repayment-toggle]').forEach(group => {
+    const buttons = group.querySelectorAll('button[data-repayment]');
+    const body = group.closest('.form-section-body');
+    if (!body) return;
+    const fields = body.querySelectorAll('[data-show-for]');
+    const amountLabel = body.querySelector('[data-amount-label]');
+    const amountOptional = body.querySelector('[data-amount-optional]');
+    const amountInput = body.querySelector('[data-amount-input]');
+    const amountHelp = body.querySelector('[data-amount-help]');
+
+    const setRepayment = (mode) => {
+      buttons.forEach(b => b.classList.toggle('is-on', b.dataset.repayment === mode));
+      fields.forEach(f => {
+        const allow = f.dataset.showFor.split(/\s+/);
+        f.hidden = !allow.includes(mode);
+      });
+      // Reframe the "Original loan amount" field for LOC.
+      if (amountLabel && amountOptional && amountInput && amountHelp) {
+        if (mode === 'loc') {
+          amountLabel.textContent = 'Credit limit';
+          amountOptional.hidden = true;
+          amountInput.placeholder = '100,000';
+          amountHelp.textContent = 'Total facility limit on the line of credit.';
+        } else {
+          amountLabel.textContent = 'Original loan amount';
+          amountOptional.hidden = false;
+          amountInput.placeholder = '650,000';
+          amountHelp.textContent = "For tracking how much you've paid down.";
+        }
+      }
+    };
+
+    buttons.forEach(b => b.addEventListener('click', () => setRepayment(b.dataset.repayment)));
+  });
+
   // --- Plan: scroll to a calculator from the lede CTA ---------------
   document.querySelectorAll('[data-jump]').forEach(b => {
     b.addEventListener('click', e => {
