@@ -90,6 +90,8 @@ Integration tests (`pnpm test:integration`) require `supabase start`; run them w
   (numeric — can be wrong, confirmed in error logs)
 - After schema changes run `pnpm db:generate` then `pnpm db:migrate`
 - **Never run `supabase db reset --local` directly** — use `pnpm db:reset` instead. The bare supabase reset wipes the `public` schema but leaves `drizzle.__drizzle_migrations` intact, causing drizzle to believe old migrations are applied when they aren't. `pnpm db:reset` drops the drizzle tracking schema first so the subsequent migrate starts clean.
+- **Drizzle journal `when` timestamps must be monotonically increasing** — `drizzle-orm`'s `migrate()` skips any migration where `folderMillis <= lastDbMigration.created_at`. If the journal is ever squashed or reordered, entries that end up with `when` values lower than a previously-applied migration will be silently ignored forever. `drizzle-kit generate` always uses `Date.now()` so normal usage is safe; the risk only arises from manual journal edits or squashing.
+- **`pnpm db:migrate` uses `scripts/migrate.ts`, not `drizzle-kit migrate`** — the custom script connects via the session pooler with `prepare: false` (required for PgBouncer). The Supabase direct connection (`db.<ref>.supabase.co`) is IPv6-only and unreachable from both local machines and GitHub Actions runners. `DATABASE_URL_DIRECT` should be set to the session pooler URL (`pooler.supabase.com:5432`).
 - Supabase migration applied ≠ bucket visible in Studio storage browser sometimes;
   use `curl` with secret key to verify
 - **unpdf / pdfjs-dist**: must be in `serverExternalPackages` in `next.config.ts`
