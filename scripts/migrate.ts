@@ -5,13 +5,12 @@ import postgres from 'postgres'
 
 config({ path: '.env.local' })
 
-const url = process.env.DATABASE_URL_DIRECT
-if (!url) {
-  console.error('DATABASE_URL_DIRECT is not set')
-  process.exit(1)
-}
-
 async function main() {
+  const url = process.env.DATABASE_URL_DIRECT
+  if (!url) {
+    console.error('DATABASE_URL_DIRECT is not set')
+    process.exit(1)
+  }
   const client = postgres(url, { max: 1, prepare: false })
   const db = drizzle(client)
   await migrate(db, { migrationsFolder: './drizzle' })
