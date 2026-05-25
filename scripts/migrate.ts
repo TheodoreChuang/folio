@@ -11,8 +11,11 @@ if (!url) {
   process.exit(1)
 }
 
-const client = postgres(url, { max: 1, prepare: false })
-const db = drizzle(client)
+async function main() {
+  const client = postgres(url, { max: 1, prepare: false })
+  const db = drizzle(client)
+  await migrate(db, { migrationsFolder: './drizzle' })
+  await client.end()
+}
 
-await migrate(db, { migrationsFolder: './drizzle' })
-await client.end()
+main().catch(err => { console.error(err); process.exit(1) })
