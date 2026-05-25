@@ -51,8 +51,10 @@ vi.mock('@/lib/db', () => ({
       return {
         from: vi.fn().mockReturnValue({
           leftJoin: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: mocks.mockLoanJoinLimit,
+            leftJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: mocks.mockLoanJoinLimit,
+              }),
             }),
           }),
           where: vi.fn().mockReturnValue({
@@ -80,14 +82,14 @@ describe('findInstallmentLoanDetail', () => {
     vi.clearAllMocks()
     selectCallCount = 0
     mocks.mockLoanJoinLimit.mockResolvedValue([
-      { ...loanRow, propertyAddress: '123 Elm St' },
+      { ...loanRow, propertyAddress: '123 Elm St', entityName: null },
     ])
     mocks.mockBalanceOrderLimit.mockResolvedValue([balanceRow])
   })
 
   it('returns loan with propertyAddress from the linked property (nickname preferred)', async () => {
     mocks.mockLoanJoinLimit.mockResolvedValue([
-      { ...loanRow, propertyAddress: 'My Investment' },
+      { ...loanRow, propertyAddress: 'My Investment', entityName: 'Smith Family Trust' },
     ])
     const result = await findInstallmentLoanDetail('user-123', LOAN_ID)
     expect(result).toBeDefined()
@@ -97,7 +99,7 @@ describe('findInstallmentLoanDetail', () => {
 
   it('returns propertyAddress: null when propertyId is null (unsecured loan)', async () => {
     mocks.mockLoanJoinLimit.mockResolvedValue([
-      { ...loanRow, propertyId: null, propertyAddress: null },
+      { ...loanRow, propertyId: null, propertyAddress: null, entityName: null },
     ])
     const result = await findInstallmentLoanDetail('user-123', LOAN_ID)
     expect(result!.propertyAddress).toBeNull()

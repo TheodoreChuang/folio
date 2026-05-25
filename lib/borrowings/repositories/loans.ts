@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { installmentLoans, installmentLoanBalances, properties } from '@/db/schema'
+import { installmentLoans, installmentLoanBalances, properties, entities } from '@/db/schema'
 import type { InstallmentLoan } from '@/db/schema'
 
 type CreateInstallmentLoanInput = {
@@ -111,6 +111,7 @@ export async function updateInstallmentLoan(
 
 export type InstallmentLoanDetail = InstallmentLoan & {
   propertyAddress: string | null
+  entityName: string | null
   latestBalance: { balanceCents: number; recordedAt: string } | null
 }
 
@@ -139,9 +140,11 @@ export async function findInstallmentLoanDetail(
           THEN ${properties.address}
         ELSE NULL
       END`,
+      entityName: entities.name,
     })
     .from(installmentLoans)
     .leftJoin(properties, eq(installmentLoans.propertyId, properties.id))
+    .leftJoin(entities, eq(installmentLoans.entityId, entities.id))
     .where(and(
       eq(installmentLoans.id, loanId),
       eq(installmentLoans.userId, userId),
