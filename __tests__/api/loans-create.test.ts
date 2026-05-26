@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { POST } from '@/app/api/loans/route'
+import { GET, POST } from '@/app/api/loans/route'
 
 const VALID_PROP_ID  = 'a1b2c3d4-e5f6-4789-a012-111111111111'
 const VALID_LOAN_ID  = 'b2c3d4e5-f6a7-4890-b123-222222222222'
@@ -33,10 +33,11 @@ function makePostRequest(body: unknown) {
 }
 
 const mocks = vi.hoisted(() => ({
-  mockGetUser:              vi.fn(),
-  mockFindPropertyById:     vi.fn(),
-  mockCreateInstallmentLoan: vi.fn(),
-  mockFindEntityById:       vi.fn(),
+  mockGetUser:                  vi.fn(),
+  mockFindPropertyById:         vi.fn(),
+  mockCreateInstallmentLoan:    vi.fn(),
+  mockFindEntityById:           vi.fn(),
+  mockListAllInstallmentLoans:  vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -50,7 +51,8 @@ vi.mock('@/lib/property', () => ({
 }))
 
 vi.mock('@/lib/borrowings', () => ({
-  createInstallmentLoan: mocks.mockCreateInstallmentLoan,
+  listAllInstallmentLoans: mocks.mockListAllInstallmentLoans,
+  createInstallmentLoan:   mocks.mockCreateInstallmentLoan,
 }))
 
 vi.mock('@/lib/entities', () => ({
@@ -63,6 +65,35 @@ const minValidBody = {
   startDate: '2020-01-01',
   endDate: '2050-01-01',
 }
+
+function makeGetRequest() {
+  return new Request('http://localhost/api/loans', { method: 'GET' })
+}
+
+describe('GET /api/loans', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
+    mocks.mockListAllInstallmentLoans.mockResolvedValue([
+      { id: VALID_LOAN_ID, lender: 'Commonwealth Bank', nickname: 'Inv Loan' },
+    ])
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
+    const res = await GET(makeGetRequest())
+    expect(res.status).toBe(401)
+  })
+
+  it('returns loans for the authenticated user', async () => {
+    const res = await GET(makeGetRequest())
+    expect(res.status).toBe(200)
+    const json = await res.json() as { loans: { id: string; lender: string }[] }
+    expect(json.loans).toHaveLength(1)
+    expect(json.loans[0].lender).toBe('Commonwealth Bank')
+    expect(mocks.mockListAllInstallmentLoans).toHaveBeenCalledWith('user-123')
+  })
+})
 
 describe('POST /api/loans', () => {
   beforeEach(() => {

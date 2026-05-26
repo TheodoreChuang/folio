@@ -37,6 +37,15 @@ export type LoanWithBalances = InstallmentLoan & {
   recentBalances: RecentBalance[]
 }
 
+export async function listAllInstallmentLoans(
+  userId: string,
+): Promise<Pick<InstallmentLoan, 'id' | 'lender' | 'nickname'>[]> {
+  return db
+    .select({ id: installmentLoans.id, lender: installmentLoans.lender, nickname: installmentLoans.nickname })
+    .from(installmentLoans)
+    .where(eq(installmentLoans.userId, userId))
+}
+
 export async function listInstallmentLoans(
   userId: string,
   propertyId: string,

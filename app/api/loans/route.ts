@@ -1,10 +1,24 @@
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
-import { createInstallmentLoan } from '@/lib/borrowings'
+import { listAllInstallmentLoans, createInstallmentLoan } from '@/lib/borrowings'
 import { findPropertyById } from '@/lib/property'
 import { findEntityById } from '@/lib/entities'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
+
+export async function GET() {
+  try {
+    const supabase = await createServerSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const loans = await listAllInstallmentLoans(user.id)
+    return NextResponse.json({ loans })
+  } catch (err) {
+    captureError(err, { route: 'GET /api/loans' })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/

@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import type { Property, Entity } from '@/db/schema'
 import { formatCents } from '@/lib/format'
+import { useSidebar } from '@/components/sidebar-context'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -108,6 +109,7 @@ function SectionHead({
 
 export default function NewLoanPage() {
   const router = useRouter()
+  const { refresh: refreshSidebar } = useSidebar()
 
   // Data
   const [properties, setProperties] = useState<Property[]>([])
@@ -219,6 +221,7 @@ export default function NewLoanPage() {
         }
       }
 
+      refreshSidebar()
       toast.success('Loan added')
       router.push(`/loans/${loan.id}`)
     } finally {
