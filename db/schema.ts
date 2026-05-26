@@ -81,23 +81,29 @@ export const sourceDocuments = pgTable('source_documents', {
 ])
 
 export const loanTypeEnum = pgEnum('loan_type', [
-  'interest_only', 'principal_and_interest',
+  'interest_only', 'principal_and_interest', 'line_of_credit',
 ])
 
+export const rateTypeEnum = pgEnum('rate_type', ['variable', 'fixed'])
+
 export const installmentLoans = pgTable('installment_loans', {
-  id:           uuid('id').primaryKey().defaultRandom(),
-  userId:       uuid('user_id').notNull(),
-  propertyId:   uuid('property_id')
-                  .references(() => properties.id, { onDelete: 'set null' }),
-  lender:       text('lender').notNull(),
-  nickname:     text('nickname'),
-  startDate:    date('start_date').notNull(),
-  endDate:      date('end_date').notNull(),
-  entityId:     uuid('entity_id').references(() => entities.id, { onDelete: 'set null' }),
-  loanType:     loanTypeEnum('loan_type'),
-  ioEndDate:    date('io_end_date'),
-  interestRate: numeric('interest_rate', { precision: 5, scale: 2 }),
-  createdAt:    timestamp('created_at').defaultNow().notNull(),
+  id:                  uuid('id').primaryKey().defaultRandom(),
+  userId:              uuid('user_id').notNull(),
+  propertyId:          uuid('property_id')
+                         .references(() => properties.id, { onDelete: 'set null' }),
+  lender:              text('lender').notNull(),
+  nickname:            text('nickname'),
+  accountReference:    text('account_reference'),
+  startDate:           date('start_date'),
+  endDate:             date('end_date'),
+  entityId:            uuid('entity_id').references(() => entities.id, { onDelete: 'set null' }),
+  loanType:            loanTypeEnum('loan_type'),
+  ioEndDate:           date('io_end_date'),
+  interestRate:        numeric('interest_rate', { precision: 5, scale: 2 }),
+  rateType:            rateTypeEnum('rate_type'),
+  loanTermYears:       integer('loan_term_years'),
+  originalAmountCents: integer('original_amount_cents'),
+  createdAt:           timestamp('created_at').defaultNow().notNull(),
 }, (t) => [
   index('idx_installment_loans_user').on(t.userId),
   index('idx_installment_loans_property').on(t.propertyId),
@@ -267,6 +273,7 @@ export type LeaseType              = typeof leaseTypeEnum.enumValues[number]
 export type StatementCadence       = typeof statementCadenceEnum.enumValues[number]
 
 export type LoanType    = typeof loanTypeEnum.enumValues[number]
+export type RateType    = typeof rateTypeEnum.enumValues[number]
 export type LoanLedger  = typeof loanLedger.$inferSelect
 export type NewLoanLedger = typeof loanLedger.$inferInsert
 

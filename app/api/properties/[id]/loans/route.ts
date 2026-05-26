@@ -85,7 +85,7 @@ export async function POST(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const loan = await createInstallmentLoan(user.id, id, { lender, nickname, startDate, endDate })
+    const loan = await createInstallmentLoan(user.id, { propertyId: id, lender, nickname, startDate, endDate })
     return NextResponse.json({ loan }, { status: 201 })
   } catch (err) {
     captureError(err, { route: 'POST /api/properties/[id]/loans' })

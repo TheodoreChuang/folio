@@ -5,10 +5,18 @@ import type { InstallmentLoan } from '@/db/schema'
 
 type CreateInstallmentLoanInput = {
   lender: string
-  nickname: string | null
-  startDate: string
-  endDate: string
+  nickname?: string | null
+  accountReference?: string | null
+  propertyId?: string | null
+  startDate?: string | null
+  endDate?: string | null
   entityId?: string | null
+  loanType?: 'interest_only' | 'principal_and_interest' | 'line_of_credit' | null
+  ioEndDate?: string | null
+  interestRate?: string | null
+  rateType?: 'variable' | 'fixed' | null
+  loanTermYears?: number | null
+  originalAmountCents?: number | null
 }
 
 type UpdateInstallmentLoanInput = {
@@ -81,13 +89,9 @@ export async function findInstallmentLoanById(
 
 export async function createInstallmentLoan(
   userId: string,
-  propertyId: string,
   input: CreateInstallmentLoanInput,
 ): Promise<InstallmentLoan> {
-  const [row] = await db
-    .insert(installmentLoans)
-    .values({ userId, propertyId, ...input })
-    .returning()
+  const [row] = await db.insert(installmentLoans).values({ userId, ...input }).returning()
   return row
 }
 
@@ -121,18 +125,22 @@ export async function findInstallmentLoanDetail(
 ): Promise<InstallmentLoanDetail | undefined> {
   const [row] = await db
     .select({
-      id:           installmentLoans.id,
-      userId:       installmentLoans.userId,
-      propertyId:   installmentLoans.propertyId,
-      lender:       installmentLoans.lender,
-      nickname:     installmentLoans.nickname,
-      startDate:    installmentLoans.startDate,
-      endDate:      installmentLoans.endDate,
-      entityId:     installmentLoans.entityId,
-      loanType:     installmentLoans.loanType,
-      ioEndDate:    installmentLoans.ioEndDate,
-      interestRate: installmentLoans.interestRate,
-      createdAt:    installmentLoans.createdAt,
+      id:                  installmentLoans.id,
+      userId:              installmentLoans.userId,
+      propertyId:          installmentLoans.propertyId,
+      lender:              installmentLoans.lender,
+      nickname:            installmentLoans.nickname,
+      accountReference:    installmentLoans.accountReference,
+      startDate:           installmentLoans.startDate,
+      endDate:             installmentLoans.endDate,
+      entityId:            installmentLoans.entityId,
+      loanType:            installmentLoans.loanType,
+      ioEndDate:           installmentLoans.ioEndDate,
+      interestRate:        installmentLoans.interestRate,
+      rateType:            installmentLoans.rateType,
+      loanTermYears:       installmentLoans.loanTermYears,
+      originalAmountCents: installmentLoans.originalAmountCents,
+      createdAt:           installmentLoans.createdAt,
       propertyAddress: sql<string | null>`CASE
         WHEN ${properties.nickname} IS NOT NULL AND ${properties.nickname} != ''
           THEN ${properties.nickname}

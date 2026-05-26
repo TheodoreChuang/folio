@@ -62,41 +62,46 @@
             <div class="form-section-body">
 
               <label class="input-label" style="margin-bottom: var(--space-3);">Lender</label>
-              <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
-                <button type="button" class="seg" style="padding: 4px; border-radius: var(--radius);">
+              <div class="lender-radio" data-lender-group style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
+                <button type="button" class="seg lender-opt is-selected" data-lender-value="CBA" style="padding: 4px; border-radius: var(--radius);">
                   <span class="lender-glyph" data-lender="CBA">CBA</span>
                   <span style="padding: 0 var(--space-3); font-size: var(--text-sm); font-weight: 500;">Commonwealth Bank</span>
                 </button>
-                <button type="button" class="seg" style="padding: 4px; border-radius: var(--radius); opacity: 0.55;">
+                <button type="button" class="seg lender-opt" data-lender-value="Westpac" style="padding: 4px; border-radius: var(--radius);">
                   <span class="lender-glyph" data-lender="Westpac">W</span>
                   <span style="padding: 0 var(--space-3); font-size: var(--text-sm);">Westpac</span>
                 </button>
-                <button type="button" class="seg" style="padding: 4px; border-radius: var(--radius); opacity: 0.55;">
+                <button type="button" class="seg lender-opt" data-lender-value="ANZ" style="padding: 4px; border-radius: var(--radius);">
                   <span class="lender-glyph" data-lender="ANZ">ANZ</span>
                   <span style="padding: 0 var(--space-3); font-size: var(--text-sm);">ANZ</span>
                 </button>
-                <button type="button" class="seg" style="padding: 4px; border-radius: var(--radius); opacity: 0.55;">
+                <button type="button" class="seg lender-opt" data-lender-value="NAB" style="padding: 4px; border-radius: var(--radius);">
                   <span class="lender-glyph" data-lender="NAB">NAB</span>
                   <span style="padding: 0 var(--space-3); font-size: var(--text-sm);">NAB</span>
                 </button>
-                <button type="button" class="seg" style="padding: 4px; border-radius: var(--radius); opacity: 0.55;">
+                <button type="button" class="seg lender-opt" data-lender-value="Macquarie" style="padding: 4px; border-radius: var(--radius);">
                   <span class="lender-glyph" data-lender="Macquarie">M</span>
                   <span style="padding: 0 var(--space-3); font-size: var(--text-sm);">Macquarie</span>
                 </button>
-                <button type="button" class="seg" style="padding: 4px; border-radius: var(--radius); opacity: 0.55;">
+                <button type="button" class="seg lender-opt" data-lender-value="Other" style="padding: 4px; border-radius: var(--radius);">
                   <span class="lender-glyph" data-lender="Other">···</span>
                   <span style="padding: 0 var(--space-3); font-size: var(--text-sm);">Other</span>
                 </button>
               </div>
 
+              <div class="lender-other-wrap" data-lender-other hidden style="margin-top: var(--space-4); max-width: 420px;">
+                <input class="input" type="text" data-lender-other-input placeholder="Lender name (e.g. ING, Bankwest, ubank)" autocomplete="off" />
+                <div class="input-help">We'll use this as the lender label across Folio.</div>
+              </div>
+
               <div class="form-grid" style="margin-top: var(--space-6);">
                 <div class="field">
-                  <label class="input-label">Account / loan reference</label>
+                  <label class="input-label">Account / loan reference <span class="opt-tag">optional</span></label>
                   <input class="input" placeholder="ending 4821" />
                   <div class="input-help">Last 4 digits are enough. Used to match statements.</div>
                 </div>
                 <div class="field">
-                  <label class="input-label">Nickname</label>
+                  <label class="input-label">Nickname <span class="opt-tag">optional</span></label>
                   <input class="input" value="Inv Loan · Elm St" />
                   <div class="input-help">How this loan appears in the sidebar.</div>
                 </div>
@@ -114,67 +119,58 @@
                   <div class="sub">What does this loan borrow against?</div>
                 </div>
               </div>
-              <div class="seg">
-                <button type="button" class="is-on">Secured by property</button>
-                <button type="button">Unsecured</button>
+              <div class="seg" data-security-toggle>
+                <button type="button" class="is-on" data-security="secured">Secured by property</button>
+                <button type="button" data-security="unsecured">Unsecured</button>
               </div>
             </div>
             <div class="form-section-body">
-              <label class="input-label" style="margin-bottom: var(--space-3);">Property securing this loan</label>
-              <div class="combo">
-                <div class="opt is-on">
-                  <span class="check">
-                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,5 4.2,7.2 8,3"/></svg>
-                  </span>
-                  <div>
-                    <div style="font-weight: 500;">14 Elm Street, Randwick</div>
-                    <div class="meta">Okafor Family Trust · valued $920,000 · 1 existing loan ($615k)</div>
+              <div data-security-panel="secured">
+                <label class="input-label" style="margin-bottom: var(--space-3);">Property securing this loan</label>
+                <div class="combo">
+                  <div class="opt is-on">
+                    <span class="check">
+                      <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,5 4.2,7.2 8,3"/></svg>
+                    </span>
+                    <div>
+                      <div style="font-weight: 500;">14 Elm Street, Randwick</div>
+                      <div class="meta">Okafor Family Trust · 1 existing loan ($615k)</div>
+                    </div>
                   </div>
-                  <span class="meta">LVR after: 80%</span>
-                </div>
-                <div class="opt">
-                  <span class="check"></span>
-                  <div>
-                    <div style="font-weight: 500;">8 Daley Street, Marrickville</div>
-                    <div class="meta">Okafor Family Trust · valued $640,000 · 1 existing loan ($480k)</div>
+                  <div class="opt">
+                    <span class="check"></span>
+                    <div>
+                      <div style="font-weight: 500;">8 Daley Street, Marrickville</div>
+                      <div class="meta">Okafor Family Trust · 1 existing loan ($480k)</div>
+                    </div>
                   </div>
-                  <span class="meta">LVR after: 95%</span>
-                </div>
-                <div class="opt">
-                  <span class="check"></span>
-                  <div>
-                    <div style="font-weight: 500;">Sutherland Court, Kingsford</div>
-                    <div class="meta">Personal · Theo · valued $510,000 · no existing loan</div>
+                  <div class="opt">
+                    <span class="check"></span>
+                    <div>
+                      <div style="font-weight: 500;">Sutherland Court, Kingsford</div>
+                      <div class="meta">Personal · Theo · no existing loan</div>
+                    </div>
                   </div>
-                  <span class="meta">LVR after: 39%</span>
-                </div>
-                <div class="opt is-add" data-goto="add-property">
-                  <span class="check">+</span>
-                  <div>Add a new property first</div>
-                  <span></span>
+                  <div class="opt is-add" data-goto="add-property">
+                    <span class="check">+</span>
+                    <div>Add a new property first</div>
+                    <span></span>
+                  </div>
                 </div>
               </div>
 
               <div class="form-grid" style="margin-top: var(--space-5);">
                 <div class="field">
-                  <label class="input-label">Cross-collateralised <span class="opt-tag">optional</span></label>
-                  <div class="inline-toggle">
-                    <span class="switch">
-                      <button type="button">Yes</button>
-                      <button type="button" class="is-on">No</button>
-                    </span>
-                    <span style="font-size: var(--text-xs); color: hsl(var(--foreground-muted));">Multiple properties secure this loan</span>
-                  </div>
-                  <div class="input-help">Most investors avoid this. Folio will warn if it changes your LVR profile.</div>
-                </div>
-                <div class="field">
                   <label class="input-label">Entity holding the loan</label>
                   <select class="select">
                     <option>Okafor Family Trust</option>
                     <option>Personal · Theo Okafor</option>
-                    <option>+ Add new entity</option>
                   </select>
-                  <div class="input-help">Usually matches the property's entity.</div>
+                  <a href="#" class="inline-add" data-goto="add-entity">
+                    <span class="inline-add-mark">+</span> Add a new entity
+                  </a>
+                  <div class="input-help" data-entity-help-secured>Usually matches the property's entity.</div>
+                  <div class="input-help" data-entity-help-unsecured hidden>Which entity is liable for this loan.</div>
                 </div>
               </div>
             </div>
@@ -194,19 +190,19 @@
             <div class="form-section-body">
 
               <label class="input-label" style="margin-bottom: var(--space-3);">Repayment type</label>
-              <div class="seg" style="margin-bottom: var(--space-5);">
-                <button type="button" class="is-on">Interest only</button>
-                <button type="button">Principal &amp; interest</button>
-                <button type="button">Line of credit</button>
+              <div class="seg" data-repayment-toggle style="margin-bottom: var(--space-5);">
+                <button type="button" class="is-on" data-repayment="io">Interest only</button>
+                <button type="button" data-repayment="pi">Principal &amp; interest</button>
+                <button type="button" data-repayment="loc">Line of credit</button>
               </div>
 
-              <div class="form-grid">
-                <div class="field">
+              <div class="form-grid" data-repayment-fields>
+                <div class="field" data-show-for="io pi">
                   <label class="input-label">Loan start date <span class="opt-tag">optional</span></label>
                   <input class="input" placeholder="dd / mm / yyyy" />
                   <div class="input-help">From your loan contract.</div>
                 </div>
-                <div class="field">
+                <div class="field" data-show-for="io pi">
                   <label class="input-label">Loan term</label>
                   <div class="input-affix">
                     <input class="input num" placeholder="30" />
@@ -214,15 +210,18 @@
                   </div>
                   <div class="input-help">Total contract length.</div>
                 </div>
-                <div class="field">
-                  <label class="input-label">Original loan amount <span class="opt-tag">optional</span></label>
+                <div class="field" data-amount-field>
+                  <label class="input-label">
+                    <span data-amount-label>Original loan amount</span>
+                    <span class="opt-tag" data-amount-optional>optional</span>
+                  </label>
                   <div class="input-affix">
                     <span class="prefix">$</span>
-                    <input class="input num" placeholder="650,000" />
+                    <input class="input num" placeholder="650,000" data-amount-input />
                   </div>
-                  <div class="input-help">For tracking how much you've paid down.</div>
+                  <div class="input-help" data-amount-help>For tracking how much you've paid down.</div>
                 </div>
-                <div class="field">
+                <div class="field" data-show-for="io">
                   <label class="input-label">IO period ends</label>
                   <input class="input" value="30 Jun 2027" />
                   <div class="input-help">Folio prompts you 90 days before this date.</div>
@@ -240,7 +239,6 @@
                   <select class="select">
                     <option>Variable</option>
                     <option>Fixed</option>
-                    <option>Split (fixed + variable)</option>
                   </select>
                   <div class="input-help">&nbsp;</div>
                 </div>

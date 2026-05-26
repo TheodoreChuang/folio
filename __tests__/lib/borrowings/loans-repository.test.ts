@@ -149,7 +149,8 @@ describe('createInstallmentLoan', () => {
   })
 
   it('returns the created loan', async () => {
-    const result = await createInstallmentLoan('user-123', PROP_ID, {
+    const result = await createInstallmentLoan('user-123', {
+      propertyId: PROP_ID,
       lender: 'Westpac',
       nickname: 'Investment loan',
       startDate: '2020-01-01',
