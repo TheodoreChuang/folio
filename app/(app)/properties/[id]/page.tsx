@@ -1361,7 +1361,7 @@ export default function PropertyDetailPage() {
           <div className="flex items-center justify-between mb-4 gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <select
-                className="h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring flex-shrink-0"
+                className="h-8 rounded-md border border-input bg-surface px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring flex-shrink-0"
                 value={txMonth}
                 onChange={e => setTxMonth(e.target.value)}
               >
@@ -1373,19 +1373,23 @@ export default function PropertyDetailPage() {
                   return <option key={m} value={m}>{label}</option>
                 })}
               </select>
-              {entries.length > 0 && (
-                <span className="text-xs text-muted truncate">
-                  {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
-                  {' · '}
-                  <span className="text-green-700">
-                    +{formatCents(entries.filter(e => e.category === 'rent').reduce((s, e) => s + e.amountCents, 0))}
+              {entries.length > 0 && (() => {
+                const inCents  = entries.filter(e => e.category === 'rent').reduce((s, e) => s + e.amountCents, 0)
+                const outCents = entries.filter(e => e.category !== 'rent').reduce((s, e) => s + e.amountCents, 0)
+                const netCents = inCents - outCents
+                return (
+                  <span className="text-xs text-muted inline-flex items-center gap-1.5 flex-wrap">
+                    <span className="text-foreground-subtle">{entries.length} {entries.length === 1 ? 'entry' : 'entries'}</span>
+                    <span className="w-1 h-1 rounded-full bg-foreground-subtle inline-block" />
+                    <span className="text-green-700">+{formatCents(inCents)}</span>
+                    <span className="w-1 h-1 rounded-full bg-foreground-subtle inline-block" />
+                    <span>−{formatCents(outCents)}</span>
+                    <span className="w-1 h-1 rounded-full bg-foreground-subtle inline-block" />
+                    <span className="text-foreground-subtle">net</span>{' '}
+                    <span className={`font-medium text-ink`}>{netCents >= 0 ? `+${formatCents(netCents)}` : `−${formatCents(Math.abs(netCents))}`}</span>
                   </span>
-                  {' · '}
-                  <span>
-                    −{formatCents(entries.filter(e => e.category !== 'rent').reduce((s, e) => s + e.amountCents, 0))}
-                  </span>
-                </span>
-              )}
+                )
+              })()}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <Link
@@ -1472,11 +1476,11 @@ export default function PropertyDetailPage() {
             <div className="bg-surface border border-border rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Date</th>
-                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Category</th>
-                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Description</th>
-                    <th className="text-right font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Amount</th>
+                  <tr className="bg-surface-sunken border-b border-border">
+                    <th className="text-left font-medium text-foreground-subtle text-[11px] uppercase tracking-[0.06em] py-2 px-4">Date</th>
+                    <th className="text-left font-medium text-foreground-subtle text-[11px] uppercase tracking-[0.06em] py-2 px-4">Category</th>
+                    <th className="text-left font-medium text-foreground-subtle text-[11px] uppercase tracking-[0.06em] py-2 px-4">Description</th>
+                    <th className="text-right font-medium text-foreground-subtle text-[11px] uppercase tracking-[0.06em] py-2 px-4">Amount</th>
                     <th className="w-8"></th>
                   </tr>
                 </thead>
