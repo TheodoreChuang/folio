@@ -129,6 +129,9 @@ export default function PropertyDetailPage() {
   const [managementAgents, setManagementAgents] = useState<PropertyManagementAgent[]>([])
   const [mgmtLoaded, setMgmtLoaded] = useState(false)
 
+  // Overview edit mode
+  const [detailsEditMode, setDetailsEditMode] = useState(false)
+
   // Overview edit form
   const [editAddress, setEditAddress] = useState('')
   const [editNickname, setEditNickname] = useState('')
@@ -218,12 +221,14 @@ export default function PropertyDetailPage() {
     async function load() {
       setLoading(true)
       try {
-        const [propRes, loansRes, valsRes, entitiesRes, trendsRes] = await Promise.all([
+        const [propRes, loansRes, valsRes, entitiesRes, trendsRes, tenRes, agentRes] = await Promise.all([
           fetch(`/api/properties/${id}`),
           fetch(`/api/properties/${id}/loans`),
           fetch(`/api/properties/${id}/valuations`),
           fetch('/api/entities'),
           fetch(`/api/properties/${id}/trends?months=12`),
+          fetch(`/api/properties/${id}/tenancies`),
+          fetch(`/api/properties/${id}/management-agents`),
         ])
 
         if (propRes.status === 401) { router.push('/login'); return }
@@ -278,6 +283,16 @@ export default function PropertyDetailPage() {
           const data = await trendsRes.json() as { avgMonthlyNetCents?: number | null }
           setAvgMonthlyNetCents(data.avgMonthlyNetCents ?? null)
         }
+
+        if (tenRes.ok) {
+          const data = await tenRes.json() as { tenancies?: PropertyTenancy[] }
+          setTenancies(data.tenancies ?? [])
+        }
+        if (agentRes.ok) {
+          const data = await agentRes.json() as { agents?: PropertyManagementAgent[] }
+          setManagementAgents(data.agents ?? [])
+        }
+        setMgmtLoaded(true)
       } catch {
         toast.error('Failed to load property')
       } finally {
@@ -657,6 +672,15 @@ export default function PropertyDetailPage() {
   const entityName = property?.entityId
     ? (entities.find(e => e.id === property.entityId)?.name ?? null)
     : null
+
+  const today = todayIso()
+  const activeTenancy = tenancies
+    .filter(t => !t.deletedAt && (!t.leaseEnd || t.leaseEnd >= today))
+    .sort((a, b) => b.leaseStart.localeCompare(a.leaseStart))[0] ?? null
+  const currentAgent = managementAgents
+    .filter(a => !a.deletedAt && (!a.effectiveTo || a.effectiveTo >= today))
+    .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0] ?? null
+
   const chartData = valuations
     .slice()
     .sort((a, b) => a.valuedAt.localeCompare(b.valuedAt))
@@ -796,149 +820,197 @@ export default function PropertyDetailPage() {
 
         {/* ===== OVERVIEW ===== */}
         <TabsContent value="overview" className="mt-6">
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid gap-6" style={{ gridTemplateColumns: '1.2fr 1fr' }}>
+
+            {/* Property details card */}
             <div className="bg-surface border border-border rounded-lg p-5">
-              <h3 className="text-sm font-semibold text-ink mb-4">Property details</h3>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    value={editAddress}
-                    onChange={e => setEditAddress(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="nickname">
-                    Nickname <span className="font-normal text-muted">(optional)</span>
-                  </Label>
-                  <Input
-                    id="nickname"
-                    value={editNickname}
-                    onChange={e => setEditNickname(e.target.value)}
-                    placeholder="e.g. Elm St"
-                  />
-                </div>
-                <SelectField
-                  id="prop-type" label="Type" optional
-                  value={editPropertyType}
-                  onChange={v => setEditPropertyType(v as PropertyType | '')}
-                >
-                  <option value="">— Not specified —</option>
-                  {PROPERTY_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+              <div className="flex items-baseline justify-between mb-5">
+                <h3 className="text-sm font-semibold text-ink">Property details</h3>
+                {!detailsEditMode ? (
+                  <button
+                    type="button"
+                    className="text-xs text-muted hover:text-ink transition-colors"
+                    onClick={() => setDetailsEditMode(true)}
+                  >
+                    Edit
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="text-xs text-muted hover:text-ink transition-colors"
+                    onClick={() => {
+                      setDetailsEditMode(false)
+                      if (property) {
+                        setEditAddress(property.address)
+                        setEditNickname(property.nickname ?? '')
+                        setEditStartDate(property.startDate)
+                        setEditEntityId(property.entityId ?? null)
+                        setEditPropertyType(property.propertyType ?? '')
+                        setEditPurchasePrice(property.purchasePriceCents ? String(property.purchasePriceCents / 100) : '')
+                      }
+                    }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+
+              {!detailsEditMode ? (
+                /* Read-display field list */
+                <div>
+                  {[
+                    { label: 'Nickname', value: property.nickname || '—' },
+                    { label: 'Address', value: property.address },
+                    { label: 'Property type', value: PROPERTY_TYPES.find(t => t.value === property.propertyType)?.label ?? '—' },
+                    { label: 'Purchase price', value: property.purchasePriceCents ? formatCents(property.purchasePriceCents) : '—' },
+                    { label: 'Purchase date', value: formatDate(property.startDate) },
+                    { label: 'Entity', value: entityName ?? '—' },
+                    { label: 'Managing agent', value: currentAgent?.agencyName ?? '—' },
+                    { label: 'Lease end', value: activeTenancy?.leaseEnd ? formatDate(activeTenancy.leaseEnd) : '—' },
+                    { label: 'Weekly rent', value: activeTenancy ? formatCents(activeTenancy.weeklyRentCents) : '—' },
+                    { label: 'Sale date', value: property.saleDate ? formatDate(property.saleDate) : 'Not sold', subtle: !property.saleDate },
+                    { label: 'Sale price', value: property.salePriceCents ? formatCents(property.salePriceCents) : '—', subtle: !property.salePriceCents },
+                  ].map(({ label, value, subtle }) => (
+                    <div key={label} className="grid gap-4 py-2.5 border-b border-ruled last:border-0 text-sm" style={{ gridTemplateColumns: '130px 1fr' }}>
+                      <div className="text-xs text-muted font-medium">{label}</div>
+                      <div className={subtle ? 'text-muted' : 'text-ink'}>{value}</div>
+                    </div>
                   ))}
-                </SelectField>
-                <SelectField
-                  id="entity" label="Entity"
-                  value={editEntityId ?? ''}
-                  onChange={v => setEditEntityId(v || null)}
-                >
-                  <option value="">None</option>
-                  {entities.map(e => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
-                  ))}
-                </SelectField>
-                <div className="grid grid-cols-2 gap-3">
+                </div>
+              ) : (
+                /* Edit form */
+                <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="start-date">Acquisition date</Label>
+                    <Label htmlFor="address">Address</Label>
                     <Input
-                      id="start-date" type="date"
-                      value={editStartDate}
-                      onChange={e => setEditStartDate(e.target.value)}
+                      id="address"
+                      value={editAddress}
+                      onChange={e => setEditAddress(e.target.value)}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="purchase-price">
-                      Purchase price <span className="font-normal text-muted">(optional)</span>
+                    <Label htmlFor="nickname">
+                      Nickname <span className="font-normal text-muted">(optional)</span>
                     </Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                    <Input
+                      id="nickname"
+                      value={editNickname}
+                      onChange={e => setEditNickname(e.target.value)}
+                      placeholder="e.g. Elm St"
+                    />
+                  </div>
+                  <SelectField
+                    id="prop-type" label="Type" optional
+                    value={editPropertyType}
+                    onChange={v => setEditPropertyType(v as PropertyType | '')}
+                  >
+                    <option value="">— Not specified —</option>
+                    {PROPERTY_TYPES.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </SelectField>
+                  <SelectField
+                    id="entity" label="Entity"
+                    value={editEntityId ?? ''}
+                    onChange={v => setEditEntityId(v || null)}
+                  >
+                    <option value="">None</option>
+                    {entities.map(e => (
+                      <option key={e.id} value={e.id}>{e.name}</option>
+                    ))}
+                  </SelectField>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="start-date">Acquisition date</Label>
                       <Input
-                        id="purchase-price" type="text" inputMode="decimal"
-                        placeholder="750,000" className="pl-7"
-                        value={editPurchasePrice}
-                        onChange={e => setEditPurchasePrice(e.target.value)}
+                        id="start-date" type="date"
+                        value={editStartDate}
+                        onChange={e => setEditStartDate(e.target.value)}
                       />
                     </div>
-                  </div>
-                </div>
-                {isSold && (
-                  <div className="pt-2 border-t border-ruled space-y-1">
-                    <p className="text-xs font-medium text-muted uppercase tracking-wide">Sale details</p>
-                    <div className="space-y-1 text-sm pt-1">
-                      <div className="flex justify-between">
-                        <span className="text-muted">Sale date</span>
-                        <span>{property.saleDate ? formatDate(property.saleDate) : '—'}</span>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="purchase-price">
+                        Purchase price <span className="font-normal text-muted">(optional)</span>
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                        <Input
+                          id="purchase-price" type="text" inputMode="decimal"
+                          placeholder="750,000" className="pl-7"
+                          value={editPurchasePrice}
+                          onChange={e => setEditPurchasePrice(e.target.value)}
+                        />
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted">Sale price</span>
-                        <span>{property.salePriceCents ? formatCents(property.salePriceCents) : '—'}</span>
-                      </div>
-                      {property.saleSettlementDate && (
-                        <div className="flex justify-between">
-                          <span className="text-muted">Settlement</span>
-                          <span>{formatDate(property.saleSettlementDate)}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
-                )}
-                <Button size="sm" onClick={handleSave} disabled={saving}>
-                  {saving ? 'Saving…' : 'Save changes'}
-                </Button>
-              </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" onClick={async () => { await handleSave(); setDetailsEditMode(false) }} disabled={saving}>
+                      {saving ? 'Saving…' : 'Save changes'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Equity position card */}
             <div className="bg-surface border border-border rounded-lg p-5">
-              <h3 className="text-sm font-semibold text-ink mb-4">Equity position</h3>
+              <div className="flex items-baseline justify-between mb-5">
+                <h3 className="text-sm font-semibold text-ink">Equity position</h3>
+                {latestValuation && (
+                  <span className="text-xs text-muted">{formatDate(latestValuation.valuedAt)}</span>
+                )}
+              </div>
               {!latestValuation ? (
                 <div className="py-6 text-center">
                   <p className="text-sm text-muted mb-1">No valuation recorded yet.</p>
                   <p className="text-xs text-muted">Add one in the Insights tab.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted">Current value</span>
-                      <span className="font-medium tabular-nums">{formatCents(latestValuation.valueCents)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted">Total debt</span>
-                      <span className="font-medium tabular-nums text-muted">
-                        {totalDebtCents > 0 ? `− ${formatCents(totalDebtCents)}` : '—'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-ruled pt-2">
-                      <span className="font-medium text-ink">Equity</span>
-                      <span className="font-semibold tabular-nums">
-                        {equityCents !== null ? formatCents(equityCents) : '—'}
-                      </span>
-                    </div>
+                <>
+                  <div>
+                    {[
+                      {
+                        label: 'Current value',
+                        sub: latestValuation.source ? latestValuation.source.replace(/_/g, ' ') : null,
+                        value: formatCents(latestValuation.valueCents),
+                      },
+                      {
+                        label: 'Total debt',
+                        sub: loans.length > 0 ? `${loans.length} loan${loans.length !== 1 ? 's' : ''} secured` : null,
+                        value: totalDebtCents > 0 ? formatCents(totalDebtCents) : '—',
+                        muted: true,
+                      },
+                      {
+                        label: 'Net equity',
+                        sub: equityCents !== null && latestValuation.valueCents > 0
+                          ? `${Math.round((equityCents / latestValuation.valueCents) * 100)}% of value`
+                          : null,
+                        value: equityCents !== null ? formatCents(equityCents) : '—',
+                        bold: true,
+                      },
+                    ].map(({ label, sub, value, muted, bold }) => (
+                      <div key={label} className="grid gap-4 py-2.5 border-b border-ruled last:border-0 text-sm" style={{ gridTemplateColumns: '1fr auto' }}>
+                        <div>
+                          <div className="text-xs text-muted font-medium">{label}</div>
+                          {sub && <div className="text-xs text-muted mt-0.5">{sub}</div>}
+                        </div>
+                        <div className={`tabular-nums ${bold ? 'font-semibold text-ink' : muted ? 'text-muted' : 'text-ink'}`}>{value}</div>
+                      </div>
+                    ))}
                   </div>
                   {lvrDecimal !== null && (
-                    <div>
-                      <div className="flex items-center justify-between text-xs text-muted mb-1.5">
+                    <div className="mt-5">
+                      <div className="flex items-center justify-between text-xs text-muted mb-2">
                         <span>LVR</span>
-                        <span>{Math.round(lvrDecimal * 100)}%</span>
+                        <span className="text-ink font-medium tabular-nums">{Math.round(lvrDecimal * 100)}%</span>
                       </div>
                       <LvrMeter value={lvrDecimal} />
-                      <div className="flex justify-between text-xs text-muted mt-1">
-                        <span>0%</span>
-                        <span className="text-amber-600/70">60%</span>
-                        <span className="text-red-600/70">80%</span>
-                        <span>100%</span>
+                      <div className="flex justify-between text-[10px] text-muted mt-1.5">
+                        <span>0%</span><span>60%</span><span>80%</span><span>100%</span>
                       </div>
                     </div>
                   )}
-                  <p className="text-xs text-muted pt-1">
-                    as of {formatDate(latestValuation.valuedAt)}
-                    {latestValuation.source
-                      ? ` · ${latestValuation.source.replace(/_/g, ' ')}`
-                      : ''}
-                  </p>
-                </div>
+                </>
               )}
             </div>
           </div>
