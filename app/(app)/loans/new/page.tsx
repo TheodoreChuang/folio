@@ -316,6 +316,7 @@ export default function NewLoanPage() {
                 <div>
                   <FieldLabel optional>Nickname</FieldLabel>
                   <Input
+                    id="nickname"
                     className="mt-1.5"
                     placeholder="Inv Loan · Elm St"
                     value={nickname}
@@ -458,6 +459,7 @@ export default function NewLoanPage() {
                   <div>
                     <FieldLabel optional>Loan start date</FieldLabel>
                     <Input
+                      id="start-date"
                       className="mt-1.5"
                       type="date"
                       value={startDate}
@@ -472,6 +474,7 @@ export default function NewLoanPage() {
                     <FieldLabel>Loan term</FieldLabel>
                     <div className="mt-1.5 flex">
                       <Input
+                        id="loan-term-years"
                         className="rounded-r-none"
                         type="text"
                         inputMode="numeric"
