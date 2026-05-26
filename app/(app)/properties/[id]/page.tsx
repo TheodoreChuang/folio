@@ -687,16 +687,10 @@ export default function PropertyDetailPage() {
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="mb-2">
-        <Link
-          href="/properties"
-          className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-ink transition-colors"
-        >
-          <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden>
-            <polyline points="6,2 2,5 6,8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          Properties
-        </Link>
+      <div className="mb-3 flex items-center gap-1.5 text-xs text-muted">
+        <Link href="/properties" className="hover:text-ink transition-colors">Properties</Link>
+        <span>›</span>
+        <span className="text-ink">{property.nickname ?? property.address}</span>
       </div>
 
       {/* Header */}
@@ -712,25 +706,16 @@ export default function PropertyDetailPage() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-1 text-sm text-muted">
+          <div className="flex items-center gap-3 mt-1 text-sm text-muted">
             {property.nickname && <span>{property.address}</span>}
-            {property.nickname && entityName && <span>·</span>}
-            {entityName && <span>{entityName}</span>}
+            {entityName && (
+              <span className="inline-flex items-center h-[22px] px-3 rounded-full text-[11px] font-medium uppercase tracking-[0.06em] bg-surface-sunken text-muted border border-border whitespace-nowrap">
+                {entityName}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!isSold && (
-            <Button variant="outline" size="sm" onClick={() => router.push('/upload')}>
-              <svg
-                width="14" height="14" viewBox="0 0 16 16"
-                fill="none" stroke="currentColor" strokeWidth="1.4"
-                className="mr-1.5" aria-hidden
-              >
-                <path d="M3 11v2h10v-2"/><path d="M8 3v8M5 6l3-3 3 3"/>
-              </svg>
-              Upload statement
-            </Button>
-          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="px-2.5" aria-label="More options">
@@ -774,7 +759,6 @@ export default function PropertyDetailPage() {
           label="Gross yield"
           value={yieldStats ? `${yieldStats.grossPercent.toFixed(1)}%` : '—'}
           foot={yieldStats ? <span className="text-xs text-muted">{yieldStats.periodLabel}</span> : undefined}
-          secondary
         />
         <MetricTile
           label="Net cashflow"
@@ -785,7 +769,6 @@ export default function PropertyDetailPage() {
           }
           valueClassName={avgMonthlyNetCents !== null && avgMonthlyNetCents < 0 ? 'text-red-500' : undefined}
           foot={avgMonthlyNetCents !== null ? <span className="text-xs text-muted">avg / month · 12 mo</span> : undefined}
-          secondary
         />
         <MetricTile
           label="LVR"
@@ -795,7 +778,6 @@ export default function PropertyDetailPage() {
               ? <LvrMeter value={lvrDecimal} className="w-full" />
               : undefined
           }
-          secondary
         />
       </div>
 
@@ -806,20 +788,10 @@ export default function PropertyDetailPage() {
       >
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="insights">Insights</TabsTrigger>
           <TabsTrigger value="management">Management</TabsTrigger>
-          <TabsTrigger value="loans">
-            Loans
-            {loans.length > 0 && (
-              <span className="ml-1 text-xs bg-border rounded-full px-1.5">{loans.length}</span>
-            )}
-          </TabsTrigger>
+          <TabsTrigger value="loans">Loans</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="insights">
-            Insights
-            {valuations.length > 0 && (
-              <span className="ml-1 text-xs bg-border rounded-full px-1.5">{valuations.length}</span>
-            )}
-          </TabsTrigger>
         </TabsList>
 
         {/* ===== OVERVIEW ===== */}
