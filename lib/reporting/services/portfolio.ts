@@ -33,7 +33,7 @@ export function computePortfolioLVR(
     }
   }
 
-  const activeLoans = loans.filter(l => l.endDate > today)
+  const activeLoans = loans.filter(l => !l.endDate || l.endDate > today)
 
   const totalValueCents = Array.from(latestValuationMap.values()).reduce((sum, v) => sum + v, 0)
   const totalDebtCents = activeLoans

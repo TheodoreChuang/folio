@@ -13,7 +13,8 @@ import type { ReactNode } from 'react'
 import type { InstallmentLoan, InstallmentLoanBalance } from '@/db/schema'
 import type { InstallmentLoanDetail, LoanLedgerWithSource } from '@/lib/borrowings'
 
-function formatDate(d: string): string {
+function formatDate(d: string | null | undefined): string {
+  if (!d) return '—'
   const [y, m, day] = d.split('-')
   return `${day}/${m}/${y}`
 }
@@ -208,9 +209,9 @@ export default function LoanDetailPage() {
     })
   }
 
-  function startEdit(field: string, currentValue: string) {
+  function startEdit(field: string, currentValue: string | null | undefined) {
     setEditingField(field)
-    setEditValue(currentValue)
+    setEditValue(currentValue ?? '')
   }
 
   async function commitField(field: string, value: string) {

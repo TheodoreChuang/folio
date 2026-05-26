@@ -66,7 +66,8 @@ const CADENCE_LABELS: Record<StatementCadence, string> = {
   monthly: 'Monthly', bi_monthly: 'Bi-monthly',
 }
 
-function formatDate(d: string): string {
+function formatDate(d: string | null | undefined): string {
+  if (!d) return '—'
   const [y, m, day] = d.split('-')
   return `${day}/${m}/${y}`
 }
