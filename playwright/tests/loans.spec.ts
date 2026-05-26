@@ -4,7 +4,7 @@ test.describe('Loans', () => {
   test('adds a loan', async ({ page }) => {
     await page.goto('/loans')
 
-    await page.getByRole('link', { name: '+ Add loan' }).click()
+    await page.getByRole('main').getByRole('link', { name: '+ Add loan' }).click()
     await expect(page).toHaveURL(/\/loans\/new/, { timeout: 10000 })
 
     // Select lender from bank picker
