@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -125,6 +126,137 @@ function SelectField({
   )
 }
 
+type PropFieldRowProps = {
+  label: ReactNode
+  fieldKey: string
+  editingField: string | null
+  editValue: string
+  fieldSaving: string | null
+  displayValue: string | null
+  inputType?: 'text' | 'date'
+  editPrefix?: string
+  onStartEdit: () => void
+  onValueChange: (v: string) => void
+  onCommit: (v: string) => void
+  onCancel: () => void
+  last?: boolean
+}
+
+function PropFieldRow({
+  label, fieldKey, editingField, editValue, fieldSaving, displayValue,
+  inputType = 'text', editPrefix, onStartEdit, onValueChange, onCommit, onCancel, last,
+}: PropFieldRowProps) {
+  const isEditing = editingField === fieldKey
+  const isSaving = fieldSaving === fieldKey
+  return (
+    <div className={`grid items-center py-3 ${last ? '' : 'border-b border-ruled'}`}
+      style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+      <div className="text-xs font-medium text-foreground-subtle">{label}</div>
+      <div>
+        {isEditing ? (
+          <div className="relative inline-flex items-center">
+            {editPrefix && (
+              <span className="absolute left-2 text-sm text-muted pointer-events-none">{editPrefix}</span>
+            )}
+            <input
+              type={inputType}
+              autoFocus
+              value={editValue}
+              onChange={e => onValueChange(e.target.value)}
+              onBlur={() => onCommit(editValue)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.currentTarget.blur() }
+                if (e.key === 'Escape') onCancel()
+              }}
+              className={`text-sm px-2 py-1 rounded border border-border bg-surface outline-none focus:border-accent transition-colors${editPrefix ? ' pl-5' : ''}`}
+              style={{ minWidth: inputType === 'date' ? '140px' : '160px' }}
+            />
+          </div>
+        ) : (
+          <div
+            role="button" tabIndex={0}
+            onClick={onStartEdit}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStartEdit() }}
+            className={`group text-sm text-ink cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
+          >
+            {displayValue
+              ? <span>{displayValue}</span>
+              : <span className="text-foreground-faint">—</span>}
+            {!isSaving && (
+              <span className="opacity-0 group-hover:opacity-60 transition-opacity">
+                <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+                  <path d="M2 8.5L8 2.5l1.5 1.5L3.5 10H2v-1.5z"/>
+                </svg>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+type PropSelectRowProps = {
+  label: ReactNode
+  fieldKey: string
+  editingField: string | null
+  editValue: string
+  fieldSaving: string | null
+  displayValue: string | null
+  options: { value: string; label: string }[]
+  onStartEdit: () => void
+  onValueChange: (v: string) => void
+  onCommit: (v: string) => void
+  onCancel: () => void
+  last?: boolean
+}
+
+function PropSelectRow({
+  label, fieldKey, editingField, editValue, fieldSaving, displayValue,
+  options, onStartEdit, onValueChange, onCommit, onCancel, last,
+}: PropSelectRowProps) {
+  const isEditing = editingField === fieldKey
+  const isSaving = fieldSaving === fieldKey
+  return (
+    <div className={`grid items-center py-3 ${last ? '' : 'border-b border-ruled'}`}
+      style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+      <div className="text-xs font-medium text-foreground-subtle">{label}</div>
+      <div>
+        {isEditing ? (
+          <select
+            autoFocus
+            value={editValue}
+            onChange={e => { const v = e.target.value; onValueChange(v); onCommit(v) }}
+            onBlur={() => onCancel()}
+            onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
+            className="text-sm px-2 py-1 rounded border border-border bg-surface outline-none focus:border-accent transition-colors"
+          >
+            {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        ) : (
+          <div
+            role="button" tabIndex={0}
+            onClick={onStartEdit}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStartEdit() }}
+            className={`group text-sm text-ink cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
+          >
+            {displayValue
+              ? <span>{displayValue}</span>
+              : <span className="text-foreground-faint">—</span>}
+            {!isSaving && (
+              <span className="opacity-0 group-hover:opacity-60 transition-opacity">
+                <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+                  <path d="M2 8.5L8 2.5l1.5 1.5L3.5 10H2v-1.5z"/>
+                </svg>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -152,17 +284,10 @@ export default function PropertyDetailPage() {
   // Active tab
   const [activeTab, setActiveTab] = useState<'overview' | 'insights' | 'management' | 'loans' | 'transactions'>('overview')
 
-  // Overview edit mode
-  const [detailsEditMode, setDetailsEditMode] = useState(false)
-
-  // Overview edit form
-  const [editAddress, setEditAddress] = useState('')
-  const [editNickname, setEditNickname] = useState('')
-  const [editStartDate, setEditStartDate] = useState('')
-  const [editEntityId, setEditEntityId] = useState<string | null>(null)
-  const [editPropertyType, setEditPropertyType] = useState<PropertyType | ''>('')
-  const [editPurchasePrice, setEditPurchasePrice] = useState('')
-  const [saving, setSaving] = useState(false)
+  // Inline per-field editing (Overview tab)
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [fieldSaving, setFieldSaving] = useState<string | null>(null)
 
   // Insights / valuation form
   const [valDate, setValDate] = useState(todayIso)
@@ -270,16 +395,6 @@ export default function PropertyDetailPage() {
         setLvrDecimal(propData.lvrDecimal ?? null)
         setTotalAppreciationCents(propData.totalAppreciationCents ?? null)
 
-        const p = propData.property
-        setEditAddress(p.address)
-        setEditNickname(p.nickname ?? '')
-        setEditStartDate(p.startDate)
-        setEditEntityId(p.entityId ?? null)
-        setEditPropertyType(p.propertyType ?? '')
-        setEditPurchasePrice(
-          p.purchasePriceCents ? String(p.purchasePriceCents / 100) : ''
-        )
-
         if (loansRes.ok) {
           const data = await loansRes.json() as { loans?: LoanWithBalance[] }
           setLoans(data.loans ?? [])
@@ -349,40 +464,71 @@ export default function PropertyDetailPage() {
     }
   }, [id, mgmtLoaded])
 
-  async function handleSave() {
-    setSaving(true)
+  async function patchProperty(updates: Record<string, unknown>) {
+    const res = await fetch(`/api/properties/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as { error?: string }
+      throw new Error(err.error ?? 'Failed to save')
+    }
+    const { property: updated } = await res.json() as { property: Property }
+    setProperty(updated)
+  }
+
+  function startPropEdit(field: string, currentValue: string | null | undefined) {
+    setEditingField(field)
+    setEditValue(currentValue ?? '')
+  }
+
+  async function commitPropField(field: string, value: string) {
+    setEditingField(null)
+    if (!property) return
+
+    let updates: Record<string, unknown>
+    if (field === 'nickname') {
+      const n = value.trim() || null
+      if (n === (property.nickname ?? null)) return
+      updates = { nickname: n }
+    } else if (field === 'address') {
+      if (!value.trim() || value.trim() === property.address) return
+      updates = { address: value.trim() }
+    } else if (field === 'propertyType') {
+      const t = value || null
+      if (t === (property.propertyType ?? null)) return
+      updates = { propertyType: t }
+    } else if (field === 'entityId') {
+      const e = value || null
+      if (e === (property.entityId ?? null)) return
+      updates = { entityId: e }
+    } else if (field === 'startDate') {
+      if (!value || value === property.startDate) return
+      updates = { startDate: value }
+    } else if (field === 'purchasePriceCents') {
+      const raw = value.replace(/,/g, '')
+      if (!raw) {
+        if (property.purchasePriceCents === null) return
+        updates = { purchasePriceCents: null }
+      } else {
+        const dollars = parseFloat(raw)
+        if (isNaN(dollars)) { toast.error('Invalid purchase price'); return }
+        const cents = Math.round(dollars * 100)
+        if (cents === property.purchasePriceCents) return
+        updates = { purchasePriceCents: cents }
+      }
+    } else {
+      return
+    }
+
+    setFieldSaving(field)
     try {
-      const purchaseVal = editPurchasePrice.replace(/,/g, '')
-      if (purchaseVal && isNaN(parseFloat(purchaseVal))) {
-        toast.error('Purchase price must be a number')
-        return
-      }
-      const res = await fetch(`/api/properties/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: editAddress.trim(),
-          nickname: editNickname.trim() || null,
-          startDate: editStartDate,
-          entityId: editEntityId || null,
-          propertyType: editPropertyType || null,
-          purchasePriceCents: purchaseVal
-            ? Math.round(parseFloat(purchaseVal) * 100)
-            : null,
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string }
-        toast.error(err.error ?? 'Failed to save')
-        return
-      }
-      const { property: updated } = await res.json() as { property: Property }
-      setProperty(updated)
-      toast.success('Saved')
-    } catch {
-      toast.error('Network error — please try again')
+      await patchProperty(updates)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save')
     } finally {
-      setSaving(false)
+      setFieldSaving(null)
     }
   }
 
@@ -815,132 +961,93 @@ export default function PropertyDetailPage() {
 
             {/* Property details card */}
             <div className="bg-surface border border-border rounded-lg p-5">
-              <div className="flex items-baseline justify-between mb-5">
+              <div className="mb-4">
                 <h3 className="text-sm font-semibold text-ink">Property details</h3>
-                {!detailsEditMode ? (
-                  <button
-                    type="button"
-                    className="text-xs text-muted hover:text-ink transition-colors"
-                    onClick={() => setDetailsEditMode(true)}
-                  >
-                    Edit
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="text-xs text-muted hover:text-ink transition-colors"
-                    onClick={() => {
-                      setDetailsEditMode(false)
-                      if (property) {
-                        setEditAddress(property.address)
-                        setEditNickname(property.nickname ?? '')
-                        setEditStartDate(property.startDate)
-                        setEditEntityId(property.entityId ?? null)
-                        setEditPropertyType(property.propertyType ?? '')
-                        setEditPurchasePrice(property.purchasePriceCents ? String(property.purchasePriceCents / 100) : '')
-                      }
-                    }}
-                  >
-                    Cancel
-                  </button>
-                )}
               </div>
-
-              {!detailsEditMode ? (
-                /* Read-display field list */
-                <div>
-                  {[
-                    { label: 'Nickname', value: property.nickname || '—' },
-                    { label: 'Address', value: property.address },
-                    { label: 'Property type', value: PROPERTY_TYPES.find(t => t.value === property.propertyType)?.label ?? '—' },
-                    { label: 'Purchase price', value: property.purchasePriceCents ? formatCents(property.purchasePriceCents) : '—' },
-                    { label: 'Purchase date', value: formatDate(property.startDate) },
-                    { label: 'Entity', value: entityName ?? '—' },
-                    { label: 'Managing agent', value: currentAgent?.agencyName ?? '—' },
-                    { label: 'Lease end', value: activeTenancy?.leaseEnd ? formatDate(activeTenancy.leaseEnd) : '—' },
-                    { label: 'Weekly rent', value: activeTenancy ? formatCents(activeTenancy.weeklyRentCents) : '—' },
-                    { label: 'Sale date', value: property.saleDate ? formatDate(property.saleDate) : 'Not sold', subtle: !property.saleDate },
-                    { label: 'Sale price', value: property.salePriceCents ? formatCents(property.salePriceCents) : '—', subtle: !property.salePriceCents },
-                  ].map(({ label, value, subtle }) => (
-                    <div key={label} className="grid gap-4 py-2.5 border-b border-ruled last:border-0 text-sm" style={{ gridTemplateColumns: '130px 1fr' }}>
-                      <div className="text-xs text-muted font-medium">{label}</div>
-                      <div className={subtle ? 'text-muted' : 'text-ink'}>{value}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                /* Edit form */
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={editAddress}
-                      onChange={e => setEditAddress(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nickname">
-                      Nickname <span className="font-normal text-muted">(optional)</span>
-                    </Label>
-                    <Input
-                      id="nickname"
-                      value={editNickname}
-                      onChange={e => setEditNickname(e.target.value)}
-                      placeholder="e.g. Elm St"
-                    />
-                  </div>
-                  <SelectField
-                    id="prop-type" label="Type" optional
-                    value={editPropertyType}
-                    onChange={v => setEditPropertyType(v as PropertyType | '')}
-                  >
-                    <option value="">— Not specified —</option>
-                    {PROPERTY_TYPES.map(t => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </SelectField>
-                  <SelectField
-                    id="entity" label="Entity"
-                    value={editEntityId ?? ''}
-                    onChange={v => setEditEntityId(v || null)}
-                  >
-                    <option value="">None</option>
-                    {entities.map(e => (
-                      <option key={e.id} value={e.id}>{e.name}</option>
-                    ))}
-                  </SelectField>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="start-date">Acquisition date</Label>
-                      <Input
-                        id="start-date" type="date"
-                        value={editStartDate}
-                        onChange={e => setEditStartDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="purchase-price">
-                        Purchase price <span className="font-normal text-muted">(optional)</span>
-                      </Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
-                        <Input
-                          id="purchase-price" type="text" inputMode="decimal"
-                          placeholder="750,000" className="pl-7"
-                          value={editPurchasePrice}
-                          onChange={e => setEditPurchasePrice(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" onClick={async () => { await handleSave(); setDetailsEditMode(false) }} disabled={saving}>
-                      {saving ? 'Saving…' : 'Save changes'}
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <PropFieldRow
+                label="Nickname" fieldKey="nickname"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={property.nickname ?? null}
+                onStartEdit={() => startPropEdit('nickname', property.nickname)}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('nickname', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <PropFieldRow
+                label="Address" fieldKey="address"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={property.address}
+                onStartEdit={() => startPropEdit('address', property.address)}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('address', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <PropSelectRow
+                label="Property type" fieldKey="propertyType"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={PROPERTY_TYPES.find(t => t.value === property.propertyType)?.label ?? null}
+                options={[
+                  { value: '', label: '— Not specified —' },
+                  ...PROPERTY_TYPES.map(t => ({ value: t.value, label: t.label })),
+                ]}
+                onStartEdit={() => startPropEdit('propertyType', property.propertyType ?? '')}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('propertyType', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <PropSelectRow
+                label="Entity" fieldKey="entityId"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={entityName}
+                options={[
+                  { value: '', label: 'None' },
+                  ...entities.map(e => ({ value: e.id, label: e.name })),
+                ]}
+                onStartEdit={() => startPropEdit('entityId', property.entityId ?? '')}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('entityId', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <PropFieldRow
+                label="Acquisition date" fieldKey="startDate"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={formatDate(property.startDate)}
+                inputType="date"
+                onStartEdit={() => startPropEdit('startDate', property.startDate)}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('startDate', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <PropFieldRow
+                label="Purchase price" fieldKey="purchasePriceCents"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={property.purchasePriceCents ? formatCents(property.purchasePriceCents) : null}
+                editPrefix="$"
+                onStartEdit={() => startPropEdit('purchasePriceCents', property.purchasePriceCents ? String(property.purchasePriceCents / 100) : '')}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('purchasePriceCents', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+                <div className="text-xs font-medium text-foreground-subtle">Managing agent</div>
+                <div className="text-sm text-ink">{currentAgent?.agencyName ?? <span className="text-foreground-faint">—</span>}</div>
+              </div>
+              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+                <div className="text-xs font-medium text-foreground-subtle">Lease end</div>
+                <div className="text-sm text-ink">{activeTenancy?.leaseEnd ? formatDate(activeTenancy.leaseEnd) : <span className="text-foreground-faint">—</span>}</div>
+              </div>
+              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+                <div className="text-xs font-medium text-foreground-subtle">Weekly rent</div>
+                <div className="text-sm text-ink">{activeTenancy ? formatCents(activeTenancy.weeklyRentCents) : <span className="text-foreground-faint">—</span>}</div>
+              </div>
+              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+                <div className="text-xs font-medium text-foreground-subtle">Sale date</div>
+                <div className={`text-sm ${property.saleDate ? 'text-ink' : 'text-foreground-faint'}`}>{property.saleDate ? formatDate(property.saleDate) : 'Not sold'}</div>
+              </div>
+              <div className="grid items-center py-3" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+                <div className="text-xs font-medium text-foreground-subtle">Sale price</div>
+                <div className="text-sm text-ink">{property.salePriceCents ? formatCents(property.salePriceCents) : <span className="text-foreground-faint">—</span>}</div>
+              </div>
             </div>
 
             {/* Equity position card */}
