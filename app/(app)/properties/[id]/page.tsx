@@ -270,7 +270,6 @@ export default function PropertyDetailPage() {
   const [totalDebtCents, setTotalDebtCents] = useState(0)
   const [equityCents, setEquityCents] = useState<number | null>(null)
   const [lvrDecimal, setLvrDecimal] = useState<number | null>(null)
-  const [totalAppreciationCents, setTotalAppreciationCents] = useState<number | null>(null)
   const [loans, setLoans] = useState<LoanWithBalance[]>([])
   const [valuations, setValuations] = useState<PropertyValuation[]>([])
   const [entities, setEntities] = useState<Entity[]>([])
@@ -393,7 +392,7 @@ export default function PropertyDetailPage() {
         setTotalDebtCents(propData.totalDebtCents ?? 0)
         setEquityCents(propData.equityCents ?? null)
         setLvrDecimal(propData.lvrDecimal ?? null)
-        setTotalAppreciationCents(propData.totalAppreciationCents ?? null)
+
 
         if (loansRes.ok) {
           const data = await loansRes.json() as { loans?: LoanWithBalance[] }
@@ -1603,34 +1602,68 @@ export default function PropertyDetailPage() {
 
           {/* Valuation summary strip */}
           <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">Valuation summary</p>
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            <MetricTile
-              label="Current value"
-              value={latestValuation ? formatCents(latestValuation.valueCents) : '—'}
-              foot={latestValuation ? <span className="text-xs text-muted">as of {formatDate(latestValuation.valuedAt)}</span> : undefined}
-            />
-            <MetricTile
-              label="Growth · since purchase"
-              value={
-                totalAppreciationCents !== null
-                  ? (totalAppreciationCents < 0
-                    ? `−${formatCents(Math.abs(totalAppreciationCents))}`
-                    : `+${formatCents(totalAppreciationCents)}`)
-                  : '—'
-              }
-              valueClassName={totalAppreciationCents !== null && totalAppreciationCents < 0 ? 'text-red-500' : totalAppreciationCents !== null ? 'text-green-700' : undefined}
-              foot={
-                totalAppreciationCents !== null && property.purchasePriceCents
-                  ? <span className="text-xs text-muted">from {formatCents(property.purchasePriceCents)}</span>
-                  : undefined
-              }
-            />
-            <MetricTile
-              label="Gross yield"
-              value={yieldStats ? `${yieldStats.grossPercent.toFixed(1)}%` : '—'}
-              foot={yieldStats ? <span className="text-xs text-muted">{yieldStats.periodLabel}</span> : undefined}
-            />
-          </div>
+          {(() => {
+            const growthPercent = latestValuation && property.purchasePriceCents
+              ? ((latestValuation.valueCents - property.purchasePriceCents) / property.purchasePriceCents) * 100
+              : null
+
+            const yearsHeld = property.startDate
+              ? (new Date().getTime() - new Date(property.startDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+              : null
+
+            const monthsAgoVal = latestValuation
+              ? Math.floor((new Date().getTime() - new Date(latestValuation.valuedAt).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
+              : null
+
+            const lastValLabel = monthsAgoVal === null ? '—'
+              : monthsAgoVal === 0 ? 'This month'
+              : monthsAgoVal === 1 ? '1 month ago'
+              : monthsAgoVal < 12 ? `${monthsAgoVal} months ago`
+              : monthsAgoVal < 24 ? '1 year ago'
+              : `${Math.floor(monthsAgoVal / 12)} years ago`
+
+            const isRecent = monthsAgoVal !== null && monthsAgoVal <= 3
+
+            return (
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <MetricTile
+                  label="Current value"
+                  value={latestValuation ? formatCents(latestValuation.valueCents) : '—'}
+                  foot={latestValuation ? <span className="text-xs text-muted">as of {formatDate(latestValuation.valuedAt)}</span> : undefined}
+                />
+                <MetricTile
+                  label="Growth · since purchase"
+                  value={growthPercent !== null ? `${growthPercent >= 0 ? '+' : '−'}${Math.abs(growthPercent).toFixed(1)}%` : '—'}
+                  valueClassName={growthPercent !== null && growthPercent < 0 ? 'text-negative' : growthPercent !== null ? 'text-positive' : undefined}
+                  foot={
+                    property.purchasePriceCents && latestValuation
+                      ? <span className="text-xs text-muted">
+                          {formatCents(property.purchasePriceCents)} → {formatCents(latestValuation.valueCents)}
+                          {yearsHeld !== null ? ` · ${yearsHeld < 1 ? '<1 yr' : `${Math.floor(yearsHeld)} yr${Math.floor(yearsHeld) !== 1 ? 's' : ''}`}` : ''}
+                        </span>
+                      : undefined
+                  }
+                />
+                <MetricTile
+                  label="Last valuation"
+                  value={lastValLabel}
+                  valueClassName="text-base"
+                  foot={
+                    latestValuation
+                      ? <span className="text-xs text-muted inline-flex items-center gap-1.5">
+                          {formatDate(latestValuation.valuedAt)}
+                          {isRecent && (
+                            <span className="inline-flex items-center h-[18px] px-1.5 rounded text-[9px] font-semibold uppercase tracking-wide bg-positive-soft text-positive">
+                              Recent
+                            </span>
+                          )}
+                        </span>
+                      : undefined
+                  }
+                />
+              </div>
+            )
+          })()}
 
           {/* Valuation line chart */}
           {chartData.length >= 2 && (
