@@ -39,13 +39,9 @@
           <h1 class="title">Add a property</h1>
           <p class="subtitle">Tell us the basics. Folio will learn the rest from your statements.</p>
         </div>
-        <div class="controls">
-          <button class="btn btn--ghost btn--sm" data-goto="properties">Cancel</button>
-          <button class="btn btn--secondary btn--sm">Save as draft</button>
-        </div>
       </div>
 
-      <div class="add-page">
+      <div class="add-page add-page--single">
 
         <!-- =====================================================
              LEFT: form
@@ -64,21 +60,12 @@
                   <div class="sub">Where is the property?</div>
                 </div>
               </div>
-              <span class="right">Verified with PSMA</span>
             </div>
             <div class="form-section-body">
-              <div class="address-result">
-                <span class="pin">
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 14s5-4.5 5-8a5 5 0 0 0-10 0c0 3.5 5 8 5 8z"/><circle cx="8" cy="6" r="1.8"/></svg>
-                </span>
-                <div class="text">
-                  <div class="addr-line">14 Elm Street, Randwick NSW 2031</div>
-                  <div class="verified-line">
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3,6 5,8.5 9,3.5"/></svg>
-                    Matched to Australian address register · Lot 12 DP 78234
-                  </div>
-                </div>
-                <a href="#" class="change">Change</a>
+              <div class="field">
+                <label class="input-label">Street address</label>
+                <input class="input" value="14 Elm Street, Randwick NSW 2031" />
+                <div class="input-help">Include suburb, state, and postcode.</div>
               </div>
 
               <div class="form-grid" style="margin-top: var(--space-5);">
@@ -166,15 +153,15 @@
                   </span>
                   <div>
                     <div style="font-weight: 500;">Okafor Family Trust</div>
-                    <div class="meta">Discretionary trust · ABN 22 444 555 666 · 2 existing properties</div>
+                    <div class="meta">Discretionary trust</div>
                   </div>
-                  <span class="meta">Default</span>
+                  <span class="meta"></span>
                 </div>
                 <div class="opt">
                   <span class="check"></span>
                   <div>
-                    <div style="font-weight: 500;">Personal · Theo Okafor</div>
-                    <div class="meta">Individual · 1 existing property</div>
+                    <div style="font-weight: 500;">Theo Okafor</div>
+                    <div class="meta">Individual</div>
                   </div>
                   <span class="meta"></span>
                 </div>
@@ -182,27 +169,6 @@
                   <span class="check">+</span>
                   <div>Add a new entity</div>
                   <span></span>
-                </div>
-              </div>
-
-              <div class="form-grid" style="margin-top: var(--space-5);">
-                <div class="field">
-                  <label class="input-label">Ownership share</label>
-                  <div class="input-affix">
-                    <input class="input num" value="100" />
-                    <span class="suffix">%</span>
-                  </div>
-                  <div class="input-help">Leave at 100% unless co-owned outside this entity.</div>
-                </div>
-                <div class="field">
-                  <label class="input-label">Use of property</label>
-                  <select class="select">
-                    <option>Investment · leased to tenant</option>
-                    <option>Investment · vacant</option>
-                    <option>Owner-occupied</option>
-                    <option>Mixed use</option>
-                  </select>
-                  <div class="input-help">Affects which tax treatments Folio applies.</div>
                 </div>
               </div>
             </div>
@@ -256,7 +222,7 @@
           </section>
 
           <!-- ===== 5. Lease (optional) ===== -->
-          <section class="form-section is-optional">
+          <section class="form-section is-optional" data-lease-section>
             <div class="form-section-head">
               <div class="lede">
                 <span class="step">5</span>
@@ -267,9 +233,9 @@
               </div>
               <div class="inline-toggle">
                 <span style="font-size: var(--text-xs); color: hsl(var(--foreground-muted));">Currently leased</span>
-                <span class="switch">
-                  <button type="button" class="is-on">Yes</button>
-                  <button type="button">No</button>
+                <span class="switch" data-lease-toggle>
+                  <button type="button" class="is-on" data-lease-val="yes">Yes</button>
+                  <button type="button" data-lease-val="no">No</button>
                 </span>
               </div>
             </div>
@@ -315,33 +281,54 @@
             </div>
           </section>
 
-          <!-- ===== 6. Linked loans (optional) ===== -->
+          <!-- ===== 6. Linked loan (optional) ===== -->
           <section class="form-section is-optional">
             <div class="form-section-head">
               <div class="lede">
                 <span class="step">6</span>
                 <div>
-                  <h3>Linked loans <span class="opt-tag">optional</span></h3>
-                  <div class="sub">Loans this property secures. You can add them now or later.</div>
+                  <h3>Linked loan <span class="opt-tag">optional</span></h3>
+                  <div class="sub">Pick one loan secured by this property. Folio uses it to calculate equity and route statement activity (interest, fees, redraws) to this property.</div>
                 </div>
               </div>
-              <a href="#" class="skip-link" data-goto="add-loan">+ Add a new loan after this →</a>
             </div>
             <div class="form-section-body">
-              <div class="linked-item">
-                <span class="ico">
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v8H2z"/><path d="M2 8h12"/><circle cx="5" cy="10.5" r="0.8" fill="currentColor"/></svg>
-                </span>
-                <div>
-                  <div class="name">CBA Investment Loan · Elm St</div>
-                  <div class="meta">Currently linked to 14 Elm St only</div>
+              <div class="combo">
+                <div class="opt is-on">
+                  <span class="check">
+                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,5 4.2,7.2 8,3"/></svg>
+                  </span>
+                  <div>
+                    <div class="name" style="font-weight: 500;">CBA Investment Loan · Elm St</div>
+                    <div class="meta">Interest-only · CBA</div>
+                  </div>
+                  <span class="amt">$615,000</span>
                 </div>
-                <span class="amt">$615,000</span>
-                <button type="button" class="btn btn--ghost btn--sm">Unlink</button>
+                <div class="opt is-disabled" aria-disabled="true" title="Already linked to 8 Pine Ave">
+                  <span class="check"></span>
+                  <div>
+                    <div class="name" style="font-weight: 500;">Westpac Rocket · Pine Ave</div>
+                    <div class="meta">Linked to 8 Pine Ave</div>
+                  </div>
+                  <span class="amt">$482,300</span>
+                </div>
+                <div class="opt is-disabled" aria-disabled="true" title="Already linked to 22 Bay Rd">
+                  <span class="check"></span>
+                  <div>
+                    <div class="name" style="font-weight: 500;">NAB Tailored Home · Bay Rd</div>
+                    <div class="meta">Linked to 22 Bay Rd</div>
+                  </div>
+                  <span class="amt">$735,000</span>
+                </div>
+                <div class="opt">
+                  <span class="check"></span>
+                  <div>
+                    <div class="name" style="font-weight: 500;">No linked loan</div>
+                    <div class="meta">Property is unencumbered, or add a loan later</div>
+                  </div>
+                  <span class="meta"></span>
+                </div>
               </div>
-              <button type="button" class="btn btn--secondary btn--sm" style="margin-top: var(--space-4);">
-                + Link existing loan
-              </button>
             </div>
           </section>
 
@@ -359,61 +346,6 @@
           </div>
         </div>
 
-        <!-- =====================================================
-             RIGHT: rail
-             ===================================================== -->
-        <aside class="rail">
-
-          <!-- Preview card -->
-          <div class="rail-card">
-            <h4>Preview</h4>
-            <div class="preview-title">14 Elm Street</div>
-            <div class="preview-sub">Randwick NSW 2031 · House · 3 bed</div>
-
-            <div class="summary-line">
-              <span class="k">Entity</span>
-              <span class="v">Okafor Family Trust</span>
-            </div>
-            <div class="summary-line">
-              <span class="k">Purchase</span>
-              <span class="v empty">—</span>
-            </div>
-            <div class="summary-line">
-              <span class="k">Current value</span>
-              <span class="v empty">—</span>
-            </div>
-            <div class="summary-line">
-              <span class="k">Weekly rent</span>
-              <span class="v">$880</span>
-            </div>
-            <div class="summary-line">
-              <span class="k">Linked loans</span>
-              <span class="v">1 · $615,000</span>
-            </div>
-            <div class="summary-line">
-              <span class="k">Equity at start</span>
-              <span class="v empty">—</span>
-            </div>
-          </div>
-
-          <!-- Helpers -->
-          <div class="rail-card">
-            <h4>Notes</h4>
-            <p class="helper">
-              <strong>Address is the source of truth.</strong>
-              Future statements arriving with this address will route here automatically — even if the wording on the statement is slightly different.
-            </p>
-            <p class="helper">
-              <strong>Skip what you don't have.</strong>
-              You can leave acquisition costs and lease details blank. The only required fields are address, entity, and property type.
-            </p>
-            <p class="helper">
-              <strong>This isn't tax advice.</strong>
-              Cost base calculations are for your reference. Folio is not a tax tool — confirm with your accountant.
-            </p>
-          </div>
-
-        </aside>
       </div>
     </section>
 
@@ -423,5 +355,18 @@
 
 <script src="sidebar.js"></script>
 <script src="folio.js"></script>
+<script>
+  (function () {
+    const section = document.querySelector('[data-lease-section]');
+    const toggle = document.querySelector('[data-lease-toggle]');
+    if (!section || !toggle) return;
+    toggle.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        toggle.querySelectorAll('button').forEach(b => b.classList.toggle('is-on', b === btn));
+        section.classList.toggle('is-collapsed', btn.dataset.leaseVal === 'no');
+      });
+    });
+  })();
+</script>
 </body>
 </html>

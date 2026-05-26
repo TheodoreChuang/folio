@@ -458,11 +458,6 @@ export default function LoanDetailPage() {
           className={`relative pb-3 pt-2 text-sm font-medium transition-colors${activeTab === 'repayments' ? ' text-ink' : ' text-muted hover:text-ink'}`}
         >
           Repayments
-          {repaymentsFetched && (
-            <span className="ml-1 inline-flex items-center justify-center h-4 min-w-[18px] px-1 rounded-full bg-surface-sunken text-[10px] font-medium text-muted">
-              {repayments.length}
-            </span>
-          )}
           {activeTab === 'repayments' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent" />}
         </button>
       </div>

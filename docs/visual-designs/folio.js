@@ -287,6 +287,200 @@
     buttons.forEach(b => b.addEventListener('click', () => setRepayment(b.dataset.repayment)));
   });
 
+  // --- Transaction row actions popover ------------------------------
+  // The ⋯ button in each .tx-list row opens a small Edit / Delete menu.
+  // Build a single floating popover and reposition on each click.
+  (function () {
+    const txList = document.querySelector('.tx-list');
+    if (!txList) return;
+
+    const pop = document.createElement('div');
+    pop.className = 'row-actions-pop';
+    pop.setAttribute('role', 'menu');
+    pop.hidden = true;
+    pop.innerHTML = `
+      <button type="button" role="menuitem" data-act="edit">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8.5 2.5l1 1L4 9 2.5 9.5 3 8z"/></svg>
+        Edit entry
+      </button>
+      <button type="button" role="menuitem" data-act="delete" class="is-danger">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h6M5 4V3h2v1M4 4l.5 6h3L8 4"/></svg>
+        Delete entry
+      </button>
+    `;
+    document.body.appendChild(pop);
+
+    let anchorRow = null;
+
+    function close() {
+      pop.hidden = true;
+      if (anchorRow) anchorRow.classList.remove('is-menu-open');
+      anchorRow = null;
+    }
+
+    txList.addEventListener('click', e => {
+      const trigger = e.target.closest('.row-t .more');
+      if (!trigger) return;
+      e.stopPropagation();
+      const row = trigger.closest('.row-t');
+      if (anchorRow === row) { close(); return; }
+      if (anchorRow) anchorRow.classList.remove('is-menu-open');
+      anchorRow = row;
+      anchorRow.classList.add('is-menu-open');
+
+      const r = trigger.getBoundingClientRect();
+      pop.hidden = false;
+      // Position so right edge aligns with trigger's right edge, below it.
+      const top = r.bottom + window.scrollY + 4;
+      const right = window.innerWidth - r.right;
+      pop.style.top = top + 'px';
+      pop.style.right = right + 'px';
+      pop.style.left = 'auto';
+    });
+
+    pop.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn || !anchorRow) return;
+      if (btn.dataset.act === 'delete') {
+        anchorRow.style.transition = 'opacity 140ms ease';
+        anchorRow.style.opacity = '0';
+        const row = anchorRow;
+        setTimeout(() => row.remove(), 160);
+      } else if (btn.dataset.act === 'edit') {
+        editRow(anchorRow);
+      }
+      close();
+    });
+
+    // --- In-place edit -----------------------------------------------
+    // Mirrors the Add row markup so the two interactions feel identical.
+    const CAT_LABEL = { rent: 'Rent', repairs: 'Repairs', fee: 'Mgmt fee', other: 'Other' };
+    const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      const [y, m, d] = iso.split('-').map(Number);
+      return `${String(d).padStart(2, '0')} ${MONTHS_SHORT[m - 1]} ${y}`;
+    }
+    function parseDate(text) {
+      // "28 May 2026" → "2026-05-28"
+      const m = text.trim().match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+      if (!m) return '';
+      const mi = MONTHS_SHORT.indexOf(m[2]);
+      if (mi < 0) return '';
+      return `${m[3]}-${String(mi + 1).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    }
+
+    function editRow(row) {
+      if (row.classList.contains('is-editing')) return;
+      // Snapshot the row's original HTML + class so Cancel can restore it.
+      const originalHTML = row.innerHTML;
+      const originalClass = row.className;
+
+      // Read current values.
+      const when = row.querySelector('.when')?.textContent || '';
+      const catSpan = row.querySelector('.cat');
+      const catClass = (catSpan?.className.match(/cat--(\w+)/) || [])[1] || 'other';
+      const desc = row.querySelector('.desc')?.textContent.trim() || '';
+      const amountText = row.querySelector('.amount')?.textContent.trim() || '';
+      const isIncome = /^\+/.test(amountText);
+      const amountInput = amountText.replace(/[$,\s]/g, '').replace('−', '-');
+
+      row.classList.add('row-t--add', 'is-editing');
+      row.innerHTML = `
+        <div class="when">
+          <input type="date" class="add-tx-input add-tx-date" data-edit-field="date" value="${parseDate(when)}" />
+        </div>
+        <div>
+          <select class="add-tx-input add-tx-select" data-edit-field="category">
+            <option value="rent">Rent</option>
+            <option value="repairs">Repairs</option>
+            <option value="fee">Mgmt fee</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="desc">
+          <input type="text" class="add-tx-input" data-edit-field="desc" value="${desc.replace(/"/g, '&quot;')}" />
+        </div>
+        <div class="amount">
+          <input type="text" class="add-tx-input add-tx-amount" data-edit-field="amount" inputmode="decimal" value="${(isIncome ? '+' : '') + amountInput}" />
+        </div>
+        <div></div>
+      `;
+      row.querySelector('[data-edit-field="category"]').value = catClass;
+
+      // Actions strip directly under the row.
+      const actions = document.createElement('div');
+      actions.className = 'row-t--add-actions';
+      actions.dataset.editActions = '';
+      actions.innerHTML = `
+        <span class="hint">Editing entry · prefix amount with <kbd>+</kbd> for income · <kbd>Enter</kbd> to save · <kbd>Esc</kbd> to cancel</span>
+        <div class="row-t--add-actions__buttons">
+          <button type="button" class="btn btn--ghost btn--sm" data-edit-cancel>Cancel</button>
+          <button type="button" class="btn btn--primary btn--sm" data-edit-save>Save changes</button>
+        </div>
+      `;
+      row.after(actions);
+
+      const descInput = row.querySelector('[data-edit-field="desc"]');
+      descInput.focus();
+      descInput.setSelectionRange(descInput.value.length, descInput.value.length);
+
+      function cleanup() {
+        row.className = originalClass;
+        row.innerHTML = originalHTML;
+        actions.remove();
+      }
+
+      function commit() {
+        const newDesc = row.querySelector('[data-edit-field="desc"]').value.trim();
+        const newAmt  = row.querySelector('[data-edit-field="amount"]').value.trim();
+        if (!newDesc || !newAmt) {
+          (!newDesc
+            ? row.querySelector('[data-edit-field="desc"]')
+            : row.querySelector('[data-edit-field="amount"]')
+          ).focus();
+          return;
+        }
+        const newDate = row.querySelector('[data-edit-field="date"]').value;
+        const newCat  = row.querySelector('[data-edit-field="category"]').value;
+        const income  = /^\+/.test(newAmt);
+        let amtText = newAmt.replace(/^\+/, '');
+        if (!/^[−-]/.test(amtText) && !income) amtText = '−' + amtText;
+        if (income) amtText = '+' + amtText;
+        if (!/\$/.test(amtText)) amtText = amtText.replace(/^([+−-])/, '$1$$');
+
+        row.className = originalClass;
+        row.innerHTML = `
+          <div class="when">${fmtDate(newDate)}</div>
+          <div><span class="cat cat--${newCat}"><span class="dot"></span>${CAT_LABEL[newCat]}</span></div>
+          <div class="desc">${newDesc.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>
+          <div class="amount${income ? ' is-income' : ''}">${amtText}</div>
+          <button type="button" class="more" aria-label="Row actions" title="Edit or delete">⋯</button>
+        `;
+        actions.remove();
+      }
+
+      actions.querySelector('[data-edit-cancel]').addEventListener('click', cleanup);
+      actions.querySelector('[data-edit-save]').addEventListener('click', commit);
+      row.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        else if (e.key === 'Escape') { e.preventDefault(); cleanup(); }
+      });
+    }
+
+    document.addEventListener('click', e => {
+      if (pop.hidden) return;
+      if (e.target.closest('.row-actions-pop')) return;
+      if (e.target.closest('.row-t .more')) return;
+      close();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') close();
+    });
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
+  })();
+
   // --- Plan: scroll to a calculator from the lede CTA ---------------
   document.querySelectorAll('[data-jump]').forEach(b => {
     b.addEventListener('click', e => {

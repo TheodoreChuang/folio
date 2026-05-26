@@ -881,10 +881,17 @@
               <span class="k">net</span> <span class="net">+$2,679.74</span>
             </span>
           </div>
-          <button type="button" class="btn btn--ghost btn--sm" data-add-tx-trigger>
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="6" y1="2" x2="6" y2="10"/><line x1="2" y1="6" x2="10" y2="6"/></svg>
-            Add entry
-          </button>
+          <div class="tx-toolbar__actions" style="display: flex; align-items: center; gap: var(--space-3);">
+            <a href="upload.html" class="btn btn--ghost btn--sm" data-goto="upload">
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8.5V10h6V8.5"/><path d="M6 2.5v5M4 4.5l2-2 2 2"/></svg>
+              Import from PM statement
+            </a>
+            <span class="tx-toolbar__sep" aria-hidden="true" style="width: 1px; height: 16px; background: hsl(var(--border));"></span>
+            <button type="button" class="btn btn--ghost btn--sm" data-add-tx-trigger>
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="6" y1="2" x2="6" y2="10"/><line x1="2" y1="6" x2="10" y2="6"/></svg>
+              Add entry
+            </button>
+          </div>
         </div>
 
         <div class="tx-list">
@@ -929,7 +936,7 @@
             <div><span class="cat cat--rent"><span class="dot"></span>Rent</span></div>
             <div class="desc">Rent paid to 24/05/2026 · 2 wks @ $880</div>
             <div class="amount is-income">+$1,760.00</div>
-            <div class="more">⋯</div>
+            <button type="button" class="more" aria-label="Row actions" title="Edit or delete">⋯</button>
           </div>
 
           <div class="row-t">
@@ -937,7 +944,7 @@
             <div><span class="cat cat--repairs"><span class="dot"></span>Repairs</span></div>
             <div class="desc">Electrical · Exhaust fan replacement — Sullco Electrical</div>
             <div class="amount">−$328.54</div>
-            <div class="more">⋯</div>
+            <button type="button" class="more" aria-label="Row actions" title="Edit or delete">⋯</button>
           </div>
 
           <div class="row-t">
@@ -945,7 +952,7 @@
             <div><span class="cat cat--fee"><span class="dot"></span>Mgmt fee</span></div>
             <div class="desc">Management fee <span class="subtle">incl. GST</span></div>
             <div class="amount">−$116.16</div>
-            <div class="more">⋯</div>
+            <button type="button" class="more" aria-label="Row actions" title="Edit or delete">⋯</button>
           </div>
 
           <div class="row-t">
@@ -953,7 +960,7 @@
             <div><span class="cat cat--other"><span class="dot"></span>Other</span></div>
             <div class="desc">Statement administration fee</div>
             <div class="amount">−$2.20</div>
-            <div class="more">⋯</div>
+            <button type="button" class="more" aria-label="Row actions" title="Edit or delete">⋯</button>
           </div>
 
           <div class="row-t">
@@ -961,7 +968,7 @@
             <div><span class="cat cat--rent"><span class="dot"></span>Rent</span></div>
             <div class="desc">Rent paid to 10/05/2026 · 2 wks @ $880</div>
             <div class="amount is-income">+$1,760.00</div>
-            <div class="more">⋯</div>
+            <button type="button" class="more" aria-label="Row actions" title="Edit or delete">⋯</button>
           </div>
 
           <div class="row-t">
@@ -969,7 +976,7 @@
             <div><span class="cat cat--repairs"><span class="dot"></span>Repairs</span></div>
             <div class="desc">Safety checks · Safe Inspect — Home Safety Audits</div>
             <div class="amount">−$275.00</div>
-            <div class="more">⋯</div>
+            <button type="button" class="more" aria-label="Row actions" title="Edit or delete">⋯</button>
           </div>
 
           <div class="row-t">
@@ -977,7 +984,7 @@
             <div><span class="cat cat--fee"><span class="dot"></span>Mgmt fee</span></div>
             <div class="desc">Management fee <span class="subtle">incl. GST</span></div>
             <div class="amount">−$116.16</div>
-            <div class="more">⋯</div>
+            <button type="button" class="more" aria-label="Row actions" title="Edit or delete">⋯</button>
           </div>
 
           <div class="row-t">
@@ -985,7 +992,7 @@
             <div><span class="cat cat--other"><span class="dot"></span>Other</span></div>
             <div class="desc">Statement administration fee</div>
             <div class="amount">−$2.20</div>
-            <div class="more">⋯</div>
+            <button type="button" class="more" aria-label="Row actions" title="Edit or delete">⋯</button>
           </div>
         </div>
 
@@ -1332,7 +1339,7 @@
 // the chosen state.
 // =====================================================================
 const FOLIO_TWEAKS = /*EDITMODE-BEGIN*/{
-  "designState": "add-entity"
+  "designState": "menu-open"
 }/*EDITMODE-END*/;
 
 (function () {
@@ -1568,7 +1575,7 @@ const FOLIO_TWEAKS = /*EDITMODE-BEGIN*/{
       <div><span class="cat cat--${cat}"><span class="dot"></span>${CAT_LABEL[cat]}</span></div>
       <div class="desc">${desc.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>
       <div class="amount${isIncome ? ' is-income' : ''}">${amtText}</div>
-      <div class="more">⋯</div>
+      <button type="button" class="more" aria-label="Row actions" title="Edit or delete">⋯</button>
     `;
     // Insert as the first data row (after header).
     const header = row.parentElement.querySelector('.row-t.header');

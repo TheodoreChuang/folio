@@ -1,16 +1,16 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  ComposedChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { MetricTile } from '@/components/ui/metric-tile'
 import { LvrMeter } from '@/components/ui/lvr-meter'
 import {
@@ -33,6 +33,14 @@ type YieldStats = { grossPercent: number; netPercent: number; periodLabel: strin
 type LoanWithBalance = InstallmentLoan & {
   latestBalance: { balanceCents: number; recordedAt: string } | null
   recentBalances: { id: string; balanceCents: number; recordedAt: string }[]
+}
+type TrendPoint = {
+  month: string
+  rentCents: number
+  expensesCents: number
+  mortgageCents: number
+  netCents: number
+  hasData: boolean
 }
 
 const MANUAL_CATEGORIES = [
@@ -64,6 +72,18 @@ const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
 const CADENCE_LABELS: Record<StatementCadence, string> = {
   weekly: 'Weekly', fortnightly: 'Fortnightly',
   monthly: 'Monthly', bi_monthly: 'Bi-monthly',
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  rent:                'hsl(152 38% 30%)',
+  insurance:           'hsl(14 58% 42%)',
+  rates:               'hsl(14 58% 42%)',
+  repairs:             'hsl(14 58% 42%)',
+  property_management: 'hsl(14 58% 42%)',
+  utilities:           'hsl(14 58% 42%)',
+  strata_fees:         'hsl(14 58% 42%)',
+  other_expense:       'hsl(32 6% 50%)',
+  loan_payment:        'hsl(32 6% 38%)',
 }
 
 function formatDate(d: string | null | undefined): string {
@@ -106,6 +126,137 @@ function SelectField({
   )
 }
 
+type PropFieldRowProps = {
+  label: ReactNode
+  fieldKey: string
+  editingField: string | null
+  editValue: string
+  fieldSaving: string | null
+  displayValue: string | null
+  inputType?: 'text' | 'date'
+  editPrefix?: string
+  onStartEdit: () => void
+  onValueChange: (v: string) => void
+  onCommit: (v: string) => void
+  onCancel: () => void
+  last?: boolean
+}
+
+function PropFieldRow({
+  label, fieldKey, editingField, editValue, fieldSaving, displayValue,
+  inputType = 'text', editPrefix, onStartEdit, onValueChange, onCommit, onCancel, last,
+}: PropFieldRowProps) {
+  const isEditing = editingField === fieldKey
+  const isSaving = fieldSaving === fieldKey
+  return (
+    <div className={`grid items-center py-3 ${last ? '' : 'border-b border-ruled'}`}
+      style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+      <div className="text-xs font-medium text-foreground-subtle">{label}</div>
+      <div>
+        {isEditing ? (
+          <div className="relative inline-flex items-center">
+            {editPrefix && (
+              <span className="absolute left-2 text-sm text-muted pointer-events-none">{editPrefix}</span>
+            )}
+            <input
+              type={inputType}
+              autoFocus
+              value={editValue}
+              onChange={e => onValueChange(e.target.value)}
+              onBlur={() => onCommit(editValue)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.currentTarget.blur() }
+                if (e.key === 'Escape') onCancel()
+              }}
+              className={`text-sm px-2 py-1 rounded border border-border bg-surface outline-none focus:border-accent transition-colors${editPrefix ? ' pl-5' : ''}`}
+              style={{ minWidth: inputType === 'date' ? '140px' : '160px' }}
+            />
+          </div>
+        ) : (
+          <div
+            role="button" tabIndex={0}
+            onClick={onStartEdit}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStartEdit() }}
+            className={`group text-sm text-ink cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
+          >
+            {displayValue
+              ? <span>{displayValue}</span>
+              : <span className="text-foreground-faint">—</span>}
+            {!isSaving && (
+              <span className="opacity-0 group-hover:opacity-60 transition-opacity">
+                <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+                  <path d="M2 8.5L8 2.5l1.5 1.5L3.5 10H2v-1.5z"/>
+                </svg>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+type PropSelectRowProps = {
+  label: ReactNode
+  fieldKey: string
+  editingField: string | null
+  editValue: string
+  fieldSaving: string | null
+  displayValue: string | null
+  options: { value: string; label: string }[]
+  onStartEdit: () => void
+  onValueChange: (v: string) => void
+  onCommit: (v: string) => void
+  onCancel: () => void
+  last?: boolean
+}
+
+function PropSelectRow({
+  label, fieldKey, editingField, editValue, fieldSaving, displayValue,
+  options, onStartEdit, onValueChange, onCommit, onCancel, last,
+}: PropSelectRowProps) {
+  const isEditing = editingField === fieldKey
+  const isSaving = fieldSaving === fieldKey
+  return (
+    <div className={`grid items-center py-3 ${last ? '' : 'border-b border-ruled'}`}
+      style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+      <div className="text-xs font-medium text-foreground-subtle">{label}</div>
+      <div>
+        {isEditing ? (
+          <select
+            autoFocus
+            value={editValue}
+            onChange={e => { const v = e.target.value; onValueChange(v); onCommit(v) }}
+            onBlur={() => onCancel()}
+            onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
+            className="text-sm px-2 py-1 rounded border border-border bg-surface outline-none focus:border-accent transition-colors"
+          >
+            {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        ) : (
+          <div
+            role="button" tabIndex={0}
+            onClick={onStartEdit}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStartEdit() }}
+            className={`group text-sm text-ink cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
+          >
+            {displayValue
+              ? <span>{displayValue}</span>
+              : <span className="text-foreground-faint">—</span>}
+            {!isSaving && (
+              <span className="opacity-0 group-hover:opacity-60 transition-opacity">
+                <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+                  <path d="M2 8.5L8 2.5l1.5 1.5L3.5 10H2v-1.5z"/>
+                </svg>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -119,24 +270,23 @@ export default function PropertyDetailPage() {
   const [totalDebtCents, setTotalDebtCents] = useState(0)
   const [equityCents, setEquityCents] = useState<number | null>(null)
   const [lvrDecimal, setLvrDecimal] = useState<number | null>(null)
-  const [totalAppreciationCents, setTotalAppreciationCents] = useState<number | null>(null)
   const [loans, setLoans] = useState<LoanWithBalance[]>([])
   const [valuations, setValuations] = useState<PropertyValuation[]>([])
   const [entities, setEntities] = useState<Entity[]>([])
   const [avgMonthlyNetCents, setAvgMonthlyNetCents] = useState<number | null>(null)
+  const [trends, setTrends] = useState<TrendPoint[]>([])
 
   const [tenancies, setTenancies] = useState<PropertyTenancy[]>([])
   const [managementAgents, setManagementAgents] = useState<PropertyManagementAgent[]>([])
   const [mgmtLoaded, setMgmtLoaded] = useState(false)
 
-  // Overview edit form
-  const [editAddress, setEditAddress] = useState('')
-  const [editNickname, setEditNickname] = useState('')
-  const [editStartDate, setEditStartDate] = useState('')
-  const [editEntityId, setEditEntityId] = useState<string | null>(null)
-  const [editPropertyType, setEditPropertyType] = useState<PropertyType | ''>('')
-  const [editPurchasePrice, setEditPurchasePrice] = useState('')
-  const [saving, setSaving] = useState(false)
+  // Active tab
+  const [activeTab, setActiveTab] = useState<'overview' | 'insights' | 'management' | 'loans' | 'transactions'>('overview')
+
+  // Inline per-field editing (Overview tab)
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [fieldSaving, setFieldSaving] = useState<string | null>(null)
 
   // Insights / valuation form
   const [valDate, setValDate] = useState(todayIso)
@@ -192,11 +342,6 @@ export default function PropertyDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deletingProperty, setDeletingProperty] = useState(false)
 
-  // Inline balance snapshot form (per-loan, only one open at a time)
-  const [balanceFormLoanId, setBalanceFormLoanId] = useState<string | null>(null)
-  const [balanceDate, setBalanceDate] = useState('')
-  const [balanceDollars, setBalanceDollars] = useState('')
-  const [savingBalance, setSavingBalance] = useState(false)
 
   const loadEntries = useCallback(async (signal: AbortSignal) => {
     setEntriesLoading(true)
@@ -218,12 +363,14 @@ export default function PropertyDetailPage() {
     async function load() {
       setLoading(true)
       try {
-        const [propRes, loansRes, valsRes, entitiesRes, trendsRes] = await Promise.all([
+        const [propRes, loansRes, valsRes, entitiesRes, trendsRes, tenRes, agentRes] = await Promise.all([
           fetch(`/api/properties/${id}`),
           fetch(`/api/properties/${id}/loans`),
           fetch(`/api/properties/${id}/valuations`),
           fetch('/api/entities'),
           fetch(`/api/properties/${id}/trends?months=12`),
+          fetch(`/api/properties/${id}/tenancies`),
+          fetch(`/api/properties/${id}/management-agents`),
         ])
 
         if (propRes.status === 401) { router.push('/login'); return }
@@ -245,17 +392,7 @@ export default function PropertyDetailPage() {
         setTotalDebtCents(propData.totalDebtCents ?? 0)
         setEquityCents(propData.equityCents ?? null)
         setLvrDecimal(propData.lvrDecimal ?? null)
-        setTotalAppreciationCents(propData.totalAppreciationCents ?? null)
 
-        const p = propData.property
-        setEditAddress(p.address)
-        setEditNickname(p.nickname ?? '')
-        setEditStartDate(p.startDate)
-        setEditEntityId(p.entityId ?? null)
-        setEditPropertyType(p.propertyType ?? '')
-        setEditPurchasePrice(
-          p.purchasePriceCents ? String(p.purchasePriceCents / 100) : ''
-        )
 
         if (loansRes.ok) {
           const data = await loansRes.json() as { loans?: LoanWithBalance[] }
@@ -275,9 +412,20 @@ export default function PropertyDetailPage() {
         }
 
         if (trendsRes.ok) {
-          const data = await trendsRes.json() as { avgMonthlyNetCents?: number | null }
+          const data = await trendsRes.json() as { trends?: TrendPoint[]; avgMonthlyNetCents?: number | null }
           setAvgMonthlyNetCents(data.avgMonthlyNetCents ?? null)
+          setTrends(data.trends ?? [])
         }
+
+        if (tenRes.ok) {
+          const data = await tenRes.json() as { tenancies?: PropertyTenancy[] }
+          setTenancies(data.tenancies ?? [])
+        }
+        if (agentRes.ok) {
+          const data = await agentRes.json() as { agents?: PropertyManagementAgent[] }
+          setManagementAgents(data.agents ?? [])
+        }
+        setMgmtLoaded(true)
       } catch {
         toast.error('Failed to load property')
       } finally {
@@ -315,40 +463,71 @@ export default function PropertyDetailPage() {
     }
   }, [id, mgmtLoaded])
 
-  async function handleSave() {
-    setSaving(true)
+  async function patchProperty(updates: Record<string, unknown>) {
+    const res = await fetch(`/api/properties/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as { error?: string }
+      throw new Error(err.error ?? 'Failed to save')
+    }
+    const { property: updated } = await res.json() as { property: Property }
+    setProperty(updated)
+  }
+
+  function startPropEdit(field: string, currentValue: string | null | undefined) {
+    setEditingField(field)
+    setEditValue(currentValue ?? '')
+  }
+
+  async function commitPropField(field: string, value: string) {
+    setEditingField(null)
+    if (!property) return
+
+    let updates: Record<string, unknown>
+    if (field === 'nickname') {
+      const n = value.trim() || null
+      if (n === (property.nickname ?? null)) return
+      updates = { nickname: n }
+    } else if (field === 'address') {
+      if (!value.trim() || value.trim() === property.address) return
+      updates = { address: value.trim() }
+    } else if (field === 'propertyType') {
+      const t = value || null
+      if (t === (property.propertyType ?? null)) return
+      updates = { propertyType: t }
+    } else if (field === 'entityId') {
+      const e = value || null
+      if (e === (property.entityId ?? null)) return
+      updates = { entityId: e }
+    } else if (field === 'startDate') {
+      if (!value || value === property.startDate) return
+      updates = { startDate: value }
+    } else if (field === 'purchasePriceCents') {
+      const raw = value.replace(/,/g, '')
+      if (!raw) {
+        if (property.purchasePriceCents === null) return
+        updates = { purchasePriceCents: null }
+      } else {
+        const dollars = parseFloat(raw)
+        if (isNaN(dollars)) { toast.error('Invalid purchase price'); return }
+        const cents = Math.round(dollars * 100)
+        if (cents === property.purchasePriceCents) return
+        updates = { purchasePriceCents: cents }
+      }
+    } else {
+      return
+    }
+
+    setFieldSaving(field)
     try {
-      const purchaseVal = editPurchasePrice.replace(/,/g, '')
-      if (purchaseVal && isNaN(parseFloat(purchaseVal))) {
-        toast.error('Purchase price must be a number')
-        return
-      }
-      const res = await fetch(`/api/properties/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: editAddress.trim(),
-          nickname: editNickname.trim() || null,
-          startDate: editStartDate,
-          entityId: editEntityId || null,
-          propertyType: editPropertyType || null,
-          purchasePriceCents: purchaseVal
-            ? Math.round(parseFloat(purchaseVal) * 100)
-            : null,
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string }
-        toast.error(err.error ?? 'Failed to save')
-        return
-      }
-      const { property: updated } = await res.json() as { property: Property }
-      setProperty(updated)
-      toast.success('Saved')
-    } catch {
-      toast.error('Network error — please try again')
+      await patchProperty(updates)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save')
     } finally {
-      setSaving(false)
+      setFieldSaving(null)
     }
   }
 
@@ -618,45 +797,19 @@ export default function PropertyDetailPage() {
     }
   }
 
-  async function handleAddBalance(loanId: string) {
-    const parsedAmount = parseFloat(balanceDollars.replace(/,/g, ''))
-    if (!balanceDate || isNaN(parsedAmount) || parsedAmount < 0) {
-      toast.error('Date and a valid balance are required'); return
-    }
-    setSavingBalance(true)
-    try {
-      const res = await fetch(`/api/properties/${id}/loans/${loanId}/balances`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recordedAt: balanceDate,
-          balanceCents: Math.round(parsedAmount * 100),
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string }
-        toast.error(err.error ?? 'Failed to add balance'); return
-      }
-      // Re-fetch loans to update balance history
-      const loansRes = await fetch(`/api/properties/${id}/loans`)
-      if (loansRes.ok) {
-        const data = await loansRes.json() as { loans?: LoanWithBalance[] }
-        setLoans(data.loans ?? [])
-      }
-      setBalanceFormLoanId(null)
-      setBalanceDate('')
-      setBalanceDollars('')
-      toast.success('Balance added')
-    } catch {
-      toast.error('Network error — please try again')
-    } finally {
-      setSavingBalance(false)
-    }
-  }
 
   const entityName = property?.entityId
     ? (entities.find(e => e.id === property.entityId)?.name ?? null)
     : null
+
+  const today = todayIso()
+  const activeTenancy = tenancies
+    .filter(t => !t.deletedAt && (!t.leaseEnd || t.leaseEnd >= today))
+    .sort((a, b) => b.leaseStart.localeCompare(a.leaseStart))[0] ?? null
+  const currentAgent = managementAgents
+    .filter(a => !a.deletedAt && (!a.effectiveTo || a.effectiveTo >= today))
+    .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0] ?? null
+
   const chartData = valuations
     .slice()
     .sort((a, b) => a.valuedAt.localeCompare(b.valuedAt))
@@ -687,16 +840,10 @@ export default function PropertyDetailPage() {
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="mb-2">
-        <Link
-          href="/properties"
-          className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-ink transition-colors"
-        >
-          <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden>
-            <polyline points="6,2 2,5 6,8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          Properties
-        </Link>
+      <div className="mb-3 flex items-center gap-1.5 text-xs text-muted">
+        <Link href="/properties" className="hover:text-ink transition-colors">Properties</Link>
+        <span>›</span>
+        <span className="text-ink">{property.nickname ?? property.address}</span>
       </div>
 
       {/* Header */}
@@ -712,25 +859,16 @@ export default function PropertyDetailPage() {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-1 text-sm text-muted">
+          <div className="flex items-center gap-3 mt-1 text-sm text-muted">
             {property.nickname && <span>{property.address}</span>}
-            {property.nickname && entityName && <span>·</span>}
-            {entityName && <span>{entityName}</span>}
+            {entityName && (
+              <span className="inline-flex items-center h-[22px] px-3 rounded-full text-[11px] font-medium uppercase tracking-[0.06em] bg-surface-sunken text-muted border border-border whitespace-nowrap">
+                {entityName}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!isSold && (
-            <Button variant="outline" size="sm" onClick={() => router.push('/upload')}>
-              <svg
-                width="14" height="14" viewBox="0 0 16 16"
-                fill="none" stroke="currentColor" strokeWidth="1.4"
-                className="mr-1.5" aria-hidden
-              >
-                <path d="M3 11v2h10v-2"/><path d="M8 3v8M5 6l3-3 3 3"/>
-              </svg>
-              Upload statement
-            </Button>
-          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="px-2.5" aria-label="More options">
@@ -749,7 +887,7 @@ export default function PropertyDetailPage() {
               )}
               {!isSold && <DropdownMenuSeparator />}
               <DropdownMenuItem
-                className="text-red-600 focus:text-red-600"
+                className="text-negative focus:text-negative focus:bg-negative/8"
                 onClick={() => setShowDeleteModal(true)}
               >
                 Delete property
@@ -774,7 +912,6 @@ export default function PropertyDetailPage() {
           label="Gross yield"
           value={yieldStats ? `${yieldStats.grossPercent.toFixed(1)}%` : '—'}
           foot={yieldStats ? <span className="text-xs text-muted">{yieldStats.periodLabel}</span> : undefined}
-          secondary
         />
         <MetricTile
           label="Net cashflow"
@@ -785,7 +922,6 @@ export default function PropertyDetailPage() {
           }
           valueClassName={avgMonthlyNetCents !== null && avgMonthlyNetCents < 0 ? 'text-red-500' : undefined}
           foot={avgMonthlyNetCents !== null ? <span className="text-xs text-muted">avg / month · 12 mo</span> : undefined}
-          secondary
         />
         <MetricTile
           label="LVR"
@@ -795,186 +931,193 @@ export default function PropertyDetailPage() {
               ? <LvrMeter value={lvrDecimal} className="w-full" />
               : undefined
           }
-          secondary
         />
       </div>
 
       {/* Tabs */}
-      <Tabs
-        defaultValue="overview"
-        onValueChange={v => { if (v === 'management') loadManagement() }}
-      >
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="management">Management</TabsTrigger>
-          <TabsTrigger value="loans">
-            Loans
-            {loans.length > 0 && (
-              <span className="ml-1 text-xs bg-border rounded-full px-1.5">{loans.length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="insights">
-            Insights
-            {valuations.length > 0 && (
-              <span className="ml-1 text-xs bg-border rounded-full px-1.5">{valuations.length}</span>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      <div>
+        <div className="flex items-end gap-8 border-b border-border mb-7">
+          {(['overview', 'insights', 'management', 'loans', 'transactions'] as const).map(tab => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => {
+                setActiveTab(tab)
+                if (tab === 'management') loadManagement()
+              }}
+              className={`relative pb-3 pt-2 text-sm font-medium transition-colors capitalize${activeTab === tab ? ' text-ink' : ' text-muted hover:text-ink'}`}
+            >
+              {tab}
+              {activeTab === tab && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent" />}
+            </button>
+          ))}
+        </div>
 
         {/* ===== OVERVIEW ===== */}
-        <TabsContent value="overview" className="mt-6">
-          <div className="grid grid-cols-2 gap-6">
+        {activeTab === 'overview' && (
+        <div>
+          <div className="grid gap-6" style={{ gridTemplateColumns: '1.2fr 1fr' }}>
+
+            {/* Property details card */}
             <div className="bg-surface border border-border rounded-lg p-5">
-              <h3 className="text-sm font-semibold text-ink mb-4">Property details</h3>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    value={editAddress}
-                    onChange={e => setEditAddress(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="nickname">
-                    Nickname <span className="font-normal text-muted">(optional)</span>
-                  </Label>
-                  <Input
-                    id="nickname"
-                    value={editNickname}
-                    onChange={e => setEditNickname(e.target.value)}
-                    placeholder="e.g. Elm St"
-                  />
-                </div>
-                <SelectField
-                  id="prop-type" label="Type" optional
-                  value={editPropertyType}
-                  onChange={v => setEditPropertyType(v as PropertyType | '')}
-                >
-                  <option value="">— Not specified —</option>
-                  {PROPERTY_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </SelectField>
-                <SelectField
-                  id="entity" label="Entity"
-                  value={editEntityId ?? ''}
-                  onChange={v => setEditEntityId(v || null)}
-                >
-                  <option value="">None</option>
-                  {entities.map(e => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
-                  ))}
-                </SelectField>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="start-date">Acquisition date</Label>
-                    <Input
-                      id="start-date" type="date"
-                      value={editStartDate}
-                      onChange={e => setEditStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="purchase-price">
-                      Purchase price <span className="font-normal text-muted">(optional)</span>
-                    </Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
-                      <Input
-                        id="purchase-price" type="text" inputMode="decimal"
-                        placeholder="750,000" className="pl-7"
-                        value={editPurchasePrice}
-                        onChange={e => setEditPurchasePrice(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-                {isSold && (
-                  <div className="pt-2 border-t border-ruled space-y-1">
-                    <p className="text-xs font-medium text-muted uppercase tracking-wide">Sale details</p>
-                    <div className="space-y-1 text-sm pt-1">
-                      <div className="flex justify-between">
-                        <span className="text-muted">Sale date</span>
-                        <span>{property.saleDate ? formatDate(property.saleDate) : '—'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted">Sale price</span>
-                        <span>{property.salePriceCents ? formatCents(property.salePriceCents) : '—'}</span>
-                      </div>
-                      {property.saleSettlementDate && (
-                        <div className="flex justify-between">
-                          <span className="text-muted">Settlement</span>
-                          <span>{formatDate(property.saleSettlementDate)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                <Button size="sm" onClick={handleSave} disabled={saving}>
-                  {saving ? 'Saving…' : 'Save changes'}
-                </Button>
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-ink">Property details</h3>
+              </div>
+              <PropFieldRow
+                label="Nickname" fieldKey="nickname"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={property.nickname ?? null}
+                onStartEdit={() => startPropEdit('nickname', property.nickname)}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('nickname', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <PropFieldRow
+                label="Address" fieldKey="address"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={property.address}
+                onStartEdit={() => startPropEdit('address', property.address)}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('address', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <PropSelectRow
+                label="Property type" fieldKey="propertyType"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={PROPERTY_TYPES.find(t => t.value === property.propertyType)?.label ?? null}
+                options={[
+                  { value: '', label: '— Not specified —' },
+                  ...PROPERTY_TYPES.map(t => ({ value: t.value, label: t.label })),
+                ]}
+                onStartEdit={() => startPropEdit('propertyType', property.propertyType ?? '')}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('propertyType', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <PropSelectRow
+                label="Entity" fieldKey="entityId"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={entityName}
+                options={[
+                  { value: '', label: 'None' },
+                  ...entities.map(e => ({ value: e.id, label: e.name })),
+                ]}
+                onStartEdit={() => startPropEdit('entityId', property.entityId ?? '')}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('entityId', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <PropFieldRow
+                label="Acquisition date" fieldKey="startDate"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={formatDate(property.startDate)}
+                inputType="date"
+                onStartEdit={() => startPropEdit('startDate', property.startDate)}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('startDate', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <PropFieldRow
+                label="Purchase price" fieldKey="purchasePriceCents"
+                editingField={editingField} editValue={editValue} fieldSaving={fieldSaving}
+                displayValue={property.purchasePriceCents ? formatCents(property.purchasePriceCents) : null}
+                editPrefix="$"
+                onStartEdit={() => startPropEdit('purchasePriceCents', property.purchasePriceCents ? String(property.purchasePriceCents / 100) : '')}
+                onValueChange={setEditValue}
+                onCommit={v => commitPropField('purchasePriceCents', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+                <div className="text-xs font-medium text-foreground-subtle">Managing agent</div>
+                <div className="text-sm text-ink">{currentAgent?.agencyName ?? <span className="text-foreground-faint">—</span>}</div>
+              </div>
+              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+                <div className="text-xs font-medium text-foreground-subtle">Lease end</div>
+                <div className="text-sm text-ink">{activeTenancy?.leaseEnd ? formatDate(activeTenancy.leaseEnd) : <span className="text-foreground-faint">—</span>}</div>
+              </div>
+              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+                <div className="text-xs font-medium text-foreground-subtle">Weekly rent</div>
+                <div className="text-sm text-ink">{activeTenancy ? formatCents(activeTenancy.weeklyRentCents) : <span className="text-foreground-faint">—</span>}</div>
+              </div>
+              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+                <div className="text-xs font-medium text-foreground-subtle">Sale date</div>
+                <div className={`text-sm ${property.saleDate ? 'text-ink' : 'text-foreground-faint'}`}>{property.saleDate ? formatDate(property.saleDate) : 'Not sold'}</div>
+              </div>
+              <div className="grid items-center py-3" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+                <div className="text-xs font-medium text-foreground-subtle">Sale price</div>
+                <div className="text-sm text-ink">{property.salePriceCents ? formatCents(property.salePriceCents) : <span className="text-foreground-faint">—</span>}</div>
               </div>
             </div>
 
+            {/* Equity position card */}
             <div className="bg-surface border border-border rounded-lg p-5">
-              <h3 className="text-sm font-semibold text-ink mb-4">Equity position</h3>
+              <div className="flex items-baseline justify-between mb-5">
+                <h3 className="text-sm font-semibold text-ink">Equity position</h3>
+                {latestValuation && (
+                  <span className="text-xs text-muted">{formatDate(latestValuation.valuedAt)}</span>
+                )}
+              </div>
               {!latestValuation ? (
                 <div className="py-6 text-center">
                   <p className="text-sm text-muted mb-1">No valuation recorded yet.</p>
                   <p className="text-xs text-muted">Add one in the Insights tab.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted">Current value</span>
-                      <span className="font-medium tabular-nums">{formatCents(latestValuation.valueCents)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted">Total debt</span>
-                      <span className="font-medium tabular-nums text-muted">
-                        {totalDebtCents > 0 ? `− ${formatCents(totalDebtCents)}` : '—'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-ruled pt-2">
-                      <span className="font-medium text-ink">Equity</span>
-                      <span className="font-semibold tabular-nums">
-                        {equityCents !== null ? formatCents(equityCents) : '—'}
-                      </span>
-                    </div>
+                <>
+                  <div>
+                    {[
+                      {
+                        label: 'Current value',
+                        sub: latestValuation.source ? latestValuation.source.replace(/_/g, ' ') : null,
+                        value: formatCents(latestValuation.valueCents),
+                      },
+                      {
+                        label: 'Total debt',
+                        sub: loans.length > 0 ? `${loans.length} loan${loans.length !== 1 ? 's' : ''} secured` : null,
+                        value: totalDebtCents > 0 ? formatCents(totalDebtCents) : '—',
+                        muted: true,
+                      },
+                      {
+                        label: 'Net equity',
+                        sub: equityCents !== null && latestValuation.valueCents > 0
+                          ? `${Math.round((equityCents / latestValuation.valueCents) * 100)}% of value`
+                          : null,
+                        value: equityCents !== null ? formatCents(equityCents) : '—',
+                        bold: true,
+                      },
+                    ].map(({ label, sub, value, muted, bold }) => (
+                      <div key={label} className="grid gap-4 py-2.5 border-b border-ruled last:border-0 text-sm" style={{ gridTemplateColumns: '1fr auto' }}>
+                        <div>
+                          <div className="text-xs text-muted font-medium">{label}</div>
+                          {sub && <div className="text-xs text-muted mt-0.5">{sub}</div>}
+                        </div>
+                        <div className={`tabular-nums ${bold ? 'font-semibold text-ink' : muted ? 'text-muted' : 'text-ink'}`}>{value}</div>
+                      </div>
+                    ))}
                   </div>
                   {lvrDecimal !== null && (
-                    <div>
-                      <div className="flex items-center justify-between text-xs text-muted mb-1.5">
+                    <div className="mt-5">
+                      <div className="flex items-center justify-between text-xs text-muted mb-2">
                         <span>LVR</span>
-                        <span>{Math.round(lvrDecimal * 100)}%</span>
+                        <span className="text-ink font-medium tabular-nums">{Math.round(lvrDecimal * 100)}%</span>
                       </div>
                       <LvrMeter value={lvrDecimal} />
-                      <div className="flex justify-between text-xs text-muted mt-1">
-                        <span>0%</span>
-                        <span className="text-amber-600/70">60%</span>
-                        <span className="text-red-600/70">80%</span>
-                        <span>100%</span>
+                      <div className="flex justify-between text-[10px] text-muted mt-1.5">
+                        <span>0%</span><span>60%</span><span>80%</span><span>100%</span>
                       </div>
                     </div>
                   )}
-                  <p className="text-xs text-muted pt-1">
-                    as of {formatDate(latestValuation.valuedAt)}
-                    {latestValuation.source
-                      ? ` · ${latestValuation.source.replace(/_/g, ' ')}`
-                      : ''}
-                  </p>
-                </div>
+                </>
               )}
             </div>
           </div>
-        </TabsContent>
+        </div>
+        )}
 
         {/* ===== MANAGEMENT ===== */}
-        <TabsContent value="management" className="mt-6">
-          <div className="space-y-6">
+        {activeTab === 'management' && (
+        <div>
+          <div className="grid grid-cols-2 gap-5 items-start">
             {/* Tenancies */}
             <div className="bg-surface border border-border rounded-lg p-5">
               <div className="flex items-center justify-between mb-4">
@@ -1106,10 +1249,12 @@ export default function PropertyDetailPage() {
               )}
             </div>
           </div>
-        </TabsContent>
+        </div>
+        )}
 
         {/* ===== LOANS ===== */}
-        <TabsContent value="loans" className="mt-6">
+        {activeTab === 'loans' && (
+        <div>
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-muted uppercase tracking-wide font-medium">
               Loans secured by this property
@@ -1127,120 +1272,139 @@ export default function PropertyDetailPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {loans.map(loan => (
-                <div key={loan.id} className="bg-surface border border-border rounded-lg p-5">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-ink">{loan.nickname ?? loan.lender}</p>
-                      <p className="text-sm text-muted mt-0.5">
-                        {loan.lender} · {formatDate(loan.startDate)} – {formatDate(loan.endDate)}
-                      </p>
+              {loans.map(loan => {
+                const loanEntityName = loan.entityId
+                  ? (entities.find(e => e.id === loan.entityId)?.name ?? null)
+                  : null
+                return (
+                  <div key={loan.id} className="bg-surface border border-border rounded-lg p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <p className="font-medium text-ink">{loan.nickname ?? loan.lender}</p>
+                        <div className="flex items-center gap-1.5 text-xs text-muted mt-0.5 flex-wrap">
+                          <span>{loan.lender}</span>
+                          {loan.accountReference && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-current opacity-40 inline-block" />
+                              <span>acct ending {loan.accountReference.slice(-4)}</span>
+                            </>
+                          )}
+                          {loan.loanType && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-current opacity-40 inline-block" />
+                              <span>{loan.loanType === 'interest_only' ? 'Interest only' : 'Principal & interest'}
+                                {loan.loanType === 'interest_only' && loan.ioEndDate ? ` · IO ends ${formatDate(loan.ioEndDate)}` : ''}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => router.push(`/loans/${loan.id}`)}>
+                        View in Loans →
+                      </Button>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => router.push(`/loans/${loan.id}`)}>
-                      View in Loans →
-                    </Button>
-                  </div>
-
-                  {/* Balance history */}
-                  {loan.recentBalances.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-ruled space-y-1">
-                      <p className="text-xs font-medium text-muted uppercase tracking-wide mb-2">Balance history</p>
-                      {loan.recentBalances.map((b, i) => (
-                        <div key={b.id} className="flex items-center justify-between text-sm">
-                          <span className="text-muted">{formatDate(b.recordedAt)}</span>
-                          <span className={`font-medium tabular-nums ${i === 0 ? 'text-ink' : 'text-muted'}`}>
-                            {formatCents(b.balanceCents)}
+                    <div>
+                      {[
+                        {
+                          k: 'Current balance',
+                          v: loan.latestBalance
+                            ? `${formatCents(loan.latestBalance.balanceCents)}`
+                            : '—',
+                          sub: loan.latestBalance ? `as of ${formatDate(loan.latestBalance.recordedAt)}` : null,
+                        },
+                        {
+                          k: 'Interest rate',
+                          v: loan.interestRate ? `${loan.interestRate}%` : '—',
+                          sub: loan.rateType ? (loan.rateType === 'variable' ? 'variable' : 'fixed') : null,
+                        },
+                        {
+                          k: 'Entity',
+                          v: loanEntityName ?? '—',
+                          sub: null,
+                        },
+                      ].map(({ k, v, sub }) => (
+                        <div key={k} className="grid gap-4 py-2 border-b border-ruled last:border-0 text-sm" style={{ gridTemplateColumns: '140px 1fr' }}>
+                          <span className="text-xs text-muted font-medium">{k}</span>
+                          <span className="text-ink tabular-nums">
+                            {v}
+                            {sub && <span className="text-xs text-muted ml-2">{sub}</span>}
                           </span>
                         </div>
                       ))}
                     </div>
-                  )}
-
-                  {/* Inline add balance form */}
-                  {balanceFormLoanId === loan.id ? (
-                    <div className="mt-4 pt-4 border-t border-ruled">
-                      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Add balance snapshot</p>
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`bal-date-${loan.id}`}>Date</Label>
-                          <Input
-                            id={`bal-date-${loan.id}`} type="date"
-                            value={balanceDate}
-                            onChange={e => setBalanceDate(e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`bal-amount-${loan.id}`}>Balance ($)</Label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
-                            <Input
-                              id={`bal-amount-${loan.id}`} type="text" inputMode="decimal"
-                              placeholder="480,000" className="pl-7"
-                              value={balanceDollars}
-                              onChange={e => setBalanceDollars(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleAddBalance(loan.id)}
-                          disabled={savingBalance || !balanceDate || !balanceDollars.trim()}
-                        >
-                          {savingBalance ? 'Adding…' : 'Add snapshot'}
-                        </Button>
-                        <button
-                          onClick={() => { setBalanceFormLoanId(null); setBalanceDate(''); setBalanceDollars('') }}
-                          className="text-xs text-muted hover:text-ink transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-3 pt-3 border-t border-ruled">
-                      <button
-                        onClick={() => { setBalanceFormLoanId(loan.id); setBalanceDate(todayIso()); setBalanceDollars('') }}
-                        className="text-xs text-muted hover:text-accent transition-colors"
-                      >
-                        + Add balance snapshot
-                      </button>
-                    </div>
-                  )}
+                  </div>
+                )
+              })}
+              {equityCents !== null && equityCents > 0 && (
+                <div className="flex items-center justify-between py-3 px-4 bg-surface border border-dashed border-border rounded-lg text-sm">
+                  <span className="text-muted">
+                    Equity available: <span className="font-semibold text-ink">{formatCents(equityCents)}</span>
+                  </span>
+                  <button
+                    className="text-xs text-muted hover:text-accent transition-colors"
+                    onClick={() => router.push('/loans/new')}
+                  >
+                    + Add another loan
+                  </button>
                 </div>
-              ))}
-              <div className="text-center pt-2">
-                <button
-                  className="text-xs text-muted hover:text-accent transition-colors"
-                  onClick={() => router.push('/loans/new')}
-                >
-                  + Add another loan →
-                </button>
-              </div>
+              )}
             </div>
           )}
-        </TabsContent>
+        </div>
+        )}
 
         {/* ===== TRANSACTIONS ===== */}
-        <TabsContent value="transactions" className="mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <select
-              className="h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={txMonth}
-              onChange={e => setTxMonth(e.target.value)}
-            >
-              {months.map(m => {
-                const [y, mo] = m.split('-')
-                const label = new Date(Number(y), Number(mo) - 1).toLocaleDateString('en-AU', {
-                  month: 'long', year: 'numeric',
-                })
-                return <option key={m} value={m}>{label}</option>
-              })}
-            </select>
-            <Button size="sm" variant="outline" onClick={() => setShowAddEntry(v => !v)}>
-              {showAddEntry ? 'Cancel' : '+ Add entry'}
-            </Button>
+        {activeTab === 'transactions' && (
+        <div>
+          {/* Toolbar */}
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <select
+                className="h-8 rounded-md border border-input bg-surface px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring flex-shrink-0"
+                value={txMonth}
+                onChange={e => setTxMonth(e.target.value)}
+              >
+                {months.map(m => {
+                  const [y, mo] = m.split('-')
+                  const label = new Date(Number(y), Number(mo) - 1).toLocaleDateString('en-AU', {
+                    month: 'long', year: 'numeric',
+                  })
+                  return <option key={m} value={m}>{label}</option>
+                })}
+              </select>
+              {entries.length > 0 && (() => {
+                const inCents  = entries.filter(e => e.category === 'rent').reduce((s, e) => s + e.amountCents, 0)
+                const outCents = entries.filter(e => e.category !== 'rent').reduce((s, e) => s + e.amountCents, 0)
+                const netCents = inCents - outCents
+                return (
+                  <span className="text-xs text-muted inline-flex items-center gap-1.5 flex-wrap">
+                    <span className="text-foreground-subtle">{entries.length} {entries.length === 1 ? 'entry' : 'entries'}</span>
+                    <span className="w-1 h-1 rounded-full bg-foreground-subtle inline-block" />
+                    <span className="text-green-700">+{formatCents(inCents)}</span>
+                    <span className="w-1 h-1 rounded-full bg-foreground-subtle inline-block" />
+                    <span>−{formatCents(outCents)}</span>
+                    <span className="w-1 h-1 rounded-full bg-foreground-subtle inline-block" />
+                    <span className="text-foreground-subtle">net</span>{' '}
+                    <span className={`font-medium text-ink`}>{netCents >= 0 ? `+${formatCents(netCents)}` : `−${formatCents(Math.abs(netCents))}`}</span>
+                  </span>
+                )
+              })()}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Link
+                href="/upload"
+                className="inline-flex items-center gap-1.5 h-8 px-3 text-xs text-muted border border-input rounded-md hover:text-ink hover:border-border transition-colors"
+              >
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+                  <path d="M3 8.5V10h6V8.5"/><path d="M6 2.5v5M4 4.5l2-2 2 2"/>
+                </svg>
+                Import from PM statement
+              </Link>
+              <span className="w-px h-4 bg-border" />
+              <Button size="sm" variant="outline" onClick={() => setShowAddEntry(v => !v)}>
+                {showAddEntry ? 'Cancel' : '+ Add entry'}
+              </Button>
+            </div>
           </div>
 
           {showAddEntry && (
@@ -1311,38 +1475,58 @@ export default function PropertyDetailPage() {
             <div className="bg-surface border border-border rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-screen-bg">
-                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Date</th>
-                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Category</th>
-                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Description</th>
-                    <th className="text-right font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Amount</th>
+                  <tr className="bg-surface-sunken border-b border-border">
+                    <th className="text-left font-medium text-foreground-subtle text-[11px] uppercase tracking-[0.06em] py-2 px-4">Date</th>
+                    <th className="text-left font-medium text-foreground-subtle text-[11px] uppercase tracking-[0.06em] py-2 px-4">Category</th>
+                    <th className="text-left font-medium text-foreground-subtle text-[11px] uppercase tracking-[0.06em] py-2 px-4">Description</th>
+                    <th className="text-right font-medium text-foreground-subtle text-[11px] uppercase tracking-[0.06em] py-2 px-4">Amount</th>
                     <th className="w-8"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {entries.map(entry => (
-                    <tr key={entry.id} className="border-b border-ruled last:border-b-0">
+                    <tr key={entry.id} className="border-b border-ruled last:border-b-0 group">
                       <td className="py-2.5 px-4 text-muted">{formatDate(entry.lineItemDate)}</td>
-                      <td className="py-2.5 px-4">{CATEGORY_LABELS[entry.category] ?? entry.category}</td>
+                      <td className="py-2.5 px-4">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: CATEGORY_COLORS[entry.category] ?? 'hsl(var(--muted-foreground))' }}
+                          />
+                          {CATEGORY_LABELS[entry.category] ?? entry.category}
+                        </span>
+                      </td>
                       <td className="py-2.5 px-4 text-muted">{entry.description ?? '—'}</td>
                       <td className="py-2.5 px-4 text-right tabular-nums font-medium">
-                        {formatCents(entry.amountCents)}
+                        {entry.category === 'rent'
+                          ? <span className="text-green-700">+{formatCents(entry.amountCents)}</span>
+                          : <span>−{formatCents(entry.amountCents)}</span>
+                        }
                       </td>
-                      <td className="py-2.5 pr-3">
-                        {!entry.sourceDocumentId && (
-                          <button
-                            onClick={() => handleDeleteEntry(entry)}
-                            className="text-muted hover:text-red-600 transition-colors"
-                            title="Delete"
-                          >
-                            <svg
-                              width="13" height="13" viewBox="0 0 14 14"
-                              fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden
-                            >
-                              <path d="M2 3.5h10M5 3.5V2h4v1.5M5.5 6v5M8.5 6v5M3 3.5l.7 8h6.6l.7-8"/>
-                            </svg>
-                          </button>
-                        )}
+                      <td className="py-2.5 pr-3 text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              className="opacity-0 group-hover:opacity-100 text-muted hover:text-ink transition-opacity text-base leading-none px-1"
+                              aria-label="Row actions"
+                            >⋯</button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {!entry.sourceDocumentId && (
+                              <DropdownMenuItem
+                                className="text-negative focus:text-negative focus:bg-negative/8"
+                                onClick={() => handleDeleteEntry(entry)}
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                            {entry.sourceDocumentId && (
+                              <DropdownMenuItem disabled>
+                                Imported — cannot delete
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   ))}
@@ -1350,211 +1534,275 @@ export default function PropertyDetailPage() {
               </table>
             </div>
           )}
-        </TabsContent>
+        </div>
+        )}
 
         {/* ===== INSIGHTS ===== */}
-        <TabsContent value="insights" className="mt-6">
-          {/* Stats strip */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            <MetricTile
-              label="Gross yield"
-              value={yieldStats ? `${yieldStats.grossPercent.toFixed(1)}%` : '—'}
-              foot={yieldStats ? <span className="text-xs text-muted">{yieldStats.periodLabel}</span> : undefined}
-            />
-            <MetricTile
-              label="Avg monthly net"
-              value={
-                avgMonthlyNetCents !== null
-                  ? (avgMonthlyNetCents < 0
-                    ? `−${formatCents(Math.abs(avgMonthlyNetCents))}`
-                    : formatCents(avgMonthlyNetCents))
-                  : '—'
-              }
-              valueClassName={avgMonthlyNetCents !== null && avgMonthlyNetCents < 0 ? 'text-red-500' : undefined}
-              foot={avgMonthlyNetCents !== null ? <span className="text-xs text-muted">12 month average</span> : undefined}
-              secondary
-            />
-            <MetricTile
-              label="Capital growth"
-              value={
-                totalAppreciationCents !== null
-                  ? (totalAppreciationCents < 0
-                    ? `−${formatCents(Math.abs(totalAppreciationCents))}`
-                    : formatCents(totalAppreciationCents))
-                  : '—'
-              }
-              valueClassName={totalAppreciationCents !== null && totalAppreciationCents < 0 ? 'text-red-500' : undefined}
-              foot={
-                totalAppreciationCents !== null && property.purchasePriceCents
-                  ? <span className="text-xs text-muted">since {formatCents(property.purchasePriceCents)} purchase</span>
-                  : undefined
-              }
-              secondary
-            />
+        {activeTab === 'insights' && (
+        <div>
+
+          {/* Cashflow chart section */}
+          <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">Cashflow · last 12 months</p>
+          <div className="bg-surface border border-border rounded-lg p-5 mb-7">
+            <div className="flex items-start justify-between mb-4">
+              <span className="text-sm font-semibold text-ink">Net cashflow · monthly</span>
+              <div className="flex items-center gap-4 text-xs text-muted">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'hsl(152 38% 30% / 0.55)' }} />
+                  Rent
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'hsl(14 58% 42% / 0.5)' }} />
+                  Expenses
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'hsl(32 6% 38% / 0.45)' }} />
+                  Loan
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-0.5" style={{ background: 'hsl(188 32% 32%)' }} />
+                  Net
+                </span>
+              </div>
+            </div>
+            {trends.length === 0 ? (
+              <p className="text-sm text-muted py-6 text-center">No cashflow data yet.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <ComposedChart
+                  data={trends.map(t => ({
+                    month: new Date(t.month + '-01').toLocaleDateString('en-AU', { month: 'short' }),
+                    rent:     t.hasData ? t.rentCents / 100 : null,
+                    expenses: t.hasData ? -(t.expensesCents / 100) : null,
+                    mortgage: t.hasData ? -(t.mortgageCents / 100) : null,
+                    net:      t.hasData ? t.netCents / 100 : null,
+                  }))}
+                  margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+                  barCategoryGap="30%"
+                >
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                  <YAxis hide />
+                  <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1} />
+                  <Tooltip
+                    formatter={(v: unknown, name: string) => {
+                      const val = typeof v === 'number' ? Math.abs(v) : 0
+                      const labels: Record<string, string> = { rent: 'Rent', expenses: 'Expenses', mortgage: 'Loan', net: 'Net' }
+                      return [formatCents(val * 100), labels[name] ?? name]
+                    }}
+                    contentStyle={{ fontSize: 12, borderRadius: 6, border: '1px solid hsl(var(--border))', background: 'hsl(var(--surface))' }}
+                  />
+                  <Bar dataKey="rent" stackId="pos" fill="hsl(152 38% 30% / 0.55)" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="expenses" stackId="neg" fill="hsl(14 58% 42% / 0.5)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="mortgage" stackId="neg" fill="hsl(32 6% 38% / 0.45)" radius={[0, 0, 2, 2]} />
+                  <Line dataKey="net" type="monotone" stroke="hsl(188 32% 32%)" strokeWidth={1.8} dot={{ r: 2.4, fill: 'hsl(188 32% 32%)', strokeWidth: 0 }} connectNulls={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            {/* Valuation history */}
-            <div className="bg-surface border border-border rounded-lg p-5">
-              <h3 className="text-sm font-semibold text-ink mb-4">Valuation history</h3>
-              {valuations.length === 0 ? (
-                <p className="text-sm text-muted">No valuations recorded yet.</p>
-              ) : (
-                <>
-                  {chartData.length >= 2 && (
-                    <div className="mb-4">
-                      <ResponsiveContainer width="100%" height={140}>
-                        <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
-                          <XAxis
-                            dataKey="date"
-                            tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <YAxis hide />
-                          <Tooltip
-                            formatter={(v) => typeof v === 'number' ? [formatCents(v * 100), 'Value'] : [String(v), 'Value']}
-                            contentStyle={{
-                              fontSize: 12,
-                              borderRadius: 6,
-                              border: '1px solid hsl(var(--border))',
-                              background: 'hsl(var(--surface))',
-                            }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            stroke="hsl(var(--accent))"
-                            strokeWidth={1.5}
-                            dot={{ r: 3, fill: 'hsl(var(--accent))', strokeWidth: 0 }}
-                            activeDot={{ r: 4 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  <div className="space-y-1">
-                    {valuations.map(v => (
-                      <div
-                        key={v.id}
-                        className="flex items-center justify-between py-2 border-b border-ruled last:border-b-0 group"
-                      >
-                        <div>
-                          <p className="text-sm text-muted">{formatDate(v.valuedAt)}</p>
-                          {v.source && (
-                            <p className="text-xs text-muted capitalize">
-                              {v.source.replace(/_/g, ' ')}
-                            </p>
+          {/* Valuation summary strip */}
+          <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">Valuation summary</p>
+          {(() => {
+            const growthPercent = latestValuation && property.purchasePriceCents
+              ? ((latestValuation.valueCents - property.purchasePriceCents) / property.purchasePriceCents) * 100
+              : null
+
+            const yearsHeld = property.startDate
+              ? (new Date().getTime() - new Date(property.startDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+              : null
+
+            const monthsAgoVal = latestValuation
+              ? Math.floor((new Date().getTime() - new Date(latestValuation.valuedAt).getTime()) / (1000 * 60 * 60 * 24 * 30.44))
+              : null
+
+            const lastValLabel = monthsAgoVal === null ? '—'
+              : monthsAgoVal === 0 ? 'This month'
+              : monthsAgoVal === 1 ? '1 month ago'
+              : monthsAgoVal < 12 ? `${monthsAgoVal} months ago`
+              : monthsAgoVal < 24 ? '1 year ago'
+              : `${Math.floor(monthsAgoVal / 12)} years ago`
+
+            const isRecent = monthsAgoVal !== null && monthsAgoVal <= 3
+
+            return (
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <MetricTile
+                  label="Current value"
+                  value={latestValuation ? formatCents(latestValuation.valueCents) : '—'}
+                  foot={latestValuation ? <span className="text-xs text-muted">as of {formatDate(latestValuation.valuedAt)}</span> : undefined}
+                />
+                <MetricTile
+                  label="Growth · since purchase"
+                  value={growthPercent !== null ? `${growthPercent >= 0 ? '+' : '−'}${Math.abs(growthPercent).toFixed(1)}%` : '—'}
+                  valueClassName={growthPercent !== null && growthPercent < 0 ? 'text-negative' : growthPercent !== null ? 'text-positive' : undefined}
+                  foot={
+                    property.purchasePriceCents && latestValuation
+                      ? <span className="text-xs text-muted">
+                          {formatCents(property.purchasePriceCents)} → {formatCents(latestValuation.valueCents)}
+                          {yearsHeld !== null ? ` · ${yearsHeld < 1 ? '<1 yr' : `${Math.floor(yearsHeld)} yr${Math.floor(yearsHeld) !== 1 ? 's' : ''}`}` : ''}
+                        </span>
+                      : undefined
+                  }
+                />
+                <MetricTile
+                  label="Last valuation"
+                  value={lastValLabel}
+                  valueClassName="text-base"
+                  foot={
+                    latestValuation
+                      ? <span className="text-xs text-muted inline-flex items-center gap-1.5">
+                          {formatDate(latestValuation.valuedAt)}
+                          {isRecent && (
+                            <span className="inline-flex items-center h-[18px] px-1.5 rounded text-[9px] font-semibold uppercase tracking-wide bg-positive-soft text-positive">
+                              Recent
+                            </span>
                           )}
-                          {v.notes && <p className="text-xs text-muted">{v.notes}</p>}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium tabular-nums">
-                            {formatCents(v.valueCents)}
-                          </span>
+                        </span>
+                      : undefined
+                  }
+                />
+              </div>
+            )
+          })()}
+
+          {/* Valuation line chart */}
+          {chartData.length >= 2 && (
+            <div className="bg-surface border border-border rounded-lg p-5 mb-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-ink">Value over time</span>
+                <span className="flex items-center gap-1.5 text-xs text-muted">
+                  <span className="inline-block w-2.5 h-0.5" style={{ background: 'hsl(188 32% 32%)' }} />
+                  Valuation
+                </span>
+              </div>
+              <ResponsiveContainer width="100%" height={140}>
+                <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis hide />
+                  <Tooltip
+                    formatter={(v) => typeof v === 'number' ? [formatCents(v * 100), 'Value'] : [String(v), 'Value']}
+                    contentStyle={{
+                      fontSize: 12,
+                      borderRadius: 6,
+                      border: '1px solid hsl(var(--border))',
+                      background: 'hsl(var(--surface))',
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="hsl(188 32% 32%)"
+                    strokeWidth={1.8}
+                    dot={{ r: 3, fill: 'hsl(188 32% 32%)', strokeWidth: 0 }}
+                    activeDot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Valuation history table */}
+          <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">Valuation history</p>
+          <div className="bg-surface border border-border rounded-lg overflow-hidden mb-5">
+            {valuations.length === 0 ? (
+              <p className="text-sm text-muted p-5">No valuations recorded yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Date</th>
+                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Source</th>
+                    <th className="text-right font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Value</th>
+                    <th className="text-right font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Change</th>
+                    <th className="w-8"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {valuations.map((v, i) => {
+                    const prev = valuations[i + 1]
+                    const changeCents = prev ? v.valueCents - prev.valueCents : null
+                    return (
+                      <tr key={v.id} className="border-b border-ruled last:border-b-0 group">
+                        <td className="py-2.5 px-4 text-muted">{formatDate(v.valuedAt)}</td>
+                        <td className="py-2.5 px-4 text-muted capitalize">{v.source ? v.source.replace(/_/g, ' ') : 'Manual entry'}</td>
+                        <td className="py-2.5 px-4 text-right tabular-nums font-medium">{formatCents(v.valueCents)}</td>
+                        <td className="py-2.5 px-4 text-right tabular-nums text-xs">
+                          {changeCents !== null ? (
+                            <span className={changeCents >= 0 ? 'text-green-700' : 'text-red-600'}>
+                              {changeCents >= 0 ? '+' : '−'}{formatCents(Math.abs(changeCents))}
+                            </span>
+                          ) : (
+                            <span className="text-muted">baseline</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 pr-3">
                           {deleteValId === v.id ? (
                             <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => handleDeleteValuation(v.id)}
-                                disabled={deletingVal}
-                                className="text-xs text-red-600 hover:text-red-700"
-                              >
-                                {deletingVal ? 'Deleting…' : 'Confirm'}
+                              <button onClick={() => handleDeleteValuation(v.id)} disabled={deletingVal} className="text-xs text-red-600 hover:text-red-700">
+                                {deletingVal ? 'Deleting…' : 'Delete'}
                               </button>
-                              <button
-                                onClick={() => setDeleteValId(null)}
-                                className="text-xs text-muted hover:text-ink"
-                              >
-                                Cancel
-                              </button>
+                              <button onClick={() => setDeleteValId(null)} className="text-xs text-muted hover:text-ink">Cancel</button>
                             </div>
                           ) : (
                             <button
                               onClick={() => setDeleteValId(v.id)}
-                              className="opacity-0 group-hover:opacity-100 text-muted hover:text-red-600 transition-colors"
-                              title="Delete"
-                            >
-                              <svg
-                                width="13" height="13" viewBox="0 0 14 14"
-                                fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden
-                              >
-                                <path d="M2 3.5h10M5 3.5V2h4v1.5M5.5 6v5M8.5 6v5M3 3.5l.7 8h6.6l.7-8"/>
-                              </svg>
-                            </button>
+                              className="opacity-0 group-hover:opacity-100 text-muted hover:text-ink transition-opacity text-base leading-none"
+                              title="Delete valuation"
+                            >⋯</button>
                           )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
 
-            {/* Add valuation */}
-            <div className="bg-surface border border-border rounded-lg p-5">
-              <h3 className="text-sm font-semibold text-ink mb-4">Add valuation</h3>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="val-amount">Value ($)</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
-                    <Input
-                      id="val-amount" type="text" inputMode="decimal"
-                      placeholder="920,000" className="pl-7"
-                      value={valDollars}
-                      onChange={e => setValDollars(e.target.value)}
-                    />
-                  </div>
+          {/* Add valuation form */}
+          <div className="bg-surface border border-border rounded-lg p-5">
+            <div className="flex items-baseline justify-between mb-4">
+              <h4 className="text-sm font-semibold text-ink">Add a new valuation</h4>
+              <span className="text-xs text-muted">Typically once every 6–12 months</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="val-date">Date</Label>
+                <Input id="val-date" type="date" value={valDate} onChange={e => setValDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="val-amount">Value ($)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                  <Input id="val-amount" type="text" inputMode="decimal" placeholder="920,000" className="pl-7" value={valDollars} onChange={e => setValDollars(e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="val-date">As of date</Label>
-                  <Input
-                    id="val-date" type="date"
-                    value={valDate}
-                    onChange={e => setValDate(e.target.value)}
-                  />
-                </div>
-                <SelectField
-                  id="val-source" label="Source"
-                  value={valSource}
-                  onChange={setValSource}
-                >
-                  {VALUATION_SOURCES.map(s => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </SelectField>
-                <div className="space-y-1.5">
-                  <Label htmlFor="val-reference">
-                    Reference <span className="font-normal text-muted">(optional)</span>
-                  </Label>
-                  <Input
-                    id="val-reference" placeholder="e.g. Bank val report #1234"
-                    value={valReference}
-                    onChange={e => setValReference(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="val-notes">
-                    Notes <span className="font-normal text-muted">(optional)</span>
-                  </Label>
-                  <Input
-                    id="val-notes" placeholder="e.g. Post-renovation estimate"
-                    value={valNotes}
-                    onChange={e => setValNotes(e.target.value)}
-                  />
-                </div>
-                <Button
-                  size="sm" variant="outline"
-                  onClick={handleAddValuation}
-                  disabled={addingVal || !valDollars.trim() || !valDate}
-                >
-                  {addingVal ? 'Adding…' : '+ Add valuation'}
-                </Button>
+              </div>
+              <SelectField id="val-source" label="Source" value={valSource} onChange={setValSource}>
+                {VALUATION_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </SelectField>
+              <div className="space-y-1.5">
+                <Label htmlFor="val-reference">Reference <span className="font-normal text-muted">(optional)</span></Label>
+                <Input id="val-reference" placeholder="e.g. Bank val report #1234" value={valReference} onChange={e => setValReference(e.target.value)} />
               </div>
             </div>
+            <div className="space-y-1.5 mb-3">
+              <Label htmlFor="val-notes">Notes <span className="font-normal text-muted">(optional)</span></Label>
+              <Input id="val-notes" placeholder="e.g. Comparable sale: 18 Elm Street, $935k March 2026" value={valNotes} onChange={e => setValNotes(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleAddValuation} disabled={addingVal || !valDollars.trim() || !valDate}>
+                {addingVal ? 'Saving…' : 'Save valuation'}
+              </Button>
+            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+        )}
+      </div>
 
       {/* ===== DIALOGS ===== */}
 
