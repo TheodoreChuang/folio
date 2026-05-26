@@ -5,12 +5,11 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  ComposedChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { MetricTile } from '@/components/ui/metric-tile'
 import { LvrMeter } from '@/components/ui/lvr-meter'
 import {
@@ -33,6 +32,14 @@ type YieldStats = { grossPercent: number; netPercent: number; periodLabel: strin
 type LoanWithBalance = InstallmentLoan & {
   latestBalance: { balanceCents: number; recordedAt: string } | null
   recentBalances: { id: string; balanceCents: number; recordedAt: string }[]
+}
+type TrendPoint = {
+  month: string
+  rentCents: number
+  expensesCents: number
+  mortgageCents: number
+  netCents: number
+  hasData: boolean
 }
 
 const MANUAL_CATEGORIES = [
@@ -64,6 +71,18 @@ const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
 const CADENCE_LABELS: Record<StatementCadence, string> = {
   weekly: 'Weekly', fortnightly: 'Fortnightly',
   monthly: 'Monthly', bi_monthly: 'Bi-monthly',
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  rent:                'hsl(152 38% 30%)',
+  insurance:           'hsl(14 58% 42%)',
+  rates:               'hsl(14 58% 42%)',
+  repairs:             'hsl(14 58% 42%)',
+  property_management: 'hsl(14 58% 42%)',
+  utilities:           'hsl(14 58% 42%)',
+  strata_fees:         'hsl(14 58% 42%)',
+  other_expense:       'hsl(32 6% 50%)',
+  loan_payment:        'hsl(32 6% 38%)',
 }
 
 function formatDate(d: string | null | undefined): string {
@@ -124,10 +143,14 @@ export default function PropertyDetailPage() {
   const [valuations, setValuations] = useState<PropertyValuation[]>([])
   const [entities, setEntities] = useState<Entity[]>([])
   const [avgMonthlyNetCents, setAvgMonthlyNetCents] = useState<number | null>(null)
+  const [trends, setTrends] = useState<TrendPoint[]>([])
 
   const [tenancies, setTenancies] = useState<PropertyTenancy[]>([])
   const [managementAgents, setManagementAgents] = useState<PropertyManagementAgent[]>([])
   const [mgmtLoaded, setMgmtLoaded] = useState(false)
+
+  // Active tab
+  const [activeTab, setActiveTab] = useState<'overview' | 'insights' | 'management' | 'loans' | 'transactions'>('overview')
 
   // Overview edit mode
   const [detailsEditMode, setDetailsEditMode] = useState(false)
@@ -195,11 +218,6 @@ export default function PropertyDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deletingProperty, setDeletingProperty] = useState(false)
 
-  // Inline balance snapshot form (per-loan, only one open at a time)
-  const [balanceFormLoanId, setBalanceFormLoanId] = useState<string | null>(null)
-  const [balanceDate, setBalanceDate] = useState('')
-  const [balanceDollars, setBalanceDollars] = useState('')
-  const [savingBalance, setSavingBalance] = useState(false)
 
   const loadEntries = useCallback(async (signal: AbortSignal) => {
     setEntriesLoading(true)
@@ -280,8 +298,9 @@ export default function PropertyDetailPage() {
         }
 
         if (trendsRes.ok) {
-          const data = await trendsRes.json() as { avgMonthlyNetCents?: number | null }
+          const data = await trendsRes.json() as { trends?: TrendPoint[]; avgMonthlyNetCents?: number | null }
           setAvgMonthlyNetCents(data.avgMonthlyNetCents ?? null)
+          setTrends(data.trends ?? [])
         }
 
         if (tenRes.ok) {
@@ -633,41 +652,6 @@ export default function PropertyDetailPage() {
     }
   }
 
-  async function handleAddBalance(loanId: string) {
-    const parsedAmount = parseFloat(balanceDollars.replace(/,/g, ''))
-    if (!balanceDate || isNaN(parsedAmount) || parsedAmount < 0) {
-      toast.error('Date and a valid balance are required'); return
-    }
-    setSavingBalance(true)
-    try {
-      const res = await fetch(`/api/properties/${id}/loans/${loanId}/balances`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recordedAt: balanceDate,
-          balanceCents: Math.round(parsedAmount * 100),
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { error?: string }
-        toast.error(err.error ?? 'Failed to add balance'); return
-      }
-      // Re-fetch loans to update balance history
-      const loansRes = await fetch(`/api/properties/${id}/loans`)
-      if (loansRes.ok) {
-        const data = await loansRes.json() as { loans?: LoanWithBalance[] }
-        setLoans(data.loans ?? [])
-      }
-      setBalanceFormLoanId(null)
-      setBalanceDate('')
-      setBalanceDollars('')
-      toast.success('Balance added')
-    } catch {
-      toast.error('Network error — please try again')
-    } finally {
-      setSavingBalance(false)
-    }
-  }
 
   const entityName = property?.entityId
     ? (entities.find(e => e.id === property.entityId)?.name ?? null)
@@ -806,20 +790,27 @@ export default function PropertyDetailPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs
-        defaultValue="overview"
-        onValueChange={v => { if (v === 'management') loadManagement() }}
-      >
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="insights">Insights</TabsTrigger>
-          <TabsTrigger value="management">Management</TabsTrigger>
-          <TabsTrigger value="loans">Loans</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-        </TabsList>
+      <div>
+        <div className="flex items-end gap-8 border-b border-border mb-7">
+          {(['overview', 'insights', 'management', 'loans', 'transactions'] as const).map(tab => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => {
+                setActiveTab(tab)
+                if (tab === 'management') loadManagement()
+              }}
+              className={`relative pb-3 pt-2 text-sm font-medium transition-colors capitalize${activeTab === tab ? ' text-ink' : ' text-muted hover:text-ink'}`}
+            >
+              {tab}
+              {activeTab === tab && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent" />}
+            </button>
+          ))}
+        </div>
 
         {/* ===== OVERVIEW ===== */}
-        <TabsContent value="overview" className="mt-6">
+        {activeTab === 'overview' && (
+        <div>
           <div className="grid gap-6" style={{ gridTemplateColumns: '1.2fr 1fr' }}>
 
             {/* Property details card */}
@@ -1014,11 +1005,13 @@ export default function PropertyDetailPage() {
               )}
             </div>
           </div>
-        </TabsContent>
+        </div>
+        )}
 
         {/* ===== MANAGEMENT ===== */}
-        <TabsContent value="management" className="mt-6">
-          <div className="space-y-6">
+        {activeTab === 'management' && (
+        <div>
+          <div className="grid grid-cols-2 gap-5 items-start">
             {/* Tenancies */}
             <div className="bg-surface border border-border rounded-lg p-5">
               <div className="flex items-center justify-between mb-4">
@@ -1150,10 +1143,12 @@ export default function PropertyDetailPage() {
               )}
             </div>
           </div>
-        </TabsContent>
+        </div>
+        )}
 
         {/* ===== LOANS ===== */}
-        <TabsContent value="loans" className="mt-6">
+        {activeTab === 'loans' && (
+        <div>
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-muted uppercase tracking-wide font-medium">
               Loans secured by this property
@@ -1171,120 +1166,135 @@ export default function PropertyDetailPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {loans.map(loan => (
-                <div key={loan.id} className="bg-surface border border-border rounded-lg p-5">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-ink">{loan.nickname ?? loan.lender}</p>
-                      <p className="text-sm text-muted mt-0.5">
-                        {loan.lender} · {formatDate(loan.startDate)} – {formatDate(loan.endDate)}
-                      </p>
+              {loans.map(loan => {
+                const loanEntityName = loan.entityId
+                  ? (entities.find(e => e.id === loan.entityId)?.name ?? null)
+                  : null
+                return (
+                  <div key={loan.id} className="bg-surface border border-border rounded-lg p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <p className="font-medium text-ink">{loan.nickname ?? loan.lender}</p>
+                        <div className="flex items-center gap-1.5 text-xs text-muted mt-0.5 flex-wrap">
+                          <span>{loan.lender}</span>
+                          {loan.accountReference && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-current opacity-40 inline-block" />
+                              <span>acct ending {loan.accountReference.slice(-4)}</span>
+                            </>
+                          )}
+                          {loan.loanType && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-current opacity-40 inline-block" />
+                              <span>{loan.loanType === 'interest_only' ? 'Interest only' : 'Principal & interest'}
+                                {loan.loanType === 'interest_only' && loan.ioEndDate ? ` · IO ends ${formatDate(loan.ioEndDate)}` : ''}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => router.push(`/loans/${loan.id}`)}>
+                        View in Loans →
+                      </Button>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => router.push(`/loans/${loan.id}`)}>
-                      View in Loans →
-                    </Button>
-                  </div>
-
-                  {/* Balance history */}
-                  {loan.recentBalances.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-ruled space-y-1">
-                      <p className="text-xs font-medium text-muted uppercase tracking-wide mb-2">Balance history</p>
-                      {loan.recentBalances.map((b, i) => (
-                        <div key={b.id} className="flex items-center justify-between text-sm">
-                          <span className="text-muted">{formatDate(b.recordedAt)}</span>
-                          <span className={`font-medium tabular-nums ${i === 0 ? 'text-ink' : 'text-muted'}`}>
-                            {formatCents(b.balanceCents)}
+                    <div>
+                      {[
+                        {
+                          k: 'Current balance',
+                          v: loan.latestBalance
+                            ? `${formatCents(loan.latestBalance.balanceCents)}`
+                            : '—',
+                          sub: loan.latestBalance ? `as of ${formatDate(loan.latestBalance.recordedAt)}` : null,
+                        },
+                        {
+                          k: 'Interest rate',
+                          v: loan.interestRate ? `${loan.interestRate}%` : '—',
+                          sub: loan.rateType ? (loan.rateType === 'variable' ? 'variable' : 'fixed') : null,
+                        },
+                        {
+                          k: 'Entity',
+                          v: loanEntityName ?? '—',
+                          sub: null,
+                        },
+                      ].map(({ k, v, sub }) => (
+                        <div key={k} className="grid gap-4 py-2 border-b border-ruled last:border-0 text-sm" style={{ gridTemplateColumns: '140px 1fr' }}>
+                          <span className="text-xs text-muted font-medium">{k}</span>
+                          <span className="text-ink tabular-nums">
+                            {v}
+                            {sub && <span className="text-xs text-muted ml-2">{sub}</span>}
                           </span>
                         </div>
                       ))}
                     </div>
-                  )}
-
-                  {/* Inline add balance form */}
-                  {balanceFormLoanId === loan.id ? (
-                    <div className="mt-4 pt-4 border-t border-ruled">
-                      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Add balance snapshot</p>
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`bal-date-${loan.id}`}>Date</Label>
-                          <Input
-                            id={`bal-date-${loan.id}`} type="date"
-                            value={balanceDate}
-                            onChange={e => setBalanceDate(e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`bal-amount-${loan.id}`}>Balance ($)</Label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
-                            <Input
-                              id={`bal-amount-${loan.id}`} type="text" inputMode="decimal"
-                              placeholder="480,000" className="pl-7"
-                              value={balanceDollars}
-                              onChange={e => setBalanceDollars(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleAddBalance(loan.id)}
-                          disabled={savingBalance || !balanceDate || !balanceDollars.trim()}
-                        >
-                          {savingBalance ? 'Adding…' : 'Add snapshot'}
-                        </Button>
-                        <button
-                          onClick={() => { setBalanceFormLoanId(null); setBalanceDate(''); setBalanceDollars('') }}
-                          className="text-xs text-muted hover:text-ink transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-3 pt-3 border-t border-ruled">
-                      <button
-                        onClick={() => { setBalanceFormLoanId(loan.id); setBalanceDate(todayIso()); setBalanceDollars('') }}
-                        className="text-xs text-muted hover:text-accent transition-colors"
-                      >
-                        + Add balance snapshot
-                      </button>
-                    </div>
-                  )}
+                  </div>
+                )
+              })}
+              {equityCents !== null && equityCents > 0 && (
+                <div className="flex items-center justify-between py-3 px-4 bg-surface border border-dashed border-border rounded-lg text-sm">
+                  <span className="text-muted">
+                    Equity available: <span className="font-semibold text-ink">{formatCents(equityCents)}</span>
+                  </span>
+                  <button
+                    className="text-xs text-muted hover:text-accent transition-colors"
+                    onClick={() => router.push('/loans/new')}
+                  >
+                    + Add another loan
+                  </button>
                 </div>
-              ))}
-              <div className="text-center pt-2">
-                <button
-                  className="text-xs text-muted hover:text-accent transition-colors"
-                  onClick={() => router.push('/loans/new')}
-                >
-                  + Add another loan →
-                </button>
-              </div>
+              )}
             </div>
           )}
-        </TabsContent>
+        </div>
+        )}
 
         {/* ===== TRANSACTIONS ===== */}
-        <TabsContent value="transactions" className="mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <select
-              className="h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={txMonth}
-              onChange={e => setTxMonth(e.target.value)}
-            >
-              {months.map(m => {
-                const [y, mo] = m.split('-')
-                const label = new Date(Number(y), Number(mo) - 1).toLocaleDateString('en-AU', {
-                  month: 'long', year: 'numeric',
-                })
-                return <option key={m} value={m}>{label}</option>
-              })}
-            </select>
-            <Button size="sm" variant="outline" onClick={() => setShowAddEntry(v => !v)}>
-              {showAddEntry ? 'Cancel' : '+ Add entry'}
-            </Button>
+        {activeTab === 'transactions' && (
+        <div>
+          {/* Toolbar */}
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <select
+                className="h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring flex-shrink-0"
+                value={txMonth}
+                onChange={e => setTxMonth(e.target.value)}
+              >
+                {months.map(m => {
+                  const [y, mo] = m.split('-')
+                  const label = new Date(Number(y), Number(mo) - 1).toLocaleDateString('en-AU', {
+                    month: 'long', year: 'numeric',
+                  })
+                  return <option key={m} value={m}>{label}</option>
+                })}
+              </select>
+              {entries.length > 0 && (
+                <span className="text-xs text-muted truncate">
+                  {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+                  {' · '}
+                  <span className="text-green-700">
+                    +{formatCents(entries.filter(e => e.category === 'rent').reduce((s, e) => s + e.amountCents, 0))}
+                  </span>
+                  {' · '}
+                  <span>
+                    −{formatCents(entries.filter(e => e.category !== 'rent').reduce((s, e) => s + e.amountCents, 0))}
+                  </span>
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Link
+                href="/upload"
+                className="inline-flex items-center gap-1.5 h-8 px-3 text-xs text-muted border border-input rounded-md hover:text-ink hover:border-border transition-colors"
+              >
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+                  <path d="M3 8.5V10h6V8.5"/><path d="M6 2.5v5M4 4.5l2-2 2 2"/>
+                </svg>
+                Import from PM statement
+              </Link>
+              <span className="w-px h-4 bg-border" />
+              <Button size="sm" variant="outline" onClick={() => setShowAddEntry(v => !v)}>
+                {showAddEntry ? 'Cancel' : '+ Add entry'}
+              </Button>
+            </div>
           </div>
 
           {showAddEntry && (
@@ -1355,7 +1365,7 @@ export default function PropertyDetailPage() {
             <div className="bg-surface border border-border rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-screen-bg">
+                  <tr className="border-b border-border">
                     <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Date</th>
                     <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Category</th>
                     <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Description</th>
@@ -1365,28 +1375,48 @@ export default function PropertyDetailPage() {
                 </thead>
                 <tbody>
                   {entries.map(entry => (
-                    <tr key={entry.id} className="border-b border-ruled last:border-b-0">
+                    <tr key={entry.id} className="border-b border-ruled last:border-b-0 group">
                       <td className="py-2.5 px-4 text-muted">{formatDate(entry.lineItemDate)}</td>
-                      <td className="py-2.5 px-4">{CATEGORY_LABELS[entry.category] ?? entry.category}</td>
+                      <td className="py-2.5 px-4">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: CATEGORY_COLORS[entry.category] ?? 'hsl(var(--muted-foreground))' }}
+                          />
+                          {CATEGORY_LABELS[entry.category] ?? entry.category}
+                        </span>
+                      </td>
                       <td className="py-2.5 px-4 text-muted">{entry.description ?? '—'}</td>
                       <td className="py-2.5 px-4 text-right tabular-nums font-medium">
-                        {formatCents(entry.amountCents)}
+                        {entry.category === 'rent'
+                          ? <span className="text-green-700">+{formatCents(entry.amountCents)}</span>
+                          : <span>−{formatCents(entry.amountCents)}</span>
+                        }
                       </td>
-                      <td className="py-2.5 pr-3">
-                        {!entry.sourceDocumentId && (
-                          <button
-                            onClick={() => handleDeleteEntry(entry)}
-                            className="text-muted hover:text-red-600 transition-colors"
-                            title="Delete"
-                          >
-                            <svg
-                              width="13" height="13" viewBox="0 0 14 14"
-                              fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden
-                            >
-                              <path d="M2 3.5h10M5 3.5V2h4v1.5M5.5 6v5M8.5 6v5M3 3.5l.7 8h6.6l.7-8"/>
-                            </svg>
-                          </button>
-                        )}
+                      <td className="py-2.5 pr-3 text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              className="opacity-0 group-hover:opacity-100 text-muted hover:text-ink transition-opacity text-base leading-none px-1"
+                              aria-label="Row actions"
+                            >⋯</button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {!entry.sourceDocumentId && (
+                              <DropdownMenuItem
+                                className="text-red-600 focus:text-red-600"
+                                onClick={() => handleDeleteEntry(entry)}
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            )}
+                            {entry.sourceDocumentId && (
+                              <DropdownMenuItem disabled>
+                                Imported — cannot delete
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   ))}
@@ -1394,211 +1424,241 @@ export default function PropertyDetailPage() {
               </table>
             </div>
           )}
-        </TabsContent>
+        </div>
+        )}
 
         {/* ===== INSIGHTS ===== */}
-        <TabsContent value="insights" className="mt-6">
-          {/* Stats strip */}
+        {activeTab === 'insights' && (
+        <div>
+
+          {/* Cashflow chart section */}
+          <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">Cashflow · last 12 months</p>
+          <div className="bg-surface border border-border rounded-lg p-5 mb-7">
+            <div className="flex items-start justify-between mb-4">
+              <span className="text-sm font-semibold text-ink">Net cashflow · monthly</span>
+              <div className="flex items-center gap-4 text-xs text-muted">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'hsl(152 38% 30% / 0.55)' }} />
+                  Rent
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'hsl(14 58% 42% / 0.5)' }} />
+                  Expenses
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'hsl(32 6% 38% / 0.45)' }} />
+                  Loan
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-0.5" style={{ background: 'hsl(188 32% 32%)' }} />
+                  Net
+                </span>
+              </div>
+            </div>
+            {trends.length === 0 ? (
+              <p className="text-sm text-muted py-6 text-center">No cashflow data yet.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <ComposedChart
+                  data={trends.map(t => ({
+                    month: new Date(t.month + '-01').toLocaleDateString('en-AU', { month: 'short' }),
+                    rent:     t.hasData ? t.rentCents / 100 : null,
+                    expenses: t.hasData ? -(t.expensesCents / 100) : null,
+                    mortgage: t.hasData ? -(t.mortgageCents / 100) : null,
+                    net:      t.hasData ? t.netCents / 100 : null,
+                  }))}
+                  margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+                  barCategoryGap="30%"
+                >
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                  <YAxis hide />
+                  <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1} />
+                  <Tooltip
+                    formatter={(v: unknown, name: string) => {
+                      const val = typeof v === 'number' ? Math.abs(v) : 0
+                      const labels: Record<string, string> = { rent: 'Rent', expenses: 'Expenses', mortgage: 'Loan', net: 'Net' }
+                      return [formatCents(val * 100), labels[name] ?? name]
+                    }}
+                    contentStyle={{ fontSize: 12, borderRadius: 6, border: '1px solid hsl(var(--border))', background: 'hsl(var(--surface))' }}
+                  />
+                  <Bar dataKey="rent" stackId="pos" fill="hsl(152 38% 30% / 0.55)" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="expenses" stackId="neg" fill="hsl(14 58% 42% / 0.5)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="mortgage" stackId="neg" fill="hsl(32 6% 38% / 0.45)" radius={[0, 0, 2, 2]} />
+                  <Line dataKey="net" type="monotone" stroke="hsl(188 32% 32%)" strokeWidth={1.8} dot={{ r: 2.4, fill: 'hsl(188 32% 32%)', strokeWidth: 0 }} connectNulls={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Valuation summary strip */}
+          <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">Valuation summary</p>
           <div className="grid grid-cols-3 gap-3 mb-6">
+            <MetricTile
+              label="Current value"
+              value={latestValuation ? formatCents(latestValuation.valueCents) : '—'}
+              foot={latestValuation ? <span className="text-xs text-muted">as of {formatDate(latestValuation.valuedAt)}</span> : undefined}
+            />
+            <MetricTile
+              label="Growth · since purchase"
+              value={
+                totalAppreciationCents !== null
+                  ? (totalAppreciationCents < 0
+                    ? `−${formatCents(Math.abs(totalAppreciationCents))}`
+                    : `+${formatCents(totalAppreciationCents)}`)
+                  : '—'
+              }
+              valueClassName={totalAppreciationCents !== null && totalAppreciationCents < 0 ? 'text-red-500' : totalAppreciationCents !== null ? 'text-green-700' : undefined}
+              foot={
+                totalAppreciationCents !== null && property.purchasePriceCents
+                  ? <span className="text-xs text-muted">from {formatCents(property.purchasePriceCents)}</span>
+                  : undefined
+              }
+            />
             <MetricTile
               label="Gross yield"
               value={yieldStats ? `${yieldStats.grossPercent.toFixed(1)}%` : '—'}
               foot={yieldStats ? <span className="text-xs text-muted">{yieldStats.periodLabel}</span> : undefined}
             />
-            <MetricTile
-              label="Avg monthly net"
-              value={
-                avgMonthlyNetCents !== null
-                  ? (avgMonthlyNetCents < 0
-                    ? `−${formatCents(Math.abs(avgMonthlyNetCents))}`
-                    : formatCents(avgMonthlyNetCents))
-                  : '—'
-              }
-              valueClassName={avgMonthlyNetCents !== null && avgMonthlyNetCents < 0 ? 'text-red-500' : undefined}
-              foot={avgMonthlyNetCents !== null ? <span className="text-xs text-muted">12 month average</span> : undefined}
-              secondary
-            />
-            <MetricTile
-              label="Capital growth"
-              value={
-                totalAppreciationCents !== null
-                  ? (totalAppreciationCents < 0
-                    ? `−${formatCents(Math.abs(totalAppreciationCents))}`
-                    : formatCents(totalAppreciationCents))
-                  : '—'
-              }
-              valueClassName={totalAppreciationCents !== null && totalAppreciationCents < 0 ? 'text-red-500' : undefined}
-              foot={
-                totalAppreciationCents !== null && property.purchasePriceCents
-                  ? <span className="text-xs text-muted">since {formatCents(property.purchasePriceCents)} purchase</span>
-                  : undefined
-              }
-              secondary
-            />
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            {/* Valuation history */}
-            <div className="bg-surface border border-border rounded-lg p-5">
-              <h3 className="text-sm font-semibold text-ink mb-4">Valuation history</h3>
-              {valuations.length === 0 ? (
-                <p className="text-sm text-muted">No valuations recorded yet.</p>
-              ) : (
-                <>
-                  {chartData.length >= 2 && (
-                    <div className="mb-4">
-                      <ResponsiveContainer width="100%" height={140}>
-                        <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
-                          <XAxis
-                            dataKey="date"
-                            tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <YAxis hide />
-                          <Tooltip
-                            formatter={(v) => typeof v === 'number' ? [formatCents(v * 100), 'Value'] : [String(v), 'Value']}
-                            contentStyle={{
-                              fontSize: 12,
-                              borderRadius: 6,
-                              border: '1px solid hsl(var(--border))',
-                              background: 'hsl(var(--surface))',
-                            }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            stroke="hsl(var(--accent))"
-                            strokeWidth={1.5}
-                            dot={{ r: 3, fill: 'hsl(var(--accent))', strokeWidth: 0 }}
-                            activeDot={{ r: 4 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  <div className="space-y-1">
-                    {valuations.map(v => (
-                      <div
-                        key={v.id}
-                        className="flex items-center justify-between py-2 border-b border-ruled last:border-b-0 group"
-                      >
-                        <div>
-                          <p className="text-sm text-muted">{formatDate(v.valuedAt)}</p>
-                          {v.source && (
-                            <p className="text-xs text-muted capitalize">
-                              {v.source.replace(/_/g, ' ')}
-                            </p>
+          {/* Valuation line chart */}
+          {chartData.length >= 2 && (
+            <div className="bg-surface border border-border rounded-lg p-5 mb-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-ink">Value over time</span>
+                <span className="flex items-center gap-1.5 text-xs text-muted">
+                  <span className="inline-block w-2.5 h-0.5" style={{ background: 'hsl(188 32% 32%)' }} />
+                  Valuation
+                </span>
+              </div>
+              <ResponsiveContainer width="100%" height={140}>
+                <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis hide />
+                  <Tooltip
+                    formatter={(v) => typeof v === 'number' ? [formatCents(v * 100), 'Value'] : [String(v), 'Value']}
+                    contentStyle={{
+                      fontSize: 12,
+                      borderRadius: 6,
+                      border: '1px solid hsl(var(--border))',
+                      background: 'hsl(var(--surface))',
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="hsl(188 32% 32%)"
+                    strokeWidth={1.8}
+                    dot={{ r: 3, fill: 'hsl(188 32% 32%)', strokeWidth: 0 }}
+                    activeDot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Valuation history table */}
+          <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">Valuation history</p>
+          <div className="bg-surface border border-border rounded-lg overflow-hidden mb-5">
+            {valuations.length === 0 ? (
+              <p className="text-sm text-muted p-5">No valuations recorded yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Date</th>
+                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Source</th>
+                    <th className="text-right font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Value</th>
+                    <th className="text-right font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Change</th>
+                    <th className="w-8"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {valuations.map((v, i) => {
+                    const prev = valuations[i + 1]
+                    const changeCents = prev ? v.valueCents - prev.valueCents : null
+                    return (
+                      <tr key={v.id} className="border-b border-ruled last:border-b-0 group">
+                        <td className="py-2.5 px-4 text-muted">{formatDate(v.valuedAt)}</td>
+                        <td className="py-2.5 px-4 text-muted capitalize">{v.source ? v.source.replace(/_/g, ' ') : 'Manual entry'}</td>
+                        <td className="py-2.5 px-4 text-right tabular-nums font-medium">{formatCents(v.valueCents)}</td>
+                        <td className="py-2.5 px-4 text-right tabular-nums text-xs">
+                          {changeCents !== null ? (
+                            <span className={changeCents >= 0 ? 'text-green-700' : 'text-red-600'}>
+                              {changeCents >= 0 ? '+' : '−'}{formatCents(Math.abs(changeCents))}
+                            </span>
+                          ) : (
+                            <span className="text-muted">baseline</span>
                           )}
-                          {v.notes && <p className="text-xs text-muted">{v.notes}</p>}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium tabular-nums">
-                            {formatCents(v.valueCents)}
-                          </span>
+                        </td>
+                        <td className="py-2.5 pr-3">
                           {deleteValId === v.id ? (
                             <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => handleDeleteValuation(v.id)}
-                                disabled={deletingVal}
-                                className="text-xs text-red-600 hover:text-red-700"
-                              >
-                                {deletingVal ? 'Deleting…' : 'Confirm'}
+                              <button onClick={() => handleDeleteValuation(v.id)} disabled={deletingVal} className="text-xs text-red-600 hover:text-red-700">
+                                {deletingVal ? 'Deleting…' : 'Delete'}
                               </button>
-                              <button
-                                onClick={() => setDeleteValId(null)}
-                                className="text-xs text-muted hover:text-ink"
-                              >
-                                Cancel
-                              </button>
+                              <button onClick={() => setDeleteValId(null)} className="text-xs text-muted hover:text-ink">Cancel</button>
                             </div>
                           ) : (
                             <button
                               onClick={() => setDeleteValId(v.id)}
-                              className="opacity-0 group-hover:opacity-100 text-muted hover:text-red-600 transition-colors"
-                              title="Delete"
-                            >
-                              <svg
-                                width="13" height="13" viewBox="0 0 14 14"
-                                fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden
-                              >
-                                <path d="M2 3.5h10M5 3.5V2h4v1.5M5.5 6v5M8.5 6v5M3 3.5l.7 8h6.6l.7-8"/>
-                              </svg>
-                            </button>
+                              className="opacity-0 group-hover:opacity-100 text-muted hover:text-ink transition-opacity text-base leading-none"
+                              title="Delete valuation"
+                            >⋯</button>
                           )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
 
-            {/* Add valuation */}
-            <div className="bg-surface border border-border rounded-lg p-5">
-              <h3 className="text-sm font-semibold text-ink mb-4">Add valuation</h3>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="val-amount">Value ($)</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
-                    <Input
-                      id="val-amount" type="text" inputMode="decimal"
-                      placeholder="920,000" className="pl-7"
-                      value={valDollars}
-                      onChange={e => setValDollars(e.target.value)}
-                    />
-                  </div>
+          {/* Add valuation form */}
+          <div className="bg-surface border border-border rounded-lg p-5">
+            <div className="flex items-baseline justify-between mb-4">
+              <h4 className="text-sm font-semibold text-ink">Add a new valuation</h4>
+              <span className="text-xs text-muted">Typically once every 6–12 months</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="val-date">Date</Label>
+                <Input id="val-date" type="date" value={valDate} onChange={e => setValDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="val-amount">Value ($)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                  <Input id="val-amount" type="text" inputMode="decimal" placeholder="920,000" className="pl-7" value={valDollars} onChange={e => setValDollars(e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="val-date">As of date</Label>
-                  <Input
-                    id="val-date" type="date"
-                    value={valDate}
-                    onChange={e => setValDate(e.target.value)}
-                  />
-                </div>
-                <SelectField
-                  id="val-source" label="Source"
-                  value={valSource}
-                  onChange={setValSource}
-                >
-                  {VALUATION_SOURCES.map(s => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </SelectField>
-                <div className="space-y-1.5">
-                  <Label htmlFor="val-reference">
-                    Reference <span className="font-normal text-muted">(optional)</span>
-                  </Label>
-                  <Input
-                    id="val-reference" placeholder="e.g. Bank val report #1234"
-                    value={valReference}
-                    onChange={e => setValReference(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="val-notes">
-                    Notes <span className="font-normal text-muted">(optional)</span>
-                  </Label>
-                  <Input
-                    id="val-notes" placeholder="e.g. Post-renovation estimate"
-                    value={valNotes}
-                    onChange={e => setValNotes(e.target.value)}
-                  />
-                </div>
-                <Button
-                  size="sm" variant="outline"
-                  onClick={handleAddValuation}
-                  disabled={addingVal || !valDollars.trim() || !valDate}
-                >
-                  {addingVal ? 'Adding…' : '+ Add valuation'}
-                </Button>
+              </div>
+              <SelectField id="val-source" label="Source" value={valSource} onChange={setValSource}>
+                {VALUATION_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </SelectField>
+              <div className="space-y-1.5">
+                <Label htmlFor="val-reference">Reference <span className="font-normal text-muted">(optional)</span></Label>
+                <Input id="val-reference" placeholder="e.g. Bank val report #1234" value={valReference} onChange={e => setValReference(e.target.value)} />
               </div>
             </div>
+            <div className="space-y-1.5 mb-3">
+              <Label htmlFor="val-notes">Notes <span className="font-normal text-muted">(optional)</span></Label>
+              <Input id="val-notes" placeholder="e.g. Comparable sale: 18 Elm Street, $935k March 2026" value={valNotes} onChange={e => setValNotes(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleAddValuation} disabled={addingVal || !valDollars.trim() || !valDate}>
+                {addingVal ? 'Saving…' : 'Save valuation'}
+              </Button>
+            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+        )}
+      </div>
 
       {/* ===== DIALOGS ===== */}
 
