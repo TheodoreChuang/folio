@@ -18,17 +18,21 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [loans, setLoans] = useState<SidebarLoan[]>([])
 
   const fetchData = useCallback(async () => {
-    const [propsRes, loansRes] = await Promise.all([
-      fetch('/api/properties'),
-      fetch('/api/loans'),
-    ])
-    if (propsRes.ok) {
-      const data = await propsRes.json() as { properties?: SidebarProperty[] }
-      setProperties(data.properties ?? [])
-    }
-    if (loansRes.ok) {
-      const data = await loansRes.json() as { loans?: SidebarLoan[] }
-      setLoans(data.loans ?? [])
+    try {
+      const [propsRes, loansRes] = await Promise.all([
+        fetch('/api/properties'),
+        fetch('/api/loans'),
+      ])
+      if (propsRes.ok) {
+        const data = await propsRes.json() as { properties?: SidebarProperty[] }
+        setProperties(data.properties ?? [])
+      }
+      if (loansRes.ok) {
+        const data = await loansRes.json() as { loans?: SidebarLoan[] }
+        setLoans(data.loans ?? [])
+      }
+    } catch {
+      // Network failure — sidebar lists stay at current state
     }
   }, [])
 

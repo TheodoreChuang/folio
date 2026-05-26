@@ -222,12 +222,13 @@ export function Sidebar() {
             {p.nickname ?? p.address}
           </NavItem>
         ))}
-        <Link
+        <NavItem
           href="/properties/new"
-          className="flex items-center h-[30px] pl-8 rounded-[5px] text-[0.8125rem] text-muted hover:bg-surface hover:text-ink transition-colors"
+          active={pathname === '/properties/new'}
+          className="pl-8 text-[0.8125rem]"
         >
           + Add property
-        </Link>
+        </NavItem>
       </NavSection>
 
       <NavSection
@@ -248,12 +249,13 @@ export function Sidebar() {
             {l.lender}{l.nickname ? ` · ${l.nickname}` : ''}
           </NavItem>
         ))}
-        <Link
+        <NavItem
           href="/loans/new"
-          className="flex items-center h-[30px] pl-8 rounded-[5px] text-[0.8125rem] text-muted hover:bg-surface hover:text-ink transition-colors"
+          active={pathname === '/loans/new'}
+          className="pl-8 text-[0.8125rem]"
         >
           + Add loan
-        </Link>
+        </NavItem>
       </NavSection>
 
       <div className="mt-3 flex flex-col gap-0.5">
