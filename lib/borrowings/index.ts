@@ -1,4 +1,5 @@
 export {
+  listAllInstallmentLoans,
   listInstallmentLoans,
   findInstallmentLoanById,
   findInstallmentLoanDetail,
