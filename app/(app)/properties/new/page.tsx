@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Entity, PropertyType } from '@/db/schema'
+import { useSidebar } from '@/components/sidebar-context'
 
 const VALUATION_SOURCES = [
   { value: 'manual_estimate', label: 'Manual estimate' },
@@ -44,6 +45,7 @@ function formatDollars(value: string): string {
 
 export default function NewPropertyPage() {
   const router = useRouter()
+  const { refresh: refreshSidebar } = useSidebar()
 
   // Entities
   const [entities, setEntities] = useState<Entity[]>([])
@@ -195,6 +197,7 @@ export default function NewPropertyPage() {
     try {
       const id = await createPropertyWithDetails()
       if (!id) return
+      refreshSidebar()
       toast.success('Property added')
       router.push(`/properties/${id}`)
     } finally {
@@ -208,6 +211,7 @@ export default function NewPropertyPage() {
     try {
       const id = await createPropertyWithDetails()
       if (!id) return
+      refreshSidebar()
       toast.success('Property added')
       router.push(`/loans/new?propertyId=${id}`)
     } finally {
