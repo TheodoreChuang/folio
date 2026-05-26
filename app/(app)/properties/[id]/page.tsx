@@ -888,7 +888,7 @@ export default function PropertyDetailPage() {
               )}
               {!isSold && <DropdownMenuSeparator />}
               <DropdownMenuItem
-                className="text-red-600 focus:text-red-600"
+                className="text-negative focus:text-negative focus:bg-negative/8"
                 onClick={() => setShowDeleteModal(true)}
               >
                 Delete property
@@ -1515,7 +1515,7 @@ export default function PropertyDetailPage() {
                           <DropdownMenuContent align="end">
                             {!entry.sourceDocumentId && (
                               <DropdownMenuItem
-                                className="text-red-600 focus:text-red-600"
+                                className="text-negative focus:text-negative focus:bg-negative/8"
                                 onClick={() => handleDeleteEntry(entry)}
                               >
                                 Delete
