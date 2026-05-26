@@ -1302,6 +1302,7 @@ a:hover { text-decoration: underline; }
 }
 .detail-head .actions .more-menu button:hover { background: hsl(var(--surface-sunken)); }
 .detail-head .actions .more-menu button.is-destructive { color: hsl(var(--negative)); }
+.detail-head .actions .more-menu button.is-destructive:hover { background: hsl(var(--negative) / 0.08); }
 .detail-head .actions .more-menu button .glyph {
   color: hsl(var(--foreground-subtle));
   display: flex; align-items: center; justify-content: center;
@@ -2372,6 +2373,10 @@ a:hover { text-decoration: underline; }
   gap: var(--space-7);
   align-items: start;
 }
+.add-page--single {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 880px;
+}
 
 /* Sticky right rail */
 .add-page .rail {
@@ -2389,8 +2394,10 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius);
 }
 .form-section + .form-section { margin-top: var(--space-5); }
-.form-section.is-optional { border-style: dashed; background: transparent; }
+.form-section.is-optional { border-style: dashed; }
 .form-section.is-optional .form-section-head { border-bottom-style: dashed; }
+.form-section.is-collapsed .form-section-body { display: none; }
+.form-section.is-collapsed .form-section-head { border-bottom: none; }
 
 .form-section-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -2451,6 +2458,7 @@ a:hover { text-decoration: underline; }
 .form-grid .field[hidden] { display: none; }
 .form-grid .field .input-label { margin-bottom: 0; }
 .form-grid .field .input-help { margin-top: 0; }
+.form-grid .field .seg { align-self: start; }
 
 /* Inline currency / unit prefix-suffix inputs */
 .input-affix {
@@ -2589,6 +2597,21 @@ a:hover { text-decoration: underline; }
   font-weight: 500;
 }
 .combo .opt.is-add .check { border-style: dashed; }
+.combo .opt.is-disabled {
+  cursor: not-allowed;
+  color: hsl(var(--foreground-muted));
+  background: hsl(var(--surface-sunken) / 0.35);
+}
+.combo .opt.is-disabled:hover { background: hsl(var(--surface-sunken) / 0.35); }
+.combo .opt.is-disabled .check { background: hsl(var(--surface-sunken)); border-style: dashed; }
+.combo .opt.is-disabled .name { color: hsl(var(--foreground-muted)); text-decoration: line-through; text-decoration-color: hsl(var(--foreground-faint)); text-decoration-thickness: 1px; }
+.combo .opt .amt {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--foreground-muted));
+  margin-right: var(--space-2);
+}
+.combo .opt.is-on .amt { color: hsl(var(--foreground)); }
 
 /* Inline "+ add new …" link — pairs with selects/inputs as a softer
    alternative to the .combo .opt.is-add row. */
@@ -3378,6 +3401,7 @@ a:hover { text-decoration: underline; }
 }
 .entity-card .kebab-menu button:hover { background: hsl(var(--surface-sunken)); }
 .entity-card .kebab-menu button.is-destructive { color: hsl(var(--negative)); }
+.entity-card .kebab-menu button.is-destructive:hover { background: hsl(var(--negative) / 0.08); }
 .entity-card .kebab-menu button.is-disabled {
   color: hsl(var(--foreground-faint));
   cursor: not-allowed;

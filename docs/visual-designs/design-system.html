@@ -907,7 +907,7 @@
   }
 
   /* =====================================================================
-     EDITABLE FIELD ROWS (referenced in 12a · Editing demo)
+     EDITABLE FIELD ROWS (referenced in 13a · Editing demo)
      ===================================================================== */
   .field-list { display: flex; flex-direction: column; }
   .field-row {
@@ -980,7 +980,7 @@
   .input-prefix > .input { padding-left: 28px; }
 
   /* =====================================================================
-     MODAL — used in 12b · Confirming demo
+     MODAL — used in 13b · Confirming demo
      ===================================================================== */
   .modal-backdrop {
     position: fixed; inset: 0;
@@ -1041,7 +1041,7 @@
   }
 
   /* =====================================================================
-     INLINE CONFIRM — used in 12b · Confirming demo
+     INLINE CONFIRM — used in 13b · Confirming demo
      ===================================================================== */
   .inline-confirm {
     display: inline-flex;
@@ -2103,11 +2103,386 @@
     </section>
 
     <!-- ================================================================
-         12 — INTERACTION PATTERNS
+         12 — OVERFLOW MENU
+         ================================================================ -->
+    <style>
+      /* Self-contained menu styles for this section. The production version
+         lives in folio.css under `.detail-head .actions .more-menu` and
+         `.entity-card .kebab-menu`; the rules below mirror those tokens so
+         the doc can't drift from the implementation. */
+      .om-trigger {
+        height: 32px; width: 32px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: hsl(var(--foreground-muted));
+        border: 0;
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .om-trigger.is-open {
+        background: hsl(var(--surface-sunken));
+        color: hsl(var(--foreground));
+      }
+      .om-menu {
+        width: 240px;
+        background: hsl(var(--surface-raised));
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-pop);
+        padding: var(--space-2);
+        display: flex; flex-direction: column;
+        gap: 2px;
+      }
+      .om-menu .om-label {
+        padding: var(--space-3) var(--space-4) var(--space-2);
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: hsl(var(--foreground-subtle));
+      }
+      .om-menu .om-sep {
+        height: 1px;
+        background: hsl(var(--rule));
+        margin: 4px 6px;
+      }
+      .om-menu .om-item {
+        display: grid;
+        grid-template-columns: 16px 1fr auto;
+        gap: var(--space-3);
+        align-items: center;
+        padding: var(--space-3) var(--space-4);
+        border-radius: var(--radius-xs);
+        font-family: var(--font-data);
+        font-size: var(--text-sm);
+        text-align: left;
+        color: hsl(var(--foreground));
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        width: 100%;
+      }
+      .om-menu .om-item:hover,
+      .om-menu .om-item.is-hover { background: hsl(var(--surface-sunken)); }
+      .om-menu .om-item.is-destructive { color: hsl(var(--negative)); }
+      .om-menu .om-item.is-destructive:hover,
+      .om-menu .om-item.is-destructive.is-hover { background: hsl(var(--negative) / 0.08); }
+      .om-menu .om-item .glyph {
+        color: hsl(var(--foreground-subtle));
+        display: flex; align-items: center; justify-content: center;
+        width: 14px; height: 14px;
+      }
+      .om-menu .om-item.is-destructive .glyph { color: hsl(var(--negative)); }
+      .om-menu .om-item .hint {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: hsl(var(--foreground-subtle));
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      /* Stage that shows the trigger + the open menu floating below it,
+         like the real component. */
+      .om-stage {
+        position: relative;
+        background: hsl(var(--surface));
+        border: 1px dashed hsl(var(--border));
+        border-radius: var(--radius);
+        padding: var(--space-5) var(--space-6) var(--space-9);
+        min-height: 260px;
+      }
+      .om-stage .om-fake-head {
+        display: flex; justify-content: space-between; align-items: center;
+        padding-bottom: var(--space-5);
+        border-bottom: 1px solid hsl(var(--rule));
+      }
+      .om-stage .om-fake-head .title {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        letter-spacing: -0.005em;
+      }
+      .om-stage .om-fake-head .sub {
+        font-size: var(--text-xs);
+        color: hsl(var(--foreground-subtle));
+        margin-top: 2px;
+        font-family: var(--font-mono);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .om-stage .om-anchor {
+        position: relative;
+      }
+      .om-stage .om-anchor .om-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        z-index: 2;
+      }
+
+      /* Anatomy callouts — small numbered pips beside each rule. */
+      .om-callouts {
+        margin-top: var(--space-7);
+      }
+      .om-callouts .num {
+        display: inline-flex;
+        width: 16px; height: 16px;
+        border-radius: 50%;
+        background: hsl(var(--accent));
+        color: hsl(var(--accent-foreground));
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 600;
+        align-items: center; justify-content: center;
+        margin-right: var(--space-3);
+        flex: none;
+      }
+      .om-callouts ol {
+        list-style: none;
+        margin: 0; padding: 0;
+        display: flex; flex-direction: column;
+        gap: var(--space-3);
+        font-size: var(--text-sm);
+        color: hsl(var(--foreground-muted));
+        line-height: var(--leading-snug);
+      }
+      .om-callouts ol li { display: flex; align-items: baseline; }
+      .om-callouts ol li code {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: hsl(var(--foreground-subtle));
+        background: hsl(var(--surface-sunken));
+        padding: 1px 5px;
+        border-radius: var(--radius-xs);
+        margin-left: var(--space-2);
+      }
+
+      /* Two-column hover-state demo */
+      .om-hover-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+      .om-hover-pair .col {
+        background: hsl(var(--surface));
+        border: 1px dashed hsl(var(--border));
+        border-radius: var(--radius);
+        padding: var(--space-6) var(--space-7);
+        display: flex; flex-direction: column;
+        align-items: center; gap: var(--space-5);
+      }
+      .om-hover-pair .om-swatch {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: hsl(var(--foreground-subtle));
+        display: flex; flex-direction: row; align-items: center; gap: var(--space-3);
+      }
+      .om-hover-pair .om-swatch .chip {
+        width: 12px; height: 12px; border-radius: 3px;
+        border: 1px solid hsl(var(--border));
+      }
+      .om-hover-pair .om-menu { width: 220px; }
+
+      /* When-to-use grid */
+      .om-when {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-5);
+      }
+      .om-when .col {
+        background: hsl(var(--surface));
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius);
+        padding: var(--space-5) var(--space-6);
+      }
+      .om-when h5 {
+        margin: 0 0 var(--space-3);
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      .om-when .yes h5 { color: hsl(var(--positive)); }
+      .om-when .no  h5 { color: hsl(var(--negative)); }
+      .om-when ul {
+        margin: 0; padding: 0; list-style: none;
+        display: flex; flex-direction: column; gap: var(--space-2);
+        font-size: var(--text-sm);
+        color: hsl(var(--foreground-muted));
+        line-height: var(--leading-snug);
+      }
+      .om-when .yes li::before { content: "+"; color: hsl(var(--positive)); font-weight: 600; margin-right: var(--space-3); }
+      .om-when .no  li::before { content: "−"; color: hsl(var(--negative)); font-weight: 600; margin-right: var(--space-3); }
+    </style>
+
+    <section class="sys" id="overflow-menu">
+      <div class="sys-head">
+        <div class="label">12 — Overflow menu</div>
+        <div>
+          <h2>Tucks away lifecycle and destructive actions. It never edits.</h2>
+          <p>
+            The overflow menu is for actions that aren't first-class enough to deserve a button,
+            but are too consequential to be hidden in a hover affordance: <em>mark as sold</em>,
+            <em>archive</em>, <em>delete</em>, <em>export</em>. Inline edits live on the field
+            itself (see 13a) — they never appear here. The trigger is a single ghost
+            <code style="font-family:var(--font-mono);">⋯</code> button, anchored to the detail
+            head or a card header. One menu per record; never nested.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Trigger</dt><dd>32px ghost icon (<code style="font-family:var(--font-mono);">⋯</code>). Open state takes <code style="font-family:var(--font-mono);">surface.sunken</code>.</dd>
+          <dt>Surface</dt><dd>240px wide · <code style="font-family:var(--font-mono);">surface.raised</code> · 1px border · shadow.pop · 6px gap below trigger.</dd>
+          <dt>Item</dt><dd>16/1fr/auto grid — glyph · label · optional hint. Sentence-case label; trailing ellipsis if it opens a confirm.</dd>
+          <dt>Group label</dt><dd>11px micro · uppercase tracked · <code style="font-family:var(--font-mono);">foreground.subtle</code>. Used to separate groups (Lifecycle, Export). Omit if the menu has ≤2 items.</dd>
+          <dt>Separator</dt><dd>1px rule, 4/6 inset margins. Always before the destructive group.</dd>
+          <dt>Hover · normal</dt><dd><code style="font-family:var(--font-mono);">surface.sunken</code> fill — matches every other hover in the system.</dd>
+          <dt>Hover · destructive</dt><dd><code style="font-family:var(--font-mono);">negative @ 8%</code> fill — keeps the red affordance visible through hover.</dd>
+        </dl>
+
+        <div class="stack-7">
+
+          <!-- ───── Anatomy ───── -->
+          <div>
+            <div class="footnote" style="margin-bottom: var(--space-4);">Anatomy · open state</div>
+
+            <div class="om-stage">
+              <div class="om-fake-head">
+                <div>
+                  <div class="title">14 Elm Street</div>
+                  <div class="sub">Randwick NSW · Okafor Family Trust</div>
+                </div>
+                <div class="om-anchor">
+                  <button class="om-trigger is-open" aria-expanded="true">⋯</button>
+                  <div class="om-menu" role="menu">
+                    <div class="om-label">Lifecycle</div>
+                    <button class="om-item" type="button">
+                      <span class="glyph">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 7l3 3 7-7"/></svg>
+                      </span>
+                      <span>Mark as sold…</span>
+                      <span class="hint"></span>
+                    </button>
+                    <button class="om-item" type="button">
+                      <span class="glyph">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="3" width="9" height="8" rx="1"/><path d="M2.5 5.5h9"/></svg>
+                      </span>
+                      <span>Archive property</span>
+                      <span class="hint"></span>
+                    </button>
+                    <div class="om-sep"></div>
+                    <button class="om-item is-destructive" type="button">
+                      <span class="glyph">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h8M5.5 4V2.5h3V4M4 4l.7 7.5h4.6L10 4"/></svg>
+                      </span>
+                      <span>Delete property…</span>
+                      <span class="hint"></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="om-callouts">
+              <ol>
+                <li><span class="num">1</span><div><strong>Group label.</strong> Names the action class — Lifecycle, Export, Reporting. <code>.om-label</code></div></li>
+                <li><span class="num">2</span><div><strong>Item.</strong> 16px glyph · sentence-case label · optional shortcut hint. Trailing ellipsis when the item opens a confirm. <code>.om-item</code></div></li>
+                <li><span class="num">3</span><div><strong>Separator.</strong> 1px rule before the destructive group. <code>.om-sep</code></div></li>
+                <li><span class="num">4</span><div><strong>Destructive item.</strong> Negative text colour. Always last; always preceded by a separator. <code>.is-destructive</code></div></li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- ───── Hover states ───── -->
+          <div>
+            <div class="footnote" style="margin-bottom: var(--space-4);">Hover · two treatments</div>
+
+            <div class="om-hover-pair">
+              <div class="col">
+                <div class="om-swatch"><span class="chip" style="background: hsl(var(--surface-sunken));"></span>surface.sunken · normal items</div>
+                <div class="om-menu" role="menu" style="box-shadow: none;">
+                  <button class="om-item" type="button">
+                    <span class="glyph">
+                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 7l3 3 7-7"/></svg>
+                    </span>
+                    <span>Mark as sold…</span>
+                    <span class="hint"></span>
+                  </button>
+                  <button class="om-item is-hover" type="button">
+                    <span class="glyph">
+                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="3" width="9" height="8" rx="1"/><path d="M2.5 5.5h9"/></svg>
+                    </span>
+                    <span>Archive property</span>
+                    <span class="hint"></span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="col">
+                <div class="om-swatch"><span class="chip" style="background: hsl(var(--negative) / 0.08);"></span>negative · 8% · destructive only</div>
+                <div class="om-menu" role="menu" style="box-shadow: none;">
+                  <button class="om-item is-destructive" type="button">
+                    <span class="glyph">
+                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h8M5.5 4V2.5h3V4M4 4l.7 7.5h4.6L10 4"/></svg>
+                    </span>
+                    <span>Delete property…</span>
+                    <span class="hint"></span>
+                  </button>
+                  <button class="om-item is-destructive is-hover" type="button">
+                    <span class="glyph">
+                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M11 4L4 11M4 4l7 7"/></svg>
+                    </span>
+                    <span>Remove from portfolio…</span>
+                    <span class="hint"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <p style="font-size: var(--text-sm); color: hsl(var(--foreground-muted)); margin-top: var(--space-4); max-width: 70ch;">
+              Normal items follow the system's universal hover token (also used by ghost
+              buttons, table rows, the entity filter). Destructive items get a 8%-negative
+              fill so their tone survives the hover — without it the red text washes out
+              against the gray fill and the row stops reading as "danger" at the exact
+              moment it should.
+            </p>
+          </div>
+
+          <!-- ───── When ───── -->
+          <div>
+            <div class="footnote" style="margin-bottom: var(--space-4);">When to reach for it</div>
+            <div class="om-when">
+              <div class="col yes">
+                <h5>Use the overflow menu</h5>
+                <ul>
+                  <li>State transitions on a record — mark as sold, archive, reopen.</li>
+                  <li>Destructive actions on the focused entity — delete property, remove loan link.</li>
+                  <li>Rare meta actions — export, view audit history, duplicate.</li>
+                  <li>Anywhere you'd otherwise add a fourth header button.</li>
+                </ul>
+              </div>
+              <div class="col no">
+                <h5>Don't use it</h5>
+                <ul>
+                  <li>Editing a field value — that's inline edit (see 13a).</li>
+                  <li>Switching tabs, navigating, opening a related record — use a link.</li>
+                  <li>Toggling a boolean the user controls often — use a switch in place.</li>
+                  <li>The primary action of the screen — that's a button in the header.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         13 — INTERACTION PATTERNS
          ================================================================ -->
     <section class="sys" id="patterns">
       <div class="sys-head">
-        <div class="label">12 — Interaction patterns</div>
+        <div class="label">13 — Interaction patterns</div>
         <div>
           <h2>How Folio behaves, not just how it looks.</h2>
           <p>
@@ -2125,9 +2500,9 @@
         </dl>
         <div class="stack-7">
 
-          <!-- ───────── 12a · Editing ───────── -->
+          <!-- ───────── 13a · Editing ───────── -->
           <div class="pattern-card">
-            <div class="pc-eyebrow">12a · Editing</div>
+            <div class="pc-eyebrow">13a · Editing</div>
             <h3 class="pc-title">Inline edit-in-place. One pattern, applied everywhere.</h3>
             <div class="pc-rule">
               Every editable value reveals an affordance on hover and becomes an input on click.
@@ -2189,9 +2564,9 @@
             </div>
           </div>
 
-          <!-- ───────── 12b · Confirming ───────── -->
+          <!-- ───────── 13b · Confirming ───────── -->
           <div class="pattern-card">
-            <div class="pc-eyebrow">12b · Confirming</div>
+            <div class="pc-eyebrow">13b · Confirming</div>
             <h3 class="pc-title">Two tiers. Inline for contextual, modal for explicit.</h3>
             <div class="pc-rule">
               If an action takes input → modal. If it's a single contextual yes/no → inline confirm.
@@ -2311,7 +2686,7 @@
             </div>
           </div>
 
-          <!-- ───────── 12c · Future patterns placeholder ───────── -->
+          <!-- ───────── 13c · Future patterns placeholder ───────── -->
           <div class="pattern-note">
             <div class="tag">Next</div>
             <div>
