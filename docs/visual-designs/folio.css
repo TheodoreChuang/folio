@@ -1694,6 +1694,58 @@ a:hover { text-decoration: underline; }
   cursor: pointer;
   font-size: var(--text-md);
 }
+.tx-list .row-t .more {
+  background: none;
+  border: 0;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin: 0 auto;
+  font-family: inherit;
+}
+.tx-list .row-t .more:hover,
+.tx-list .row-t.is-menu-open .more {
+  background: hsl(var(--surface-sunken));
+  color: hsl(var(--foreground-muted));
+}
+
+.row-actions-pop {
+  position: absolute;
+  z-index: 60;
+  background: hsl(var(--surface-raised));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px -8px hsla(var(--shadow-color), 0.18),
+              0 2px 6px -2px hsla(var(--shadow-color), 0.10);
+  padding: 4px;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+}
+.row-actions-pop button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 7px 10px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: hsl(var(--foreground));
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: left;
+}
+.row-actions-pop button:hover { background: hsl(var(--surface-sunken)); }
+.row-actions-pop button.is-danger { color: hsl(var(--negative, 0 60% 45%)); }
+.row-actions-pop button.is-danger:hover { background: hsl(var(--negative, 0 60% 45%) / 0.08); }
+.row-actions-pop button svg { color: hsl(var(--foreground-subtle)); flex: none; }
+.row-actions-pop button.is-danger svg { color: currentColor; }
 
 .tx-source-note {
   margin-top: var(--space-4);
