@@ -34,10 +34,10 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
-    WHERE tablename = 'loan_balances' AND policyname = 'users manage own loan balances'
+    WHERE tablename = 'installment_loan_balances' AND policyname = 'users manage own loan balances'
   ) THEN
     CREATE POLICY "users manage own loan balances"
-      ON "loan_balances" FOR ALL
+      ON "installment_loan_balances" FOR ALL
       USING (auth.uid() = user_id)
       WITH CHECK (auth.uid() = user_id);
   END IF;
