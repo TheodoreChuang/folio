@@ -182,7 +182,7 @@ export const installmentLoanBalances = pgTable('installment_loan_balances', {
   index('idx_installment_loan_balances_loan_date').on(t.installmentLoanId, t.recordedAt),
 ])
 
-export const documentStagingItems = pgTable('document_staging_items', {
+export const propertyStagingItems = pgTable('property_staging_items', {
   id:                uuid('id').primaryKey().defaultRandom(),
   userId:            uuid('user_id').notNull(),
   sourceDocumentId:  uuid('source_document_id').notNull(),
@@ -215,6 +215,38 @@ export const documentStagingItems = pgTable('document_staging_items', {
     columns: [t.installmentLoanId],
     foreignColumns: [installmentLoans.id],
   }).onDelete('set null'),
+])
+
+export const loanStagingItems = pgTable('loan_staging_items', {
+  id:                uuid('id').primaryKey().defaultRandom(),
+  userId:            uuid('user_id').notNull(),
+  sourceDocumentId:  uuid('source_document_id').notNull(),
+  lineItemIndex:     integer('line_item_index').notNull(),
+  paymentDate:       date('payment_date').notNull(),
+  amountCents:       integer('amount_cents').notNull(),
+  interestCents:     integer('interest_cents'),
+  principalCents:    integer('principal_cents'),
+  description:       text('description'),
+  confidence:        text('confidence').notNull(),
+  installmentLoanId: uuid('installment_loan_id'),
+  status:            text('status').notNull().default('pending'),
+  createdAt:         timestamp('created_at').defaultNow().notNull(),
+  updatedAt:         timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+                       .$onUpdate(() => new Date()),
+}, (t) => [
+  unique().on(t.sourceDocumentId, t.lineItemIndex),
+  foreignKey({
+    name: 'lsi_source_doc_fk',
+    columns: [t.sourceDocumentId],
+    foreignColumns: [sourceDocuments.id],
+  }).onDelete('cascade'),
+  foreignKey({
+    name: 'lsi_installment_loan_fk',
+    columns: [t.installmentLoanId],
+    foreignColumns: [installmentLoans.id],
+  }).onDelete('set null'),
+  index('idx_loan_staging_user').on(t.userId),
+  index('idx_loan_staging_loan').on(t.installmentLoanId),
 ])
 
 export const propertyTenancies = pgTable('property_tenancies', {
@@ -263,8 +295,11 @@ export type InstallmentLoanBalance = typeof installmentLoanBalances.$inferSelect
 export type Entity                 = typeof entities.$inferSelect
 export type EntityType             = typeof entityTypeEnum.enumValues[number]
 
-export type DocumentStagingItem    = typeof documentStagingItems.$inferSelect
-export type NewDocumentStagingItem = typeof documentStagingItems.$inferInsert
+export type PropertyStagingItem    = typeof propertyStagingItems.$inferSelect
+export type NewPropertyStagingItem = typeof propertyStagingItems.$inferInsert
+
+export type LoanStagingItem        = typeof loanStagingItems.$inferSelect
+export type NewLoanStagingItem     = typeof loanStagingItems.$inferInsert
 
 export type PropertyTenancy        = typeof propertyTenancies.$inferSelect
 export type PropertyManagementAgent = typeof propertyManagementAgents.$inferSelect

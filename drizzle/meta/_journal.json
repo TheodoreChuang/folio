@@ -54,84 +54,84 @@
         {
             "idx": 7,
             "version": "7",
-            "when": 1746604800000,
+            "when": 1777589677005,
             "tag": "0007_rls_policies",
             "breakpoints": true
         },
         {
             "idx": 8,
             "version": "7",
-            "when": 1746604801000,
+            "when": 1777589677006,
             "tag": "0008_idx_properties_user",
             "breakpoints": true
         },
         {
             "idx": 9,
             "version": "7",
-            "when": 1777589677005,
+            "when": 1777589677007,
             "tag": "0009_rename_property_ledger",
             "breakpoints": true
         },
         {
             "idx": 10,
             "version": "7",
-            "when": 1777589677006,
+            "when": 1777589677008,
             "tag": "0010_borrowings_rename",
             "breakpoints": true
         },
         {
             "idx": 11,
             "version": "7",
-            "when": 1777589677007,
+            "when": 1777589677009,
             "tag": "0011_drop_portfolio_reports",
             "breakpoints": true
         },
         {
             "idx": 12,
             "version": "7",
-            "when": 1777589677008,
+            "when": 1777589677010,
             "tag": "0012_ingestion_staging",
             "breakpoints": true
         },
         {
             "idx": 13,
             "version": "7",
-            "when": 1777589677009,
+            "when": 1777589677011,
             "tag": "0013_property_type_fields",
             "breakpoints": true
         },
         {
             "idx": 14,
             "version": "7",
-            "when": 1777589677010,
+            "when": 1777589677012,
             "tag": "0014_property_tenancies",
             "breakpoints": true
         },
         {
             "idx": 15,
             "version": "7",
-            "when": 1777589677011,
+            "when": 1777589677013,
             "tag": "0015_property_management_agents",
             "breakpoints": true
         },
         {
             "idx": 16,
             "version": "7",
-            "when": 1777589677012,
+            "when": 1777589677014,
             "tag": "0016_drop_is_current",
             "breakpoints": true
         },
         {
             "idx": 17,
             "version": "7",
-            "when": 1777589677013,
+            "when": 1777589677015,
             "tag": "0017_rename_settlement_date",
             "breakpoints": true
         },
         {
             "idx": 18,
             "version": "7",
-            "when": 1777589677014,
+            "when": 1777589677016,
             "tag": "0018_loan_domain",
             "breakpoints": true
         },
@@ -140,6 +140,34 @@
             "version": "7",
             "when": 1779755251020,
             "tag": "0019_loan_form_fields",
+            "breakpoints": true
+        },
+        {
+            "idx": 20,
+            "version": "7",
+            "when": 1779755252000,
+            "tag": "0020_rename_document_staging_items",
+            "breakpoints": true
+        },
+        {
+            "idx": 21,
+            "version": "7",
+            "when": 1779755253000,
+            "tag": "0021_loan_staging_items",
+            "breakpoints": true
+        },
+        {
+            "idx": 22,
+            "version": "7",
+            "when": 1779755254000,
+            "tag": "0022_backfill_skipped_rls_and_index",
+            "breakpoints": true
+        },
+        {
+            "idx": 23,
+            "version": "7",
+            "when": 1779755255000,
+            "tag": "0023_idx_loan_staging_source_doc",
             "breakpoints": true
         }
     ]

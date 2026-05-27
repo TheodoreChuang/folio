@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { documentStagingItems, propertyLedger, sourceDocuments } from '@/db/schema'
+import { propertyStagingItems, propertyLedger, sourceDocuments } from '@/db/schema'
 import type { ExtractionResult } from '../extraction/schema'
 import { insertStagedItems } from '../repositories/staging'
 
@@ -50,12 +50,12 @@ export async function commitStagedItems(
   // Fetch approved staging items for these documents
   const approved = await db
     .select()
-    .from(documentStagingItems)
+    .from(propertyStagingItems)
     .where(
       and(
-        eq(documentStagingItems.userId, userId),
-        inArray(documentStagingItems.sourceDocumentId, sourceDocumentIds),
-        eq(documentStagingItems.status, 'approved'),
+        eq(propertyStagingItems.userId, userId),
+        inArray(propertyStagingItems.sourceDocumentId, sourceDocumentIds),
+        eq(propertyStagingItems.status, 'approved'),
       )
     )
 
@@ -103,11 +103,11 @@ export async function commitStagedItems(
 
     // Clean up all staging items for committed documents (committed or skipped)
     await tx
-      .delete(documentStagingItems)
+      .delete(propertyStagingItems)
       .where(
         and(
-          eq(documentStagingItems.userId, userId),
-          inArray(documentStagingItems.sourceDocumentId, sourceDocumentIds),
+          eq(propertyStagingItems.userId, userId),
+          inArray(propertyStagingItems.sourceDocumentId, sourceDocumentIds),
         )
       )
   })
