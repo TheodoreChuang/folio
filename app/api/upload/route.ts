@@ -7,7 +7,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import { captureError } from '@/lib/api-error'
 import { MAX_UPLOAD_BYTES } from '@/lib/constants'
-const ALLOWED_DOCUMENT_TYPES = ['pm_statement', 'loan_statement', 'bank_statement', 'unknown'] as const
+const ALLOWED_DOCUMENT_TYPES = ['pm_statement', 'loan_statement', 'unknown'] as const
 
 function documentTypeToFolder(documentType: string): string {
   switch (documentType) {

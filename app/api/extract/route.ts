@@ -1,4 +1,4 @@
-import { and, eq, gte, sql } from 'drizzle-orm'
+import { and, eq, gte, isNull, sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { sourceDocuments } from '@/db/schema'
@@ -9,6 +9,7 @@ import {
   extractStatementData,
   extractLoanStatementData,
 } from '@/lib/ingestion/extraction/parse'
+import type { ClassificationResult, LoanExtractionResult, ExtractionResult } from '@/lib/ingestion/extraction/schema'
 import { stageExtractionResult, stageLoanExtractionResult } from '@/lib/ingestion'
 import { logger } from '@/lib/logger'
 import { captureError } from '@/lib/api-error'
@@ -76,7 +77,8 @@ export async function POST(request: Request) {
     .where(
       and(
         eq(sourceDocuments.id, sourceDocumentId),
-        eq(sourceDocuments.userId, user.id)
+        eq(sourceDocuments.userId, user.id),
+        isNull(sourceDocuments.deletedAt)
       )
     )
     .limit(1)
@@ -121,7 +123,7 @@ export async function POST(request: Request) {
 
   logger.debug('pdf text extracted', { textLength: pdfText.length })
 
-  let classification: Awaited<ReturnType<typeof classifyDocument>>
+  let classification: ClassificationResult
   try {
     classification = await classifyDocument(pdfText)
   } catch (err) {
@@ -133,21 +135,27 @@ export async function POST(request: Request) {
     )
   }
 
-  await db
-    .update(sourceDocuments)
-    .set({ documentType: classification.documentType })
-    .where(eq(sourceDocuments.id, sourceDocumentId))
-    .returning()
+  try {
+    await db
+      .update(sourceDocuments)
+      .set({ documentType: classification.documentType })
+      .where(and(eq(sourceDocuments.id, sourceDocumentId), eq(sourceDocuments.userId, user.id), isNull(sourceDocuments.deletedAt)))
+      .returning()
+  } catch (err) {
+    captureError(err, { route: 'POST /api/extract', phase: 'type-update' })
+    const message = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: 'Failed to update document type', detail: message }, { status: 500 })
+  }
 
   if (classification.documentType === 'unknown') {
     return NextResponse.json(
       { error: "Couldn't classify this document — only PM statements and loan statements are supported" },
-      { status: 422 }
+      { status: 400 }
     )
   }
 
   if (classification.documentType === 'loan_statement') {
-    let loanResult: Awaited<ReturnType<typeof extractLoanStatementData>>
+    let loanResult: LoanExtractionResult
     try {
       loanResult = await extractLoanStatementData(pdfText)
     } catch (err) {
@@ -159,10 +167,10 @@ export async function POST(request: Request) {
       )
     }
 
-    let stagedCount: number
+    let loanStagedCount: number
     try {
       const staged = await stageLoanExtractionResult(user.id, sourceDocumentId, loanResult)
-      stagedCount = staged.stagedCount
+      loanStagedCount = staged.stagedCount
     } catch (err) {
       captureError(err, { route: 'POST /api/extract', phase: 'staging' })
       const message = err instanceof Error ? err.message : String(err)
@@ -172,11 +180,10 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json({ sourceDocumentId, stagedCount })
+    return NextResponse.json({ sourceDocumentId, stagedCount: loanStagedCount })
   }
 
-  // pm_statement path
-  let result: Awaited<ReturnType<typeof extractStatementData>>
+  let result: ExtractionResult
   try {
     result = await extractStatementData(pdfText)
   } catch (err) {

@@ -41,6 +41,7 @@ const mocks = vi.hoisted(() => ({
   mockDownload: vi.fn(),
   mockSelectLimit: vi.fn(),
   mockCountSelect: vi.fn(),
+  mockDbSet: vi.fn(),
   mockDbUpdate: vi.fn(),
   mockExtractTextFromPdf: vi.fn(),
   mockClassifyDocument: vi.fn(),
@@ -78,10 +79,13 @@ vi.mock('@/lib/db', () => ({
       }),
     }),
     update: vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          returning: vi.fn().mockImplementation(() => mocks.mockDbUpdate()),
-        }),
+      set: vi.fn().mockImplementation((v) => {
+        mocks.mockDbSet(v)
+        return {
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockImplementation(() => mocks.mockDbUpdate()),
+          }),
+        }
       }),
     }),
   },
@@ -197,7 +201,7 @@ describe('POST /api/extract', () => {
     expect(json.error).toMatch(/classification failed/i)
   })
 
-  it('returns 422 when document cannot be classified (unknown type)', async () => {
+  it('returns 400 when document cannot be classified (unknown type)', async () => {
     mocks.mockClassifyDocument.mockResolvedValue({ documentType: 'unknown', confidence: 'low' })
     const res = await POST(
       new Request('http://localhost/api/extract', {
@@ -206,7 +210,7 @@ describe('POST /api/extract', () => {
         body: JSON.stringify({ sourceDocumentId: docRow.id }),
       })
     )
-    expect(res.status).toBe(422)
+    expect(res.status).toBe(400)
     const json = await res.json()
     expect(json.error).toMatch(/couldn't classify/i)
     expect(mocks.mockExtractStatementData).not.toHaveBeenCalled()
@@ -222,7 +226,7 @@ describe('POST /api/extract', () => {
         body: JSON.stringify({ sourceDocumentId: docRow.id }),
       })
     )
-    expect(mocks.mockDbUpdate).toHaveBeenCalled()
+    expect(mocks.mockDbSet).toHaveBeenCalledWith({ documentType: 'loan_statement' })
   })
 
   it('routes to loan extraction path when classified as loan_statement', async () => {
