@@ -31,15 +31,20 @@ The upload flow currently only handles PM statements. Loan bank statements canno
 ## Scope Boundaries
 
 ### In scope — Phase A (backend PR)
+- AI document classification: `classifyDocument()` function that returns `pm_statement | loan_statement | unknown`
 - `loan_staging_items` table: schema, migration, RLS
+- Rename `document_staging_items` → `property_staging_items`: schema rename + migration
 - AI extraction: `loanExtractionResultSchema` + `extractLoanStatementData` function
-- `app/api/extract/route.ts`: branch on `doc.documentType` to call the new extraction path
+- `app/api/upload/route.ts`: make `documentType` optional (defaults to `unknown` when absent)
+- `app/api/extract/route.ts`: classify first → update `source_documents.documentType` → branch to PM or loan extraction; return 422 on `unknown`
 - Staging service: `stageLoanExtractionResult` → inserts into `loan_staging_items`
 - Commit service: `commitLoanStagedItems` → writes to `loan_ledger`, hard-deletes staging rows
 - API routes: GET loan staging sessions, PATCH staging item, POST loan commit
 - Unit tests for services and routes; integration tests for soft-delete correctness and end-to-end flow
 
 ### In scope — Phase B (frontend PR)
+- Remove document type selector from the upload page; `documentType` no longer sent in form data
+- Upload page error handling for 422 unclassifiable documents ("Couldn't classify this document")
 - Load installment loans in the upload wizard for the matching step
 - Loan session matching UI: select which installment loan the statement belongs to
 - Loan entry review UI: payment columns (date, amount, interest, principal)
@@ -61,9 +66,12 @@ The upload flow currently only handles PM statements. Loan bank statements canno
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Staging table | New `loan_staging_items`, not reusing `document_staging_items` | Existing table has `category NOT NULL` and commit path hardcoded to `property_ledger` with `propertyId` required. Branching shared infrastructure adds more risk than a new table. Follows data-model.md principle 5 (transactions follow their domain) |
+| Staging table design | One table per ledger destination: `property_staging_items` + `loan_staging_items` | Staging shape mirrors the ledger it feeds; DB-enforced types; multiple document types can route to the same staging table; see data-model.md Ingestion Domain |
+| `document_staging_items` rename | Rename to `property_staging_items` | Aligns naming with the entity-based principle; "document" signals source type, "property" signals destination — destination is the right frame |
 | FK naming on `loan_staging_items` | Explicit names (`lsi_source_doc_fk`, `lsi_installment_loan_fk`) | Follows the pattern established by `documentStagingItems` which already uses `foreignKey()` with explicit names (`dsi_source_doc_fk`, etc.) — consistency with the adjacent table is the primary reason |
-| Extract route branching | Single branch on `doc.documentType` in `app/api/extract/route.ts` | PM and loan paths share auth, rate-limit, error handling — only the extract function and staging call differ |
+| Document type resolution | Dedicated `classifyDocument()` AI call before extraction | Users upload without selecting type; two AI calls per document (classify then extract) is intentional — simpler to test, reason about, and extend than a combined classify+extract schema |
+| Unknown document type | Return 422 from extract route; no staging rows created | Clear error surface; user sees "Couldn't classify" in the file status list; upload succeeded (PDF stored) so no data is lost |
+| Extract route branching | Classify first → update `source_documents.documentType` → branch on classification result | PM and loan paths share auth, rate-limit, error handling — only the classify step is new; branching on AI result not stored type keeps the route self-contained |
 | New extraction function | Separate `extractLoanStatementData` in `parse.ts` | Parallel to `extractStatementData`; different Zod schema with loan-specific fields (`interestCents`, `principalCents`, `closingBalanceCents`) |
 | Loan commit endpoint | New `POST /api/ingestion/loan-commit` | Keeps PM and loan commit paths separate; avoids branching the existing commit route |
 | `installmentLoanId` requirement | Hard validation on commit: reject if any approved item has null `installmentLoanId` | Matches the existing `propertyId` requirement for PM commits; unmatched entries cannot be committed |
@@ -76,19 +84,26 @@ The upload flow currently only handles PM statements. Loan bank statements canno
 *Directional guidance for review — not implementation specification.*
 
 ```
-Upload (unchanged)
+Upload (modified — documentType now optional)
   POST /api/upload
-    loan_statement → source_documents (documentType = 'loan_statement')
-    Note: 'loan_statement' already accepted by the upload route
+    any PDF → source_documents (documentType = 'unknown')
+    storage path: documents/<userId>/documents/<filename>
 
 Extract (modified)
   POST /api/extract
-    if doc.documentType === 'loan_statement':
-      extractLoanStatementData(pdfText)  ← new
-        → loanExtractionResultSchema (Zod)
-      stageLoanExtractionResult()        ← new
-        → loan_staging_items (status: 'pending', installmentLoanId: null)
-    else: existing PM path unchanged
+    1. classifyDocument(pdfText)          ← new
+         → 'pm_statement' | 'loan_statement' | 'unknown'
+    2. UPDATE source_documents SET documentType = result   ← new
+    3. if 'unknown':
+         return 422 { error: "Couldn't classify this document" }
+       if 'loan_statement':
+         extractLoanStatementData(pdfText)  ← new
+           → loanExtractionResultSchema (Zod)
+         stageLoanExtractionResult()        ← new
+           → loan_staging_items (status: 'pending', installmentLoanId: null)
+       if 'pm_statement':
+         existing extractStatementData + stageExtractionResult path unchanged
+           → property_staging_items (renamed from document_staging_items)
 
 Review (new Phase B frontend)
   GET  /api/ingestion/loan-staged
@@ -107,31 +122,73 @@ Commit (new)
 
 ## Implementation Units
 
-### U1. Schema — loan_staging_items table + migration + RLS
+### U0. AI document classification function
 
-**For consideration:** Should `document_staging_items` be generic and handle all types of uploaded files or do we have different normalised staging tables for each type of file. If normalised staging tables consider renaming `document_staging_items` into `property_ledger_staging_items` and update Ingestion Domain in `docs/data-model.md`. This plan is assuming normalised staging tables.
+**Goal:** Implement `classifyDocument(pdfText)` — a fast AI call that determines document type before extraction routing.
 
-**Goal:** Define `loan_staging_items` in `db/schema.ts`, generate the migration, and add RLS.
+**Requirements:** Users upload without selecting type; extract route needs to determine PM vs loan vs unknown before calling the appropriate extraction function (see Scope and data-model.md Ingestion Domain)
 
-**Requirements:** Separate staging table for loan payment entries (see Key Technical Decisions above)
+**Dependencies:** None (pure library code)
+
+**Files:**
+- `lib/ingestion/extraction/parse.ts` (modify — add `classifyDocument`)
+- `lib/ingestion/extraction/schema.ts` (modify — add `classificationResultSchema`)
+- `__tests__/lib/ingestion-extraction.test.ts` (modify or create)
+
+**Approach:**
+
+`classificationResultSchema` (Zod):
+- `documentType`: enum `pm_statement | loan_statement | unknown`
+- `confidence`: enum `high | medium | low`
+
+`classifyDocument(pdfText: string)`: `generateObject` call using `classificationResultSchema`. System prompt: identify whether the document is an Australian property management statement, a mortgage/home loan bank statement, or neither. Return `unknown` when confidence is insufficient — do not guess.
+
+Model: Haiku (fast, cheap — classification is a simpler task than extraction).
+
+**Test scenarios:**
+- Returns `pm_statement` for text containing PM statement signals
+- Returns `loan_statement` for text containing loan statement signals
+- Returns `unknown` for unrecognisable text
+- Schema rejects values outside the enum
+- System prompt references "property management" and "loan statement"
+
+**Verification:** Unit tests pass; `pnpm tsc --noEmit` passes.
+
+---
+
+### U1. Schema — loan_staging_items table + rename document_staging_items + migrations + RLS
+
+**Decision:** Staging tables are entity-based (mirror the ledger destination, not the source document type). `document_staging_items` is renamed to `property_staging_items`. See `docs/data-model.md` Ingestion Domain. Both staging tables now have explicit names that reflect where they commit to, not where they came from.
+
+**Goal:** Define `loan_staging_items` in `db/schema.ts`, rename `document_staging_items` → `property_staging_items`, generate migrations, and add RLS.
+
+**Requirements:** Entity-based staging tables (see Key Technical Decisions and data-model.md Ingestion Domain)
 
 **Dependencies:** U2 (from schema plan — loan_ledger migration applied)
 
 **Files:**
-- `db/schema.ts` (modify)
-- `drizzle/0019_loan_staging_items.sql` (generated)
+- `db/schema.ts` (modify — rename `documentStagingItems` → `propertystaging_items`, add `loanStagingItems`)
+- `drizzle/0019_rename_document_staging_items.sql` (generated — ALTER TABLE rename + update RLS policy name)
+- `drizzle/0020_loan_staging_items.sql` (generated — new table + RLS)
 
-**Approach:**
+**Approach — rename:**
+
+In `db/schema.ts`, rename the Drizzle table definition from `documentStagingItems` / `'document_staging_items'` to `propertyStagingItems` / `'property_staging_items'`. Update all references in `lib/ingestion/` and existing tests. The rename migration:
+```sql
+ALTER TABLE "document_staging_items" RENAME TO "property_staging_items";
+```
+
+**Approach — loan_staging_items:**
 
 Table columns: `id` (uuid PK), `userId` (uuid NOT NULL), `sourceDocumentId` (uuid NOT NULL), `lineItemIndex` (integer NOT NULL), `paymentDate` (date NOT NULL), `amountCents` (integer NOT NULL), `interestCents` (integer nullable), `principalCents` (integer nullable), `description` (text nullable), `confidence` (text NOT NULL, check constraint high|medium|low), `installmentLoanId` (uuid nullable), `status` (text NOT NULL default 'pending', check constraint pending|approved|rejected), `createdAt` (timestamp), `updatedAt` (timestamp with tz)
 
-Use `foreignKey()` builder with explicit names (pattern from `documentStagingItems`):
+Use `foreignKey()` builder with explicit names:
 - `lsi_source_doc_fk`: `sourceDocumentId → source_documents.id`, ON DELETE CASCADE
 - `lsi_installment_loan_fk`: `installmentLoanId → installment_loans.id`, ON DELETE SET NULL
 
 Indexes: `unique(sourceDocumentId, lineItemIndex)`, `index('idx_loan_staging_user').on(t.userId)`, `index('idx_loan_staging_loan').on(t.installmentLoanId)`
 
-Manually append to migration:
+Manually append RLS to migration:
 ```sql
 CREATE POLICY "users manage own loan_staging_items"
   ON "loan_staging_items" FOR ALL
@@ -139,13 +196,13 @@ CREATE POLICY "users manage own loan_staging_items"
   WITH CHECK (auth.uid() = user_id);
 ```
 
-Type exports: `LoanStagingItem`, `NewLoanStagingItem`
+Type exports: `PropertyStagingItem`, `NewPropertyStagingItem`, `LoanStagingItem`, `NewLoanStagingItem`
 
 **Patterns to follow:** `db/schema.ts` — `documentStagingItems` for the overall shape and `foreignKey()` builder usage; `drizzle/0014_property_tenancies.sql` for RLS template.
 
 **Test expectation:** None — `pnpm tsc --noEmit` and `pnpm db:migrate` verify.
 
-**Verification:** Migration applies; type exports compile without errors.
+**Verification:** Both migrations apply; type exports compile without errors; existing `document_staging_items` references updated throughout codebase.
 
 ---
 
@@ -193,32 +250,43 @@ Type exports: `LoanStagingItem`, `NewLoanStagingItem`
 
 ---
 
-### U3. Extract route — branch on document type
+### U3. Extract route — classify then branch
 
-**Goal:** Update `app/api/extract/route.ts` to detect `loan_statement` documents and route them through the new extraction path.
+**Goal:** Update `app/api/extract/route.ts` to classify the document via AI, update its stored type, then route to the correct extraction path. Also update `app/api/upload/route.ts` to make `documentType` optional.
 
-**Requirements:** Upload flow extended to handle loan statements (see origin)
+**Requirements:** Auto-classification (see Scope and Key Technical Decisions); upload flow extended to handle loan statements
 
-**Dependencies:** U1, U2, U4 (staging function must exist before the route calls it)
+**Dependencies:** U0, U1, U2, U4 (classification and staging functions must exist before the route calls them)
 
 **Files:**
-- `app/api/extract/route.ts` (modify)
+- `app/api/upload/route.ts` (modify — make `documentType` optional, default `'unknown'`, use generic storage folder)
+- `app/api/extract/route.ts` (modify — add classify step, update source document, branch on result)
 - `__tests__/api/extract.test.ts` (modify)
 
-**Approach:**
+**Approach — upload route:**
 
-After loading the `sourceDocument`, check `doc.documentType`:
-- `'loan_statement'` → call `extractLoanStatementData(pdfText)` then `stageLoanExtractionResult(userId, sourceDocumentId, result)` (from `@/lib/ingestion`)
-- anything else (including `'bank_statement'`) → existing `extractStatementData` + `stageExtractionResult` path unchanged; `bank_statement` intentionally falls through to PM extraction
+Make `documentType` optional in the request body. When absent or `'unknown'`, store as `'unknown'` in `source_documents` and use the generic `documents/<userId>/documents/` storage path. The existing allowed-types validation is relaxed to permit `'unknown'`.
 
-Response shape is identical in both cases: `{ sourceDocumentId, stagedCount }`.
+**Approach — extract route:**
+
+After extracting PDF text, before the existing extraction call:
+1. Call `classifyDocument(pdfText)` (from `@/lib/ingestion/extraction/parse`)
+2. Update `source_documents` SET `documentType = result.documentType` where `id = sourceDocumentId`
+3. Branch on `result.documentType`:
+   - `'unknown'` → return 422 `{ error: "Couldn't classify this document — only PM statements and loan statements are supported" }`
+   - `'loan_statement'` → call `extractLoanStatementData(pdfText)` then `stageLoanExtractionResult(userId, sourceDocumentId, result)`
+   - `'pm_statement'` → existing `extractStatementData` + `stageExtractionResult` path unchanged
+
+Response shape is identical for PM and loan: `{ sourceDocumentId, stagedCount }`.
 
 **Patterns to follow:** Existing `app/api/extract/route.ts` — auth, rate-limit, storage download, PDF text extraction, and error handling are all shared.
 
 **Test scenarios:**
-- POST with a `loan_statement` source document → calls loan extraction path; returns `{ sourceDocumentId, stagedCount }`
-- POST with a `pm_statement` source document → calls PM extraction path unchanged (regression)
-- Rate limit applies to both paths
+- POST → AI classifies as `loan_statement` → calls loan extraction path; returns `{ sourceDocumentId, stagedCount }`
+- POST → AI classifies as `pm_statement` → calls PM extraction path (regression)
+- POST → AI classifies as `unknown` → returns 422 with clear error message; no staging rows created
+- `source_documents.documentType` is updated to the classified type after the classify call
+- Rate limit applies to all paths
 - 401 when unauthenticated
 - 404 when `sourceDocumentId` not found or belongs to another user
 
@@ -403,7 +471,12 @@ End-to-end staging flow:
 
 **Approach:**
 
-The upload page already has `loan_statement` as a `DocumentType` option and the document type selector UI. Add:
+Remove the document type selector:
+- Delete the `DOCUMENT_TYPE_OPTIONS` constant, the `documentType` state, and the 3-button type selector UI
+- Remove `formData.append('documentType', documentType)` from `processFile`; `documentType` is no longer sent in the upload request
+- Handle 422 responses from `/api/extract`: update file status to `'error'` with the message from the response body (e.g. "Couldn't classify this document…")
+
+Add loan session support:
 - Fetch installment loans for the matching step: iterate `GET /api/properties` → for each property `GET /api/properties/{id}/loans` (same pattern used elsewhere in the app). Trigger alongside the property fetch when entering review state.
 - Store in `loans: Loan[]` state (type already defined in the page)
 - Add `sessionLoanMap: Record<string, string>` state (sourceDocumentId → installmentLoanId)
@@ -502,12 +575,17 @@ Keep the existing "Confirm entries" PM commit flow completely unchanged.
 - [ ] `pnpm test` passes
 - [ ] `pnpm test:integration` passes (Supabase running)
 - [ ] `pnpm tsc --noEmit` passes
+- [ ] `document_staging_items` renamed to `property_staging_items`; all references updated
 - [ ] `loan_staging_items` table exists with explicit FK names
-- [ ] POST `/api/extract` with a `loan_statement` source document creates `loan_staging_items` rows
+- [ ] POST `/api/extract` with an untyped PDF classifies it via AI, updates `source_documents.documentType`
+- [ ] POST `/api/extract` with an unclassifiable PDF returns 422 with clear error; no staging rows created
+- [ ] POST `/api/extract` with a loan statement creates `loan_staging_items` rows
 - [ ] POST `/api/ingestion/loan-commit` writes rows to `loan_ledger` and deletes staging items
 - [ ] PM statement upload flow unchanged
 
 **Phase B:**
+- [ ] Upload page has no document type selector
+- [ ] Unclassifiable PDF shows "Couldn't classify" error in file status list
 - [ ] Upload wizard renders loan sessions with payment columns (date, amount, interest, principal)
 - [ ] Loan session can be matched to an installment loan via dropdown
 - [ ] Commit writes entries to `loan_ledger` (verifiable in Supabase Studio)

@@ -330,12 +330,32 @@ domain tables. Other domains never reach into Ingestion's tables — they receiv
 via the Ingestion service's public API after a user confirms and commits the staged data.
 
 ```
-source_documents          — entity table; file metadata, storage path, upload provenance, extraction status
-document_staging_items    — entity table; JSONB extracted fields awaiting user review and commit;
+source_documents          — entity table; file metadata, storage path, upload provenance, document type,
+                            extraction status; documentType resolved by AI classification at extract time
+property_staging_items    — entity table; typed fields (date, amountCents, category, propertyId) for
+                            property-bound entries awaiting user review and commit to property_ledger;
+                            keyed by (source_document_id, line_item_index)
+loan_staging_items        — entity table; typed fields (paymentDate, amountCents, interestCents,
+                            principalCents, installmentLoanId) for loan payment entries awaiting user
+                            review and commit to loan_ledger;
                             keyed by (source_document_id, line_item_index)
 document_source_mappings  — entity table; learned routing rules (document type → property/entity mapping)
                             used to pre-fill matching on future uploads
 ```
+
+**Staging tables are entity-based, not document-type-based.** Each staging table mirrors the shape
+of the ledger it feeds. Multiple document types may route to the same staging table: a PM statement
+and an insurance invoice both produce `property_staging_items` rows with the same schema (date,
+amountCents, category). The document type governs the extraction prompt; the staging table shape
+is determined by the commit destination.
+
+**Auto-classification.** Users upload PDFs without selecting a document type. A dedicated AI
+classification call at extraction time determines whether a document is a PM statement, a loan
+statement, or unknown. On classification, `source_documents.documentType` is updated. On unknown,
+extraction returns an error and no staging rows are created.
+
+Note: `document_staging_items` is the current implementation name for `property_staging_items` and
+will be renamed in a follow-up migration.
 
 Any ledger or entity row created from a document carries an optional `source_document_id` FK.
 The document row owns extraction provenance and status (parsed, AI extraction succeeded/failed,
@@ -343,7 +363,7 @@ re-extraction queued). Rows produced from a document reference back to it; the d
 reference its derived rows.
 
 Staging items are transient: once committed (user confirms, rows written to domain tables) or
-rejected, the staging row may be soft-deleted. The `source_document_id` on the committed domain
+rejected, the staging row is hard-deleted. The `source_document_id` on the committed domain
 row is the permanent audit link.
 
 The `document_source_mappings` table is the domain's memory: it stores which document types
@@ -376,7 +396,8 @@ via junction tables in each relevant domain (e.g. `property_ownerships`).
 | Co-ownership | Junction table with percentage (`property_ownerships`) | Single `entity_id` FK cannot express split ownership |
 | "Account" abstraction | API/UI layer only, not schema | Shared parent table couples all domains at the DB layer |
 | Document processing | Ingestion domain (not cross-cutting infrastructure) | Owns a full lifecycle (receipt → staging → routing → commit) that warrants domain status |
-| Extraction staging | Single JSONB staging table (`document_staging_items`) per document, committed to domain tables on user confirmation | Keeps extracted data in one place until validated; avoids partial writes to domain tables |
+| Extraction staging | One strongly-typed staging table per ledger destination (`property_staging_items`, `loan_staging_items`); committed on user confirmation | Staging shape mirrors the ledger it feeds; multiple document types can route to the same table; DB-enforced types catch extraction errors earlier than JSONB validation |
+| Document type resolution | AI classification call at extraction time; `source_documents.documentType` updated from `unknown` to the resolved type | Users drop files without selecting type; classification decouples upload from extraction routing; unknown types surface a clear error before any staging rows are created |
 | Document routing memory | `document_source_mappings` table within Ingestion domain | Learned mappings (document type → property/entity) live where the routing logic lives |
 | Financial report totals | Live queries only; no stored financial totals | Stored totals drift from source data; live aggregation is the source of truth |
 | AI commentary | Generated on demand, cached in `report_commentary` | Regeneration is cheap; stale AI commentary against changed data is misleading |

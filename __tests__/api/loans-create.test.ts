@@ -66,10 +66,6 @@ const minValidBody = {
   endDate: '2050-01-01',
 }
 
-function makeGetRequest() {
-  return new Request('http://localhost/api/loans', { method: 'GET' })
-}
-
 describe('GET /api/loans', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -81,12 +77,12 @@ describe('GET /api/loans', () => {
 
   it('returns 401 when unauthenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
-    const res = await GET(makeGetRequest())
+    const res = await GET()
     expect(res.status).toBe(401)
   })
 
   it('returns loans for the authenticated user', async () => {
-    const res = await GET(makeGetRequest())
+    const res = await GET()
     expect(res.status).toBe(200)
     const json = await res.json() as { loans: { id: string; lender: string }[] }
     expect(json.loans).toHaveLength(1)
