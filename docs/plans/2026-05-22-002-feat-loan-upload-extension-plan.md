@@ -76,6 +76,7 @@ The upload flow currently only handles PM statements. Loan bank statements canno
 | Loan commit endpoint | New `POST /api/ingestion/loan-commit` | Keeps PM and loan commit paths separate; avoids branching the existing commit route |
 | `installmentLoanId` requirement | Hard validation on commit: reject if any approved item has null `installmentLoanId` | Matches the existing `propertyId` requirement for PM commits; unmatched entries cannot be committed |
 | Staging row lifecycle | Hard-delete on commit (both approved + rejected) | Matches the existing PM pattern (`commitStagedItems` hard-deletes); staging rows are transient |
+| Transaction in commit service | `commitLoanStagedItems` wraps ledger insert + staging delete in `db.transaction()` | Follows the established pattern in `commitStagedItems` (PM commit, `lib/ingestion/services/ingestion.ts:72`) — if ledger insert fails, staging rows are not deleted |
 
 ---
 
@@ -167,16 +168,34 @@ Model: Haiku (fast, cheap — classification is a simpler task than extraction).
 **Dependencies:** U2 (from schema plan — loan_ledger migration applied)
 
 **Files:**
-- `db/schema.ts` (modify — rename `documentStagingItems` → `propertystaging_items`, add `loanStagingItems`)
-- `drizzle/0019_rename_document_staging_items.sql` (generated — ALTER TABLE rename + update RLS policy name)
+- `db/schema.ts` (modify — rename `documentStagingItems` → `propertyStagingItems`, add `loanStagingItems`)
+- `lib/ingestion/repositories/staging.ts` (modify — update `documentStagingItems`, `DocumentStagingItem`, `NewDocumentStagingItem` imports and references)
+- `lib/ingestion/services/ingestion.ts` (modify — update `documentStagingItems` import)
+- `drizzle/0019_rename_document_staging_items.sql` (generated — ALTER TABLE rename + rename unique constraint + drop/recreate RLS policy)
 - `drizzle/0020_loan_staging_items.sql` (generated — new table + RLS)
 
 **Approach — rename:**
 
-In `db/schema.ts`, rename the Drizzle table definition from `documentStagingItems` / `'document_staging_items'` to `propertyStagingItems` / `'property_staging_items'`. Update all references in `lib/ingestion/` and existing tests. The rename migration:
+In `db/schema.ts`, rename the Drizzle table definition from `documentStagingItems` / `'document_staging_items'` to `propertyStagingItems` / `'property_staging_items'`. Update all references in `lib/ingestion/repositories/staging.ts` and `lib/ingestion/services/ingestion.ts`. The rename migration must handle three artifacts:
+
 ```sql
+-- 1. Rename the table
 ALTER TABLE "document_staging_items" RENAME TO "property_staging_items";
+
+-- 2. Rename the auto-generated unique constraint (not auto-renamed by Postgres)
+ALTER TABLE "property_staging_items"
+  RENAME CONSTRAINT "document_staging_items_source_document_id_line_item_index_unique"
+  TO "property_staging_items_source_document_id_line_item_index_unique";
+
+-- 3. Rename the RLS policy (no ALTER POLICY RENAME in Postgres — must drop + recreate)
+DROP POLICY "users manage own document_staging_items" ON "property_staging_items";
+CREATE POLICY "users manage own property_staging_items"
+  ON "property_staging_items" FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 ```
+
+FK and CHECK constraints (`dsi_source_doc_fk`, `dsi_property_fk`, `dsi_installment_loan_fk`, `dsi_confidence_check`, `dsi_status_check`) use explicit `dsi_*` names that don't embed the table name — no rename needed.
 
 **Approach — loan_staging_items:**
 
@@ -257,6 +276,8 @@ Type exports: `PropertyStagingItem`, `NewPropertyStagingItem`, `LoanStagingItem`
 **Requirements:** Auto-classification (see Scope and Key Technical Decisions); upload flow extended to handle loan statements
 
 **Dependencies:** U0, U1, U2, U4 (classification and staging functions must exist before the route calls them)
+
+**Execution note:** Implement after U4. U3 depends on `stageLoanExtractionResult` from U4 and is listed here for logical grouping — the route wraps the services, so services (U4) must be built first.
 
 **Files:**
 - `app/api/upload/route.ts` (modify — make `documentType` optional, default `'unknown'`, use generic storage folder)
@@ -566,6 +587,7 @@ Keep the existing "Confirm entries" PM commit flow completely unchanged.
 
 - **Drizzle `sql` template column qualification:** If any query in this work uses a correlated subquery inside a Drizzle `sql<>` template (e.g. to fetch latest loan balance inline), outer-row column references must use raw fully-qualified text `"table_name"."db_column_name"` — not `${table.column}`. See `docs/solutions/logic-errors/drizzle-sql-template-unqualified-column-refs-2026-05-21.md`. Unit tests will not catch this; only integration tests that assert a non-null value will.
 - **Duplicate payment detection:** Two `loan_ledger` rows with the same `(installmentLoanId, paymentDate, amountCents)` can be created by uploading the same statement twice. Detection / deduplication deferred.
+- **Extract retry after partial staging failure:** If `/api/extract` succeeds at classification + document type update but fails mid-staging (some `loan_staging_items` rows already inserted), a retry on the same `sourceDocumentId` will hit the unique constraint on `(sourceDocumentId, lineItemIndex)`. This is consistent with the existing PM staging behavior (same gap). The `source_documents.file_hash` unique constraint prevents a second source document row from the same file — it does not prevent re-extraction on an existing `sourceDocumentId`. Resolution if needed: delete existing staging rows for the source document before re-staging, or use `onConflictDoNothing` — deferred.
 
 ---
 
