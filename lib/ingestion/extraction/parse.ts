@@ -1,7 +1,7 @@
 import { generateObject, createGateway } from 'ai'
 import { extractText } from 'unpdf'
-import type { ExtractionResult } from './schema'
-import { extractionResultSchema } from './schema'
+import type { ExtractionResult, LoanExtractionResult, ClassificationResult } from './schema'
+import { extractionResultSchema, loanExtractionResultSchema, classificationResultSchema } from './schema'
 
 const gateway = createGateway()
 
@@ -17,6 +17,47 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   }
 
   return text.trim()
+}
+
+export async function classifyDocument(
+  pdfText: string,
+): Promise<ClassificationResult> {
+  const { object } = await generateObject({
+    model: gateway('anthropic/claude-haiku-4-5'),
+    schema: classificationResultSchema,
+    system: `You are classifying Australian financial documents.
+Classify the document as one of:
+- "pm_statement": an Australian property management statement (rent, expenses, PM fees)
+- "loan_statement": a mortgage or home loan statement showing loan payments and interest
+- "unknown": neither of the above, or insufficient text to determine
+
+Return "unknown" when confidence is insufficient — do not guess.`,
+    prompt: `Classify this document:\n\n${pdfText}`,
+  })
+
+  return object
+}
+
+export async function extractLoanStatementData(
+  pdfText: string,
+): Promise<LoanExtractionResult> {
+  const { object } = await generateObject({
+    model: gateway('anthropic/claude-haiku-4-5'),
+    schema: loanExtractionResultSchema,
+    system: `You are extracting structured financial data from Australian mortgage or home loan bank statements.
+Rules:
+- Extract every payment transaction in the statement period
+- amountCents: total payment amount in integer cents (always positive)
+- interestCents: interest component in integer cents if visible, omit if not shown
+- principalCents: principal component in integer cents if visible, omit if not shown
+- closingBalanceCents: the end-of-statement outstanding loan balance in integer cents
+- All dates must be in YYYY-MM-DD format
+- An empty payments array is valid for a statement with no transactions in the period
+- confidence: rate high if unambiguous, medium if inferred, low if uncertain`,
+    prompt: `Extract all payment data from this loan statement:\n\n${pdfText}`,
+  })
+
+  return object
 }
 
 export async function extractStatementData(

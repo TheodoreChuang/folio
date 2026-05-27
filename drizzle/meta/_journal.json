@@ -141,6 +141,20 @@
             "when": 1779755251020,
             "tag": "0019_loan_form_fields",
             "breakpoints": true
+        },
+        {
+            "idx": 20,
+            "version": "7",
+            "when": 1779755252000,
+            "tag": "0020_rename_document_staging_items",
+            "breakpoints": true
+        },
+        {
+            "idx": 21,
+            "version": "7",
+            "when": 1779755253000,
+            "tag": "0021_loan_staging_items",
+            "breakpoints": true
         }
     ]
 }

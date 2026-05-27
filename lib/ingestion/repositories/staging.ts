@@ -1,39 +1,39 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { documentStagingItems } from '@/db/schema'
-import type { DocumentStagingItem, NewDocumentStagingItem, LedgerCategory } from '@/db/schema'
+import { propertyStagingItems } from '@/db/schema'
+import type { PropertyStagingItem, NewPropertyStagingItem, LedgerCategory } from '@/db/schema'
 
 export async function insertStagedItems(
-  items: NewDocumentStagingItem[],
-): Promise<DocumentStagingItem[]> {
-  return db.insert(documentStagingItems).values(items).returning()
+  items: NewPropertyStagingItem[],
+): Promise<PropertyStagingItem[]> {
+  return db.insert(propertyStagingItems).values(items).returning()
 }
 
 export async function listStagedByUser(
   userId: string,
   status?: 'pending' | 'approved' | 'rejected',
-): Promise<DocumentStagingItem[]> {
-  const conditions = [eq(documentStagingItems.userId, userId)]
+): Promise<PropertyStagingItem[]> {
+  const conditions = [eq(propertyStagingItems.userId, userId)]
   if (status !== undefined) {
-    conditions.push(eq(documentStagingItems.status, status))
+    conditions.push(eq(propertyStagingItems.status, status))
   }
   return db
     .select()
-    .from(documentStagingItems)
+    .from(propertyStagingItems)
     .where(and(...conditions))
 }
 
 export async function listStagedBySourceDocumentIds(
   userId: string,
   sourceDocumentIds: string[],
-): Promise<DocumentStagingItem[]> {
+): Promise<PropertyStagingItem[]> {
   return db
     .select()
-    .from(documentStagingItems)
+    .from(propertyStagingItems)
     .where(
       and(
-        eq(documentStagingItems.userId, userId),
-        inArray(documentStagingItems.sourceDocumentId, sourceDocumentIds),
+        eq(propertyStagingItems.userId, userId),
+        inArray(propertyStagingItems.sourceDocumentId, sourceDocumentIds),
       )
     )
 }
@@ -49,11 +49,11 @@ export async function patchStagedItem(
   id: string,
   userId: string,
   patch: StagedItemPatch,
-): Promise<DocumentStagingItem | null> {
+): Promise<PropertyStagingItem | null> {
   const [row] = await db
-    .update(documentStagingItems)
+    .update(propertyStagingItems)
     .set(patch)
-    .where(and(eq(documentStagingItems.id, id), eq(documentStagingItems.userId, userId)))
+    .where(and(eq(propertyStagingItems.id, id), eq(propertyStagingItems.userId, userId)))
     .returning()
   return row ?? null
 }
