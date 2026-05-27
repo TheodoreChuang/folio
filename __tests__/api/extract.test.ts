@@ -7,7 +7,7 @@ const docRow = {
   fileName: 'stmt.pdf',
   filePath: 'documents/user-123/pm_statements/stmt.pdf',
   fileHash: 'abc',
-  documentType: 'pm_statement',
+  documentType: 'unknown',
   uploadedAt: new Date(),
 }
 
@@ -229,6 +229,19 @@ describe('POST /api/extract', () => {
     expect(mocks.mockDbSet).toHaveBeenCalledWith({ documentType: 'loan_statement' })
   })
 
+  it('skips classification when document already has a definitive type', async () => {
+    mocks.mockSelectLimit.mockResolvedValue([{ ...docRow, documentType: 'pm_statement' }])
+    await POST(
+      new Request('http://localhost/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceDocumentId: docRow.id }),
+      })
+    )
+    expect(mocks.mockClassifyDocument).not.toHaveBeenCalled()
+    expect(mocks.mockExtractStatementData).toHaveBeenCalled()
+  })
+
   it('routes to loan extraction path when classified as loan_statement', async () => {
     mocks.mockClassifyDocument.mockResolvedValue({ documentType: 'loan_statement', confidence: 'high' })
     const res = await POST(
@@ -239,7 +252,7 @@ describe('POST /api/extract', () => {
       })
     )
     expect(res.status).toBe(200)
-    expect(mocks.mockExtractLoanStatementData).toHaveBeenCalledWith('Extracted PDF text content here.')
+    expect(mocks.mockExtractLoanStatementData).toHaveBeenCalledWith('Extracted PDF text content here.', expect.any(AbortSignal))
     expect(mocks.mockStageLoanExtractionResult).toHaveBeenCalledWith('user-123', docRow.id, loanResult)
     expect(mocks.mockExtractStatementData).not.toHaveBeenCalled()
     const json = await res.json()

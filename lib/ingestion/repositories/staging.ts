@@ -3,6 +3,19 @@ import { db } from '@/lib/db'
 import { propertyStagingItems } from '@/db/schema'
 import type { PropertyStagingItem, NewPropertyStagingItem, LedgerCategory } from '@/db/schema'
 
+export async function deletePropertyStagedBySourceDocument(
+  userId: string,
+  sourceDocumentId: string,
+): Promise<void> {
+  await db
+    .delete(propertyStagingItems)
+    .where(and(
+      eq(propertyStagingItems.userId, userId),
+      eq(propertyStagingItems.sourceDocumentId, sourceDocumentId),
+    ))
+    .returning()
+}
+
 export async function insertStagedItems(
   items: NewPropertyStagingItem[],
 ): Promise<PropertyStagingItem[]> {

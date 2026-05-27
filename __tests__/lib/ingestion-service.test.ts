@@ -30,6 +30,7 @@ const sampleResult: ExtractionResult = {
 
 const mocks = vi.hoisted(() => ({
   mockInsertStagedItems: vi.fn(),
+  mockDeletePropertyStaged: vi.fn(),
   mockDbSelect: vi.fn(),
   mockDbUpdate: vi.fn(),
   mockDbInsert: vi.fn(),
@@ -38,6 +39,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/ingestion/repositories/staging', () => ({
   insertStagedItems: (...args: unknown[]) => mocks.mockInsertStagedItems(...args),
+  deletePropertyStagedBySourceDocument: (...args: unknown[]) => mocks.mockDeletePropertyStaged(...args),
 }))
 
 // We mock db directly for commit tests
@@ -71,6 +73,14 @@ vi.mock('@/lib/db', () => ({
 describe('stageExtractionResult', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.mockDeletePropertyStaged.mockResolvedValue(undefined)
+    mocks.mockInsertStagedItems.mockResolvedValue([{}, {}])
+  })
+
+  it('deletes existing staging rows before inserting', async () => {
+    await stageExtractionResult(USER_ID, DOC_ID, sampleResult)
+    expect(mocks.mockDeletePropertyStaged).toHaveBeenCalledWith(USER_ID, DOC_ID)
+    expect(mocks.mockDeletePropertyStaged).toHaveBeenCalledBefore(mocks.mockInsertStagedItems)
   })
 
   it('inserts one staging row per line item', async () => {

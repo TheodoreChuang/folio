@@ -9,7 +9,7 @@ import {
   extractStatementData,
   extractLoanStatementData,
 } from '@/lib/ingestion/extraction/parse'
-import type { ClassificationResult, LoanExtractionResult, ExtractionResult } from '@/lib/ingestion/extraction/schema'
+import type { LoanExtractionResult, ExtractionResult } from '@/lib/ingestion/extraction/schema'
 import { stageExtractionResult, stageLoanExtractionResult } from '@/lib/ingestion'
 import { logger } from '@/lib/logger'
 import { captureError } from '@/lib/api-error'
@@ -19,6 +19,10 @@ function isValidUuid(s: unknown): s is string {
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   return uuidRegex.test(s)
+}
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === 'AbortError'
 }
 
 export async function POST(request: Request) {
@@ -123,42 +127,61 @@ export async function POST(request: Request) {
 
   logger.debug('pdf text extracted', { textLength: pdfText.length })
 
-  let classification: ClassificationResult
-  try {
-    classification = await classifyDocument(pdfText)
-  } catch (err) {
-    captureError(err, { route: 'POST /api/extract', phase: 'classification' })
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json(
-      { error: 'Classification failed', detail: message },
-      { status: 500 }
-    )
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 55_000)
+
+  // Skip AI classification if a prior run already determined the document type
+  let documentType: 'pm_statement' | 'loan_statement' | 'unknown'
+  if (doc.documentType === 'pm_statement' || doc.documentType === 'loan_statement') {
+    documentType = doc.documentType as 'pm_statement' | 'loan_statement'
+  } else {
+    try {
+      const classification = await classifyDocument(pdfText, controller.signal)
+      documentType = classification.documentType
+    } catch (err) {
+      clearTimeout(timeoutId)
+      if (isAbortError(err)) {
+        return NextResponse.json({ error: 'Request timed out' }, { status: 504 })
+      }
+      captureError(err, { route: 'POST /api/extract', phase: 'classification' })
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json(
+        { error: 'Classification failed', detail: message },
+        { status: 500 }
+      )
+    }
+
+    try {
+      await db
+        .update(sourceDocuments)
+        .set({ documentType })
+        .where(and(eq(sourceDocuments.id, sourceDocumentId), eq(sourceDocuments.userId, user.id), isNull(sourceDocuments.deletedAt)))
+        .returning()
+    } catch (err) {
+      clearTimeout(timeoutId)
+      captureError(err, { route: 'POST /api/extract', phase: 'type-update' })
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json({ error: 'Failed to update document type', detail: message }, { status: 500 })
+    }
   }
 
-  try {
-    await db
-      .update(sourceDocuments)
-      .set({ documentType: classification.documentType })
-      .where(and(eq(sourceDocuments.id, sourceDocumentId), eq(sourceDocuments.userId, user.id), isNull(sourceDocuments.deletedAt)))
-      .returning()
-  } catch (err) {
-    captureError(err, { route: 'POST /api/extract', phase: 'type-update' })
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: 'Failed to update document type', detail: message }, { status: 500 })
-  }
-
-  if (classification.documentType === 'unknown') {
+  if (documentType === 'unknown') {
+    clearTimeout(timeoutId)
     return NextResponse.json(
       { error: "Couldn't classify this document — only PM statements and loan statements are supported" },
       { status: 400 }
     )
   }
 
-  if (classification.documentType === 'loan_statement') {
+  if (documentType === 'loan_statement') {
     let loanResult: LoanExtractionResult
     try {
-      loanResult = await extractLoanStatementData(pdfText)
+      loanResult = await extractLoanStatementData(pdfText, controller.signal)
     } catch (err) {
+      clearTimeout(timeoutId)
+      if (isAbortError(err)) {
+        return NextResponse.json({ error: 'Request timed out' }, { status: 504 })
+      }
       captureError(err, { route: 'POST /api/extract', phase: 'ai-extraction' })
       const message = err instanceof Error ? err.message : String(err)
       return NextResponse.json(
@@ -172,6 +195,7 @@ export async function POST(request: Request) {
       const staged = await stageLoanExtractionResult(user.id, sourceDocumentId, loanResult)
       loanStagedCount = staged.stagedCount
     } catch (err) {
+      clearTimeout(timeoutId)
       captureError(err, { route: 'POST /api/extract', phase: 'staging' })
       const message = err instanceof Error ? err.message : String(err)
       return NextResponse.json(
@@ -180,36 +204,49 @@ export async function POST(request: Request) {
       )
     }
 
+    clearTimeout(timeoutId)
     return NextResponse.json({ sourceDocumentId, stagedCount: loanStagedCount })
   }
 
-  let result: ExtractionResult
-  try {
-    result = await extractStatementData(pdfText)
-  } catch (err) {
-    captureError(err, { route: 'POST /api/extract', phase: 'ai-extraction' })
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json(
-      {
-        error: 'Extraction failed',
-        detail: message,
-      },
-      { status: 500 }
-    )
+  if (documentType === 'pm_statement') {
+    let result: ExtractionResult
+    try {
+      result = await extractStatementData(pdfText, controller.signal)
+    } catch (err) {
+      clearTimeout(timeoutId)
+      if (isAbortError(err)) {
+        return NextResponse.json({ error: 'Request timed out' }, { status: 504 })
+      }
+      captureError(err, { route: 'POST /api/extract', phase: 'ai-extraction' })
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json(
+        {
+          error: 'Extraction failed',
+          detail: message,
+        },
+        { status: 500 }
+      )
+    }
+
+    let stagedCount: number
+    try {
+      const staged = await stageExtractionResult(user.id, sourceDocumentId, result)
+      stagedCount = staged.stagedCount
+    } catch (err) {
+      clearTimeout(timeoutId)
+      captureError(err, { route: 'POST /api/extract', phase: 'staging' })
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json(
+        { error: 'Staging failed', detail: message },
+        { status: 500 }
+      )
+    }
+
+    clearTimeout(timeoutId)
+    return NextResponse.json({ sourceDocumentId, stagedCount })
   }
 
-  let stagedCount: number
-  try {
-    const staged = await stageExtractionResult(user.id, sourceDocumentId, result)
-    stagedCount = staged.stagedCount
-  } catch (err) {
-    captureError(err, { route: 'POST /api/extract', phase: 'staging' })
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json(
-      { error: 'Staging failed', detail: message },
-      { status: 500 }
-    )
-  }
-
-  return NextResponse.json({ sourceDocumentId, stagedCount })
+  clearTimeout(timeoutId)
+  captureError(new Error(`Unexpected document type: ${documentType}`), { route: 'POST /api/extract' })
+  return NextResponse.json({ error: 'Unexpected document type' }, { status: 500 })
 }

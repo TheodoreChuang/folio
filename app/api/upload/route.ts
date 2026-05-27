@@ -1,13 +1,15 @@
 import { createHash } from 'crypto'
 import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { db } from '@/lib/db'
 import { sourceDocuments } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import { captureError } from '@/lib/api-error'
 import { MAX_UPLOAD_BYTES } from '@/lib/constants'
-const ALLOWED_DOCUMENT_TYPES = ['pm_statement', 'loan_statement', 'unknown'] as const
+
+const documentTypeSchema = z.enum(['pm_statement', 'loan_statement', 'unknown'])
 
 function documentTypeToFolder(documentType: string): string {
   switch (documentType) {
@@ -66,16 +68,18 @@ export async function POST(request: Request) {
   }
 
   const rawDocumentType = formData.get('documentType')
-  const documentTypeStr =
+  const documentTypeParsed = documentTypeSchema.safeParse(
     typeof rawDocumentType === 'string' && rawDocumentType.trim() !== ''
       ? rawDocumentType.trim()
       : 'unknown'
-  if (!ALLOWED_DOCUMENT_TYPES.includes(documentTypeStr as (typeof ALLOWED_DOCUMENT_TYPES)[number])) {
+  )
+  if (!documentTypeParsed.success) {
     return NextResponse.json(
       { error: 'Invalid documentType' },
       { status: 400 }
     )
   }
+  const documentTypeStr = documentTypeParsed.data
 
   const buffer = await file.arrayBuffer()
   const hash = createHash('sha256')
