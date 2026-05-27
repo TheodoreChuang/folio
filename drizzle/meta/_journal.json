@@ -162,6 +162,13 @@
             "when": 1779755254000,
             "tag": "0022_backfill_skipped_rls_and_index",
             "breakpoints": true
+        },
+        {
+            "idx": 23,
+            "version": "7",
+            "when": 1779755255000,
+            "tag": "0023_idx_loan_staging_source_doc",
+            "breakpoints": true
         }
     ]
 }

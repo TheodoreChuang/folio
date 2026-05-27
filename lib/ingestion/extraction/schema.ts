@@ -34,11 +34,10 @@ export const loanExtractionResultSchema = z.object({
   accountNumber: z.string().optional(),
   statementPeriodStart: z.string().regex(DATE_REGEX, 'Must be YYYY-MM-DD'),
   statementPeriodEnd: z.string().regex(DATE_REGEX, 'Must be YYYY-MM-DD'),
-  closingBalanceCents: z.number().int(),
+  closingBalanceCents: z.number().int().nonnegative(),
   payments: z.array(loanPaymentSchema).min(0),
 })
 
-export type LoanPayment = z.infer<typeof loanPaymentSchema>
 export type LoanExtractionResult = z.infer<typeof loanExtractionResultSchema>
 
 export const extractedLineItemSchema = z.object({

@@ -28,9 +28,7 @@ const sampleResult: LoanExtractionResult = {
 }
 
 const mocks = vi.hoisted(() => ({
-  mockDbSelectDocs: vi.fn(),
-  mockDbSelectStaging: vi.fn(),
-  mockDbUpdate: vi.fn(),
+  mockDbSelectWhere: vi.fn(),
   mockDbInsert: vi.fn(),
   mockDbDelete: vi.fn(),
   mockDbTransaction: vi.fn(),
@@ -40,17 +38,7 @@ vi.mock('@/lib/db', () => ({
   db: {
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockImplementation(function (this: unknown) {
-          // distinguish by call count: first call is doc ownership check, second is staging fetch
-          const callCount = (mocks.mockDbSelectDocs.mock.calls.length ?? 0) + (mocks.mockDbSelectStaging.mock.calls.length ?? 0)
-          if (callCount === 0) return mocks.mockDbSelectDocs()
-          return mocks.mockDbSelectStaging()
-        }),
-      }),
-    }),
-    update: vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockImplementation(() => mocks.mockDbUpdate()),
+        where: vi.fn().mockImplementation(() => mocks.mockDbSelectWhere()),
       }),
     }),
     insert: vi.fn().mockReturnValue({
@@ -59,51 +47,172 @@ vi.mock('@/lib/db', () => ({
       }),
     }),
     delete: vi.fn().mockReturnValue({
-      where: vi.fn().mockImplementation(() => mocks.mockDbDelete()),
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockImplementation(() => mocks.mockDbDelete()),
+      }),
     }),
     transaction: vi.fn().mockImplementation((fn: (tx: unknown) => Promise<unknown>) =>
       mocks.mockDbTransaction(fn)
     ),
   },
+  DrizzleTx: {},
 }))
+
+function makeStageTx(capturedSetArgs?: Array<Record<string, unknown>>, capturedInsertValues?: Array<Record<string, unknown>>) {
+  return {
+    update: vi.fn().mockReturnValue({
+      set: vi.fn().mockImplementation((args: Record<string, unknown>) => {
+        capturedSetArgs?.push(args)
+        return {
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([]),
+          }),
+        }
+      }),
+    }),
+    delete: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([]),
+      }),
+    }),
+    insert: vi.fn().mockReturnValue({
+      values: vi.fn().mockImplementation((rows: Array<Record<string, unknown>>) => {
+        capturedInsertValues?.push(...rows)
+        return {
+          returning: vi.fn().mockResolvedValue(rows.map(() => ({}))),
+        }
+      }),
+    }),
+  }
+}
+
+function makeCommitTx() {
+  return {
+    update: vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    }),
+    insert: vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockImplementation(() => mocks.mockDbInsert()),
+      }),
+    }),
+    delete: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockImplementation(() => mocks.mockDbDelete()),
+      }),
+    }),
+  }
+}
 
 // ── stageLoanExtractionResult ──────────────────────────────────────────────────
 
 describe('stageLoanExtractionResult', () => {
+  let capturedSetArgs: Array<Record<string, unknown>> = []
+  let capturedInsertValues: Array<Record<string, unknown>> = []
+
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.mockDbUpdate.mockResolvedValue([])
-    mocks.mockDbInsert.mockResolvedValue([{}, {}])
+    capturedSetArgs = []
+    capturedInsertValues = []
+    mocks.mockDbTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      return fn(makeStageTx(capturedSetArgs, capturedInsertValues))
+    })
   })
 
   it('stages all payments; returned count equals payments.length', async () => {
     const result = await stageLoanExtractionResult(USER_ID, DOC_ID, sampleResult)
-    expect(result.stagedCount).toBe(2)
+    expect(result.stagedCount).toBe(sampleResult.payments.length)
   })
 
-  it('updates source_documents periodStart/End from result', async () => {
+  it('wraps all operations in a single transaction', async () => {
     await stageLoanExtractionResult(USER_ID, DOC_ID, sampleResult)
-    // db.update().set().where() was called
-    expect(mocks.mockDbUpdate).toHaveBeenCalledOnce()
+    expect(mocks.mockDbTransaction).toHaveBeenCalledOnce()
   })
 
-  it('stages 0 items but still updates period dates for empty payments', async () => {
-    mocks.mockDbInsert.mockResolvedValue([])
-    const result = await stageLoanExtractionResult(USER_ID, DOC_ID, {
-      ...sampleResult,
-      payments: [],
+  it('updates source document period dates inside the transaction', async () => {
+    await stageLoanExtractionResult(USER_ID, DOC_ID, sampleResult)
+    expect(capturedSetArgs).toContainEqual({
+      periodStart: sampleResult.statementPeriodStart,
+      periodEnd: sampleResult.statementPeriodEnd,
     })
-    expect(result.stagedCount).toBe(0)
-    // Period update still happens
-    expect(mocks.mockDbUpdate).toHaveBeenCalledOnce()
-    // Insert should NOT have been called (we skip when payments is empty)
-    expect(mocks.mockDbInsert).not.toHaveBeenCalled()
   })
 
-  it('sets installmentLoanId to null and status to pending on staged rows', async () => {
+  it('staged rows have installmentLoanId null and status pending', async () => {
     await stageLoanExtractionResult(USER_ID, DOC_ID, sampleResult)
-    // insert was called (not skipped) because payments.length > 0
-    expect(mocks.mockDbInsert).toHaveBeenCalledOnce()
+    expect(capturedInsertValues).toHaveLength(sampleResult.payments.length)
+    for (const row of capturedInsertValues) {
+      expect(row).toMatchObject({ installmentLoanId: null, status: 'pending' })
+    }
+  })
+
+  it('skips delete and insert for empty payments but still updates period dates', async () => {
+    let txDeleteCalled = false
+    let txInsertCalled = false
+    mocks.mockDbTransaction.mockImplementationOnce(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockImplementation((args: Record<string, unknown>) => {
+            capturedSetArgs.push(args)
+            return { where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }) }
+          }),
+        }),
+        delete: vi.fn().mockImplementation(() => {
+          txDeleteCalled = true
+          return { where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }) }
+        }),
+        insert: vi.fn().mockImplementation(() => {
+          txInsertCalled = true
+          return { values: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }) }
+        }),
+      }
+      return fn(tx)
+    })
+
+    const result = await stageLoanExtractionResult(USER_ID, DOC_ID, { ...sampleResult, payments: [] })
+    expect(result.stagedCount).toBe(0)
+    expect(capturedSetArgs).toContainEqual({
+      periodStart: sampleResult.statementPeriodStart,
+      periodEnd: sampleResult.statementPeriodEnd,
+    })
+    expect(txDeleteCalled).toBe(false)
+    expect(txInsertCalled).toBe(false)
+  })
+
+  it('deletes existing staging items before insert for idempotent re-staging', async () => {
+    let txDeleteCalled = false
+    let deleteCalledBeforeInsert = false
+    let txInsertCalled = false
+    mocks.mockDbTransaction.mockImplementationOnce(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }),
+          }),
+        }),
+        delete: vi.fn().mockImplementation(() => {
+          txDeleteCalled = true
+          if (!txInsertCalled) deleteCalledBeforeInsert = true
+          return { where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }) }
+        }),
+        insert: vi.fn().mockImplementation(() => {
+          txInsertCalled = true
+          return {
+            values: vi.fn().mockImplementation((rows: unknown[]) => ({
+              returning: vi.fn().mockResolvedValue(rows.map(() => ({}))),
+            })),
+          }
+        }),
+      }
+      return fn(tx)
+    })
+
+    await stageLoanExtractionResult(USER_ID, DOC_ID, sampleResult)
+    expect(txDeleteCalled).toBe(true)
+    expect(deleteCalledBeforeInsert).toBe(true)
   })
 })
 
@@ -126,28 +235,24 @@ const approvedItem = {
   updatedAt: new Date(),
 }
 
-const _rejectedItem = { ...approvedItem, id: 'item-2', status: 'rejected', installmentLoanId: null }
-
 describe('commitLoanStagedItems', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.mockDbSelectDocs.mockResolvedValue([{ id: DOC_ID }])
-    mocks.mockDbSelectStaging.mockResolvedValue([approvedItem])
-    mocks.mockDbTransaction.mockImplementation(async (fn: (tx: Record<string, unknown>) => Promise<unknown>) => {
-      const tx = {
-        insert: vi.fn().mockReturnValue({
-          values: vi.fn().mockReturnValue({
-            returning: vi.fn().mockImplementation(() => mocks.mockDbInsert()),
-          }),
-        }),
-        delete: vi.fn().mockReturnValue({
-          where: vi.fn().mockImplementation(() => mocks.mockDbDelete()),
-        }),
-      }
-      return fn(tx)
+    mocks.mockDbSelectWhere
+      .mockResolvedValueOnce([{ id: DOC_ID }])
+      .mockResolvedValueOnce([approvedItem])
+      .mockResolvedValueOnce([{ id: LOAN_ID }])
+    mocks.mockDbTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      return fn(makeCommitTx())
     })
     mocks.mockDbInsert.mockResolvedValue([{ id: 'ledger-1' }])
     mocks.mockDbDelete.mockResolvedValue([])
+  })
+
+  it('returns { committed: 0 } immediately when sourceDocumentIds is empty', async () => {
+    const result = await commitLoanStagedItems(USER_ID, [])
+    expect(result.committed).toBe(0)
+    expect(mocks.mockDbTransaction).not.toHaveBeenCalled()
   })
 
   it('commits all approved items to loan_ledger; returns correct count', async () => {
@@ -155,50 +260,82 @@ describe('commitLoanStagedItems', () => {
     expect(result.committed).toBe(1)
   })
 
-  it('hard-deletes staging items after commit (approved + rejected)', async () => {
-    mocks.mockDbSelectStaging.mockResolvedValue([approvedItem])
+  it('returned count equals number of approved items', async () => {
+    const secondApproved = { ...approvedItem, id: 'item-3', lineItemIndex: 1 }
+    mocks.mockDbSelectWhere
+      .mockReset()
+      .mockResolvedValueOnce([{ id: DOC_ID }])
+      .mockResolvedValueOnce([approvedItem, secondApproved])
+      .mockResolvedValueOnce([{ id: LOAN_ID }])
+    mocks.mockDbInsert.mockResolvedValue([{ id: 'l1' }, { id: 'l2' }])
+    const result = await commitLoanStagedItems(USER_ID, [DOC_ID])
+    expect(result.committed).toBe(2)
+  })
+
+  it('deletes staging items inside the transaction', async () => {
     await commitLoanStagedItems(USER_ID, [DOC_ID])
     expect(mocks.mockDbDelete).toHaveBeenCalledOnce()
   })
 
+  it('throws ownership error when source document belongs to another user', async () => {
+    mocks.mockDbSelectWhere.mockReset().mockResolvedValueOnce([])
+    await expect(
+      commitLoanStagedItems(USER_ID, [DOC_ID])
+    ).rejects.toThrow('not found or not owned by user')
+  })
+
+  it('throws ownership error when source document is soft-deleted', async () => {
+    mocks.mockDbSelectWhere.mockReset().mockResolvedValueOnce([])
+    await expect(
+      commitLoanStagedItems(USER_ID, [DOC_ID])
+    ).rejects.toThrow('not found or not owned by user')
+  })
+
   it('fails with clear error if any approved item has null installmentLoanId', async () => {
-    mocks.mockDbSelectStaging.mockResolvedValue([{ ...approvedItem, installmentLoanId: null }])
+    mocks.mockDbSelectWhere
+      .mockReset()
+      .mockResolvedValueOnce([{ id: DOC_ID }])
+      .mockResolvedValueOnce([{ ...approvedItem, installmentLoanId: null }])
     await expect(
       commitLoanStagedItems(USER_ID, [DOC_ID])
     ).rejects.toThrow('installmentLoanId')
     expect(mocks.mockDbTransaction).not.toHaveBeenCalled()
   })
 
-  it('throws ownership error when source document belongs to another user', async () => {
-    mocks.mockDbSelectDocs.mockResolvedValue([]) // no matching docs
+  it('throws when installmentLoanId does not belong to the user', async () => {
+    mocks.mockDbSelectWhere
+      .mockReset()
+      .mockResolvedValueOnce([{ id: DOC_ID }])
+      .mockResolvedValueOnce([approvedItem])
+      .mockResolvedValueOnce([])
     await expect(
       commitLoanStagedItems(USER_ID, [DOC_ID])
     ).rejects.toThrow('not found or not owned by user')
+    expect(mocks.mockDbTransaction).not.toHaveBeenCalled()
   })
 
   it('transaction rollback: if loan_ledger insert fails, staging items not deleted', async () => {
-    mocks.mockDbTransaction.mockImplementation(async (fn: (tx: Record<string, unknown>) => Promise<unknown>) => {
+    mocks.mockDbTransaction.mockImplementationOnce(async (fn: (tx: unknown) => Promise<unknown>) => {
       const tx = {
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }),
+          }),
+        }),
         insert: vi.fn().mockReturnValue({
           values: vi.fn().mockReturnValue({
             returning: vi.fn().mockRejectedValue(new Error('DB insert failed')),
           }),
         }),
         delete: vi.fn().mockReturnValue({
-          where: vi.fn().mockImplementation(() => mocks.mockDbDelete()),
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockImplementation(() => mocks.mockDbDelete()),
+          }),
         }),
       }
       return fn(tx)
     })
     await expect(commitLoanStagedItems(USER_ID, [DOC_ID])).rejects.toThrow('DB insert failed')
     expect(mocks.mockDbDelete).not.toHaveBeenCalled()
-  })
-
-  it('returned count equals number of approved items', async () => {
-    const secondApproved = { ...approvedItem, id: 'item-3', lineItemIndex: 1 }
-    mocks.mockDbSelectStaging.mockResolvedValue([approvedItem, secondApproved])
-    mocks.mockDbInsert.mockResolvedValue([{ id: 'l1' }, { id: 'l2' }])
-    const result = await commitLoanStagedItems(USER_ID, [DOC_ID])
-    expect(result.committed).toBe(2)
   })
 })

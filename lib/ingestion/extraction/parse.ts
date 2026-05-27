@@ -21,6 +21,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
 
 export async function classifyDocument(
   pdfText: string,
+  signal?: AbortSignal,
 ): Promise<ClassificationResult> {
   const { object } = await generateObject({
     model: gateway('anthropic/claude-haiku-4-5'),
@@ -33,6 +34,7 @@ Classify the document as one of:
 
 Return "unknown" when confidence is insufficient — do not guess.`,
     prompt: `Classify this document:\n\n${pdfText}`,
+    abortSignal: signal,
   })
 
   return object
@@ -40,6 +42,7 @@ Return "unknown" when confidence is insufficient — do not guess.`,
 
 export async function extractLoanStatementData(
   pdfText: string,
+  signal?: AbortSignal,
 ): Promise<LoanExtractionResult> {
   const { object } = await generateObject({
     model: gateway('anthropic/claude-haiku-4-5'),
@@ -55,6 +58,7 @@ Rules:
 - An empty payments array is valid for a statement with no transactions in the period
 - confidence: rate high if unambiguous, medium if inferred, low if uncertain`,
     prompt: `Extract all payment data from this loan statement:\n\n${pdfText}`,
+    abortSignal: signal,
   })
 
   return object
@@ -62,6 +66,7 @@ Rules:
 
 export async function extractStatementData(
   pdfText: string,
+  signal?: AbortSignal,
 ): Promise<ExtractionResult> {
   const { object } = await generateObject({
     model: gateway('anthropic/claude-haiku-4-5'),
@@ -75,6 +80,7 @@ Rules:
 - lineItemDate: use the transaction date shown. If only a period is shown, use the period end date.
 - If a field is missing from the statement, make your best inference and set confidence to 'low'`,
     prompt: `Extract all line items from this statement:\n\n${pdfText}`,
+    abortSignal: signal,
   })
 
   return object
