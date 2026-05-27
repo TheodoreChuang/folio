@@ -101,22 +101,9 @@ describe('stageLoanExtractionResult', () => {
   })
 
   it('sets installmentLoanId to null and status to pending on staged rows', async () => {
-    let capturedRows: Array<{ installmentLoanId: string | null; status: string }> = []
-    mocks.mockDbInsert.mockImplementation(() => {
-      return Promise.resolve(capturedRows)
-    })
-    const insertMock = vi.mocked((await import('@/lib/db')).db.insert)
-    insertMock.mockImplementation((_table: unknown) => ({
-      values: (rows: typeof capturedRows) => {
-        capturedRows = rows
-        return { returning: () => Promise.resolve(rows) }
-      },
-    }) as ReturnType<typeof insertMock>)
-
     await stageLoanExtractionResult(USER_ID, DOC_ID, sampleResult)
-    // We verify via the insert mock that rows have the right shape
-    const db = await import('@/lib/db')
-    expect(db.db.insert).toHaveBeenCalled()
+    // insert was called (not skipped) because payments.length > 0
+    expect(mocks.mockDbInsert).toHaveBeenCalledOnce()
   })
 })
 
@@ -139,7 +126,7 @@ const approvedItem = {
   updatedAt: new Date(),
 }
 
-const rejectedItem = { ...approvedItem, id: 'item-2', status: 'rejected', installmentLoanId: null }
+const _rejectedItem = { ...approvedItem, id: 'item-2', status: 'rejected', installmentLoanId: null }
 
 describe('commitLoanStagedItems', () => {
   beforeEach(() => {
