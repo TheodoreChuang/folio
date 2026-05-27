@@ -7,7 +7,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import { captureError } from '@/lib/api-error'
 import { MAX_UPLOAD_BYTES } from '@/lib/constants'
-const ALLOWED_DOCUMENT_TYPES = ['pm_statement', 'loan_statement', 'bank_statement'] as const
+const ALLOWED_DOCUMENT_TYPES = ['pm_statement', 'loan_statement', 'bank_statement', 'unknown'] as const
 
 function documentTypeToFolder(documentType: string): string {
   switch (documentType) {
@@ -65,9 +65,11 @@ export async function POST(request: Request) {
     )
   }
 
-  const documentType = formData.get('documentType')
+  const rawDocumentType = formData.get('documentType')
   const documentTypeStr =
-    typeof documentType === 'string' ? documentType.trim() : ''
+    typeof rawDocumentType === 'string' && rawDocumentType.trim() !== ''
+      ? rawDocumentType.trim()
+      : 'unknown'
   if (!ALLOWED_DOCUMENT_TYPES.includes(documentTypeStr as (typeof ALLOWED_DOCUMENT_TYPES)[number])) {
     return NextResponse.json(
       { error: 'Invalid documentType' },

@@ -3,8 +3,13 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { sourceDocuments } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { extractTextFromPdf, extractStatementData } from '@/lib/ingestion/extraction/parse'
-import { stageExtractionResult } from '@/lib/ingestion'
+import {
+  extractTextFromPdf,
+  classifyDocument,
+  extractStatementData,
+  extractLoanStatementData,
+} from '@/lib/ingestion/extraction/parse'
+import { stageExtractionResult, stageLoanExtractionResult } from '@/lib/ingestion'
 import { logger } from '@/lib/logger'
 import { captureError } from '@/lib/api-error'
 
@@ -116,6 +121,61 @@ export async function POST(request: Request) {
 
   logger.debug('pdf text extracted', { textLength: pdfText.length })
 
+  let classification: Awaited<ReturnType<typeof classifyDocument>>
+  try {
+    classification = await classifyDocument(pdfText)
+  } catch (err) {
+    captureError(err, { route: 'POST /api/extract', phase: 'classification' })
+    const message = err instanceof Error ? err.message : String(err)
+    return NextResponse.json(
+      { error: 'Classification failed', detail: message },
+      { status: 500 }
+    )
+  }
+
+  await db
+    .update(sourceDocuments)
+    .set({ documentType: classification.documentType })
+    .where(eq(sourceDocuments.id, sourceDocumentId))
+    .returning()
+
+  if (classification.documentType === 'unknown') {
+    return NextResponse.json(
+      { error: "Couldn't classify this document — only PM statements and loan statements are supported" },
+      { status: 422 }
+    )
+  }
+
+  if (classification.documentType === 'loan_statement') {
+    let loanResult: Awaited<ReturnType<typeof extractLoanStatementData>>
+    try {
+      loanResult = await extractLoanStatementData(pdfText)
+    } catch (err) {
+      captureError(err, { route: 'POST /api/extract', phase: 'ai-extraction' })
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json(
+        { error: 'Extraction failed', detail: message },
+        { status: 500 }
+      )
+    }
+
+    let stagedCount: number
+    try {
+      const staged = await stageLoanExtractionResult(user.id, sourceDocumentId, loanResult)
+      stagedCount = staged.stagedCount
+    } catch (err) {
+      captureError(err, { route: 'POST /api/extract', phase: 'staging' })
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json(
+        { error: 'Staging failed', detail: message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ sourceDocumentId, stagedCount })
+  }
+
+  // pm_statement path
   let result: Awaited<ReturnType<typeof extractStatementData>>
   try {
     result = await extractStatementData(pdfText)
