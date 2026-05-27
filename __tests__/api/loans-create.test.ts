@@ -66,10 +66,6 @@ const minValidBody = {
   endDate: '2050-01-01',
 }
 
-function makeGetRequest() {
-  return new Request('http://localhost/api/loans', { method: 'GET' })
-}
-
 describe('GET /api/loans', () => {
   beforeEach(() => {
     vi.clearAllMocks()
