@@ -11,7 +11,7 @@ export function groupStagedItemsByDocument<T extends { sourceDocumentId: string 
         items: [],
       })
     }
-    grouped.get(item.sourceDocumentId)!.items.push(item)
+    grouped.get(item.sourceDocumentId)?.items.push(item)
   }
   return Array.from(grouped.values())
 }
