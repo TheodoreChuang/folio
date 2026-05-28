@@ -71,6 +71,15 @@ export async function patchLoanStagedItem(
   return row ?? null
 }
 
+export async function listLoanStagedByUser(
+  userId: string,
+): Promise<LoanStagingItem[]> {
+  return db
+    .select()
+    .from(loanStagingItems)
+    .where(eq(loanStagingItems.userId, userId))
+}
+
 export async function listLoanStagedBySourceDocumentIds(
   userId: string,
   sourceDocumentIds: string[],
