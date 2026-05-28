@@ -209,6 +209,7 @@ export default function UploadPage() {
       )
       if (results.some(r => !r.ok)) {
         toast.error('Failed to assign property to some items')
+        await loadStaged()
         return
       }
       await loadStaged()
@@ -248,6 +249,7 @@ export default function UploadPage() {
       )
       if (results.some(r => !r.ok)) {
         toast.error('Failed to assign loan to some items')
+        await loadLoanSessions()
         return
       }
       await loadLoanSessions()
@@ -272,6 +274,7 @@ export default function UploadPage() {
       )
       if (results.some(r => !r.ok)) {
         toast.error('Failed to approve some items')
+        await loadLoanSessions()
         return
       }
       await loadLoanSessions()
@@ -294,6 +297,7 @@ export default function UploadPage() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string }
         toast.error(err.error ?? 'Commit failed')
+        await loadStaged()
         return
       }
       const data = await res.json() as { committed: number }
@@ -319,11 +323,13 @@ export default function UploadPage() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string }
         toast.error(err.error ?? 'Loan commit failed')
+        await loadLoanSessions()
         return
       }
       const data = await res.json() as { committed: number }
       toast.success(`${data.committed} payment${data.committed !== 1 ? 's' : ''} recorded`)
       await loadLoanSessions()
+      setUploadState('idle')
     } catch {
       toast.error('Network error during loan commit')
     } finally {
