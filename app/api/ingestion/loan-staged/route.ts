@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { listLoanStagedByUser, getDocumentsByUser } from '@/lib/ingestion'
+import { listLoanStagedByUser, getDocumentsByUser, groupStagedItemsByDocument } from '@/lib/ingestion'
 import { captureError } from '@/lib/api-error'
 
 export async function GET() {
@@ -15,20 +15,7 @@ export async function GET() {
     ])
 
     const docMap = new Map(docs.map(d => [d.id, d.fileName]))
-
-    const grouped = new Map<string, { sourceDocumentId: string; documentFileName: string; items: typeof items }>()
-    for (const item of items) {
-      if (!grouped.has(item.sourceDocumentId)) {
-        grouped.set(item.sourceDocumentId, {
-          sourceDocumentId: item.sourceDocumentId,
-          documentFileName: docMap.get(item.sourceDocumentId) ?? 'Unknown',
-          items: [],
-        })
-      }
-      grouped.get(item.sourceDocumentId)?.items.push(item)
-    }
-
-    const sessions = Array.from(grouped.values())
+    const sessions = groupStagedItemsByDocument(items, docMap)
     return NextResponse.json({ sessions })
   } catch (err) {
     captureError(err, { route: 'GET /api/ingestion/loan-staged' })

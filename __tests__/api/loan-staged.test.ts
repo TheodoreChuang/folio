@@ -43,6 +43,7 @@ const mocks = vi.hoisted(() => ({
   mockListLoanStagedByUser: vi.fn(),
   mockGetDocumentsByUser: vi.fn(),
   mockPatchLoanStagedItem: vi.fn(),
+  mockFindInstallmentLoanById: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -51,10 +52,18 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/ingestion', () => ({
-  listLoanStagedByUser: (...args: unknown[]) => mocks.mockListLoanStagedByUser(...args),
-  getDocumentsByUser: (...args: unknown[]) => mocks.mockGetDocumentsByUser(...args),
-  patchLoanStagedItem: (...args: unknown[]) => mocks.mockPatchLoanStagedItem(...args),
+vi.mock('@/lib/ingestion', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/lib/ingestion')>()
+  return {
+    ...original,
+    listLoanStagedByUser: (...args: unknown[]) => mocks.mockListLoanStagedByUser(...args),
+    getDocumentsByUser: (...args: unknown[]) => mocks.mockGetDocumentsByUser(...args),
+    patchLoanStagedItem: (...args: unknown[]) => mocks.mockPatchLoanStagedItem(...args),
+  }
+})
+
+vi.mock('@/lib/borrowings', () => ({
+  findInstallmentLoanById: (...args: unknown[]) => mocks.mockFindInstallmentLoanById(...args),
 }))
 
 function makePatchRequest(id: string, body: unknown) {
@@ -110,6 +119,20 @@ describe('GET /api/ingestion/loan-staged', () => {
     expect(json.sessions[0].items).toHaveLength(2)
   })
 
+  it('produces two sessions for items from two distinct sourceDocumentIds', async () => {
+    const secondDocId = 'e5f6a7b8-c9d0-4123-e456-555555555555'
+    const secondDocItem = { ...loanStagingItem, id: 'f6a7b8c9-d0e1-4234-f567-666666666666', sourceDocumentId: secondDocId }
+    const secondDoc = { ...sourceDoc, id: secondDocId, fileName: 'loan-stmt-2.pdf' }
+    mocks.mockListLoanStagedByUser.mockResolvedValue([loanStagingItem, secondDocItem])
+    mocks.mockGetDocumentsByUser.mockResolvedValue([sourceDoc, secondDoc])
+    const res = await GET()
+    const json = await res.json()
+    expect(json.sessions).toHaveLength(2)
+    const docIds = json.sessions.map((s: { sourceDocumentId: string }) => s.sourceDocumentId)
+    expect(docIds).toContain(VALID_DOC_ID)
+    expect(docIds).toContain(secondDocId)
+  })
+
   it('does not return sessions belonging to other users', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'other-user' } } })
     mocks.mockListLoanStagedByUser.mockResolvedValue([])
@@ -139,6 +162,7 @@ describe('PATCH /api/ingestion/loan-staged/[id]', () => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
     mocks.mockPatchLoanStagedItem.mockResolvedValue({ ...loanStagingItem, status: 'approved' })
+    mocks.mockFindInstallmentLoanById.mockResolvedValue({ id: VALID_LOAN_ID })
   })
 
   it('returns 401 when not authenticated', async () => {
@@ -199,6 +223,15 @@ describe('PATCH /api/ingestion/loan-staged/[id]', () => {
     const json = await res.json()
     expect(json.item).toBeDefined()
     expect(mocks.mockPatchLoanStagedItem).toHaveBeenCalledWith(VALID_ID, 'user-123', { status: 'approved' })
+  })
+
+  it('returns 400 when installmentLoanId belongs to another user', async () => {
+    mocks.mockFindInstallmentLoanById.mockResolvedValue(undefined)
+    const res = await PATCH(makePatchRequest(VALID_ID, { installmentLoanId: VALID_LOAN_ID }), {
+      params: Promise.resolve({ id: VALID_ID }),
+    })
+    expect(res.status).toBe(400)
+    expect(mocks.mockPatchLoanStagedItem).not.toHaveBeenCalled()
   })
 
   it('allows setting installmentLoanId to null', async () => {

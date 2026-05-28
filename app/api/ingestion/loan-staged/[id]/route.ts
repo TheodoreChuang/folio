@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { patchLoanStagedItem } from '@/lib/ingestion'
+import { findInstallmentLoanById } from '@/lib/borrowings'
 import { captureError } from '@/lib/api-error'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -28,6 +29,11 @@ export async function PATCH(
     const parsed = patchSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+    }
+
+    if (parsed.data.installmentLoanId) {
+      const loan = await findInstallmentLoanById(user.id, parsed.data.installmentLoanId)
+      if (!loan) return NextResponse.json({ error: 'Loan not found' }, { status: 400 })
     }
 
     const item = await patchLoanStagedItem(id, user.id, parsed.data)
