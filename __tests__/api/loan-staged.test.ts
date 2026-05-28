@@ -52,13 +52,13 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/ingestion', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@/lib/ingestion')>()
+vi.mock('@/lib/ingestion', async () => {
+  const { groupStagedItemsByDocument } = await import('@/lib/ingestion/utils')
   return {
-    ...original,
     listLoanStagedByUser: (...args: unknown[]) => mocks.mockListLoanStagedByUser(...args),
     getDocumentsByUser: (...args: unknown[]) => mocks.mockGetDocumentsByUser(...args),
     patchLoanStagedItem: (...args: unknown[]) => mocks.mockPatchLoanStagedItem(...args),
+    groupStagedItemsByDocument,
   }
 })
 
