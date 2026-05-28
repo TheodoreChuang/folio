@@ -45,7 +45,7 @@ function formDataWithFile(opts: {
   fileName?: string
   mimeType?: string
   size?: number
-  documentType?: string
+  documentType?: string | null
 }) {
   const {
     fileContent = new Blob(['fake pdf content']),
@@ -60,7 +60,9 @@ function formDataWithFile(opts: {
   }
   const form = new FormData()
   form.append('file', file)
-  form.append('documentType', documentType)
+  if (documentType !== null) {
+    form.append('documentType', documentType)
+  }
   return form
 }
 
@@ -122,6 +124,17 @@ describe('POST /api/upload', () => {
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
     expect(res.status).toBe(400)
     expect(mocks.mockUpload).not.toHaveBeenCalled()
+  })
+
+  it('succeeds when documentType is absent (defaults to unknown)', async () => {
+    const form = formDataWithFile({ documentType: null })
+    const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
+    expect(res.status).toBe(200)
+    expect(mocks.mockUpload).toHaveBeenCalledWith(
+      'documents/user-123/documents/test.pdf',
+      expect.any(ArrayBuffer),
+      { contentType: 'application/pdf', upsert: false }
+    )
   })
 
   it('returns isDuplicate: true when hash already exists', async () => {

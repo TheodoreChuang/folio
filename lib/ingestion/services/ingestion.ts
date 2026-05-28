@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { propertyStagingItems, propertyLedger, sourceDocuments } from '@/db/schema'
 import type { ExtractionResult } from '../extraction/schema'
-import { insertStagedItems } from '../repositories/staging'
+import { insertStagedItems, deletePropertyStagedBySourceDocument } from '../repositories/staging'
 
 export async function stageExtractionResult(
   userId: string,
@@ -23,6 +23,7 @@ export async function stageExtractionResult(
     status: 'pending' as const,
   }))
 
+  await deletePropertyStagedBySourceDocument(userId, sourceDocumentId)
   const inserted = await insertStagedItems(items)
   return { stagedCount: inserted.length }
 }
