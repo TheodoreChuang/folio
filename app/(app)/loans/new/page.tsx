@@ -246,7 +246,7 @@ export default function NewLoanPage() {
         </Link>
 
         <div className="mb-8">
-          <h1 className="font-serif text-2xl text-ink">Add a loan</h1>
+          <h1 className="font-display text-2xl text-ink">Add a loan</h1>
           <p className="text-sm text-muted mt-0.5">
             A snapshot is enough. Folio takes the running balance from your statements.
           </p>
@@ -271,7 +271,7 @@ export default function NewLoanPage() {
                       className={[
                         'flex items-center gap-0 border rounded-md text-sm transition-colors',
                         selectedLender === preset.value
-                          ? 'border-accent bg-accent-light'
+                          ? 'border-accent bg-accent-soft'
                           : 'border-border bg-surface hover:bg-screen-bg',
                       ].join(' ')}
                     >
@@ -378,7 +378,7 @@ export default function NewLoanPage() {
                               onClick={() => setSelectedPropertyId(isSelected ? null : prop.id)}
                               className={[
                                 'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
-                                isSelected ? 'bg-accent-light' : 'hover:bg-screen-bg',
+                                isSelected ? 'bg-accent-soft' : 'hover:bg-screen-bg',
                               ].join(' ')}
                             >
                               <span className={[

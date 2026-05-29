@@ -235,7 +235,7 @@ export default function NewPropertyPage() {
 
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 className="font-serif text-2xl text-ink">Add a property</h1>
+            <h1 className="font-display text-2xl text-ink">Add a property</h1>
             <p className="text-sm text-muted mt-0.5">
               Tell us the basics. Folio will learn the rest from your statements.
             </p>
@@ -379,7 +379,7 @@ export default function NewPropertyPage() {
                     onClick={() => setEntityId(null)}
                     className={[
                       'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
-                      entityId === null ? 'bg-accent-light' : 'bg-surface hover:bg-screen-bg',
+                      entityId === null ? 'bg-accent-soft' : 'bg-surface hover:bg-screen-bg',
                     ].join(' ')}
                   >
                     <RadioDot selected={entityId === null} />
@@ -392,7 +392,7 @@ export default function NewPropertyPage() {
                       onClick={() => setEntityId(entityId === e.id ? null : e.id)}
                       className={[
                         'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
-                        entityId === e.id ? 'bg-accent-light' : 'bg-surface hover:bg-screen-bg',
+                        entityId === e.id ? 'bg-accent-soft' : 'bg-surface hover:bg-screen-bg',
                       ].join(' ')}
                     >
                       <RadioDot selected={entityId === e.id} />

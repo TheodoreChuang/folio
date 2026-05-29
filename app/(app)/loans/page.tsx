@@ -87,7 +87,7 @@ export default function LoansPage() {
 
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="font-serif text-2xl text-ink">Loans</h1>
+            <h1 className="font-display text-2xl text-ink">Loans</h1>
             <p className="text-sm text-foreground-muted mt-0.5">All borrowings across the portfolio</p>
           </div>
           <Link href="/loans/new">
@@ -105,7 +105,7 @@ export default function LoansPage() {
                 className={[
                   'flex items-center gap-1.5 h-7 px-3 rounded-full border text-xs font-medium transition-colors',
                   entityFilter === e.id
-                    ? 'bg-accent-light border-accent/20 text-accent'
+                    ? 'bg-accent-soft border-accent/20 text-accent'
                     : 'bg-surface border-border text-muted hover:text-ink hover:border-ink/20',
                 ].join(' ')}
               >

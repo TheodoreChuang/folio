@@ -850,7 +850,7 @@ export default function PropertyDetailPage() {
       <div className="flex items-start justify-between mb-2">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-serif text-2xl text-ink">
+            <h1 className="font-display text-2xl text-ink">
               {property.nickname ?? property.address}
             </h1>
             {isSold && (

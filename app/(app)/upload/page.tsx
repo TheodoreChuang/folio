@@ -421,7 +421,7 @@ export default function UploadPage() {
     <div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="font-serif text-2xl text-ink">Upload</h1>
+          <h1 className="font-display text-2xl text-ink">Upload</h1>
           <p className="text-sm text-muted mt-0.5">Drop a statement. Folio classifies it and asks only when uncertain.</p>
         </div>
         {totalSessions > 0 && (

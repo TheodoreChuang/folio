@@ -95,7 +95,7 @@ export default function PropertiesPage() {
     <div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="font-serif text-2xl text-ink">Properties</h1>
+          <h1 className="font-display text-2xl text-ink">Properties</h1>
           <p className="text-sm text-muted mt-0.5">{properties.length} {properties.length === 1 ? 'property' : 'properties'}</p>
         </div>
         <Button size="sm" onClick={() => router.push('/properties/new')}>+ Add property</Button>

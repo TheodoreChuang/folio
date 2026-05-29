@@ -404,7 +404,7 @@ export default function LoanDetailPage() {
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className="font-serif text-2xl text-ink">
+        <h1 className="font-display text-2xl text-ink">
           {loan.nickname ?? loan.lender}{loan.propertyAddress ? ` · ${loan.propertyAddress}` : ''}
         </h1>
         <div className="flex items-center gap-2 mt-2 flex-wrap">

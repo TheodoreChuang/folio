@@ -10,7 +10,7 @@ const badgeVariants = cva(
         complete:   'bg-positive-soft text-positive border-positive/20',
         partial:    'bg-warning-soft text-warning border-warning/25',
         missing:    'bg-negative-soft text-negative border-negative/25',
-        estimated:  'bg-accent-light text-accent border-accent/20',
+        estimated:  'bg-accent-soft text-accent border-accent/20',
       },
     },
     defaultVariants: { variant: 'complete' },

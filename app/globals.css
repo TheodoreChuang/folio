@@ -25,7 +25,7 @@
   /* Fonts: DM Sans → Inter, Instrument Serif → Fraunces, DM Mono → Inter */
   --font-sans:  'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono:  'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-serif: 'Fraunces', 'Lora', ui-serif, Georgia, serif;
+  --font-display: 'Fraunces', 'Lora', ui-serif, Georgia, serif;
 
   /* Backward-compat palette (names kept, values updated to new design) */
   --color-ink:              hsl(30 10% 12%);   /* foreground */
@@ -35,7 +35,7 @@
   --color-muted:            hsl(32 6% 38%);    /* foreground-muted */
   --color-border:           hsl(36 12% 86%);   /* border */
   --color-accent:           hsl(188 32% 32%);  /* accent (teal; was green) */
-  --color-accent-light:     hsl(186 28% 92%);  /* accent-soft */
+  --color-accent-soft:      hsl(186 28% 92%);
   --color-warn:             hsl(14 58% 42%);   /* negative */
   --color-warn-light:       hsl(18 58% 94%);   /* negative-soft */
 
