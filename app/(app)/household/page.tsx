@@ -80,17 +80,17 @@ function FreqToggle({
   onChange: (v: BudgetItemFrequency) => void
 }) {
   return (
-    <div className="flex rounded-md border border-border overflow-hidden text-sm">
+    <div className="flex w-full items-center gap-0.5 p-[3px] bg-white border border-border rounded-[7px]">
       {FREQ_OPTIONS.map(opt => (
         <button
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
           className={[
-            'flex-1 py-2 font-medium transition-colors',
+            'flex-1 h-7 text-sm font-medium rounded-[5px] transition-colors',
             opt.value === value
-              ? 'bg-ink text-surface'
-              : 'bg-surface text-muted hover:text-ink',
+              ? 'bg-accent-light text-accent'
+              : 'text-muted hover:text-ink',
           ].join(' ')}
         >
           {opt.label}
@@ -252,17 +252,17 @@ function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => voi
     { value: 'both',    label: 'Both' },
   ]
   return (
-    <div className="flex rounded-md border border-border overflow-hidden text-xs">
+    <div className="inline-flex items-center gap-0.5 p-[3px] bg-surface-sunken border border-border rounded-[7px]">
       {opts.map(opt => (
         <button
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
           className={[
-            'px-3 py-1.5 font-medium transition-colors',
+            'px-3 h-[26px] text-xs font-medium rounded-[5px] transition-colors',
             opt.value === view
-              ? 'bg-ink text-surface'
-              : 'bg-surface text-muted hover:text-ink',
+              ? 'bg-white text-ink shadow-[0_1px_0_hsl(36_12%_90%)]'
+              : 'text-muted hover:text-ink',
           ].join(' ')}
         >
           {opt.label}

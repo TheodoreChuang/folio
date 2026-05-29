@@ -2169,7 +2169,10 @@ a:hover { text-decoration: underline; }
 }
 .hh-edit .input-prefix { position: relative; }
 
-/* Frequency segmented control */
+/* Segmented control — reusable single-select toggle.
+   `.freq-seg` is the full-width, equal-segment variant used in the
+   household inline form; both share one visual definition. */
+.segmented,
 .freq-seg {
   display: inline-flex;
   align-items: center;
@@ -2178,10 +2181,9 @@ a:hover { text-decoration: underline; }
   background: hsl(var(--surface-raised));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  width: 100%;
 }
+.segmented button,
 .freq-seg button {
-  flex: 1;
   height: 28px;
   font-size: var(--text-sm);
   font-weight: 500;
@@ -2189,11 +2191,19 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius-sm);
   white-space: nowrap;
 }
+.segmented button { padding: 0 var(--space-4); }
+/* Full-width variant: segments share the row equally. */
+.freq-seg { width: 100%; }
+.freq-seg button { flex: 1; }
+.segmented button:hover,
 .freq-seg button:hover { color: hsl(var(--foreground)); }
+.segmented button.is-on,
 .freq-seg button.is-on {
   background: hsl(var(--accent-soft));
   color: hsl(var(--accent));
 }
+.segmented[disabled],
+.segmented.is-disabled { opacity: 0.5; pointer-events: none; }
 .hh-edit .preview {
   font-size: var(--text-xs);
   color: hsl(var(--foreground-subtle));

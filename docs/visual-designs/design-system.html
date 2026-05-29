@@ -1997,6 +1997,7 @@
           <dt>Height</dt><dd>36px (density.control)</dd>
           <dt>Focus</dt><dd>1px accent border + 3px accent glow.</dd>
           <dt>Validation</dt><dd>Inline, after field — never red borders by default.</dd>
+          <dt>Toggle</dt><dd>Segmented control for 2–4 fixed options. Accent fill commits a value; neutral thumb switches a view.</dd>
         </dl>
         <div class="grid-2">
           <div>
@@ -2029,6 +2030,93 @@
           <div style="grid-column: 1 / -1;">
             <label class="input-label" for="note">Note to self</label>
             <textarea id="note" class="textarea" placeholder="e.g. Lease renewal in Sept — review market rent."></textarea>
+          </div>
+
+          <div style="grid-column: 1 / -1;">
+            <style>
+              /* Self-contained segmented-control styles for this section. The
+                 production version lives in folio.css under `.segmented` /
+                 `.freq-seg`; mirrored here so the doc stays self-displaying. */
+              .segmented, .freq-seg {
+                display: inline-flex; align-items: center; gap: 2px; padding: 3px;
+                background: hsl(var(--surface-raised));
+                border: 1px solid hsl(var(--border));
+                border-radius: var(--radius);
+              }
+              .segmented button, .freq-seg button {
+                height: 28px; font: inherit; font-size: var(--text-sm); font-weight: 500;
+                color: hsl(var(--foreground-muted));
+                background: transparent; border: 0; cursor: pointer;
+                border-radius: var(--radius-sm); white-space: nowrap;
+                transition: color 0.12s ease, background 0.12s ease;
+              }
+              .segmented button { padding: 0 var(--space-4); }
+              .freq-seg { width: 100%; }
+              .freq-seg button { flex: 1; }
+              .segmented button:hover, .freq-seg button:hover { color: hsl(var(--foreground)); }
+              .segmented button.is-on, .freq-seg button.is-on {
+                background: hsl(var(--accent-soft)); color: hsl(var(--accent));
+              }
+              .segmented.is-disabled { opacity: 0.5; pointer-events: none; }
+
+              /* View switcher — production version in folio.css under `.view-seg`.
+                 Same family, different intent: a neutral raised "thumb" over a
+                 sunken track, used to switch what's displayed (not commit a value). */
+              .view-seg {
+                display: inline-flex; align-items: center; gap: 2px; padding: 3px;
+                background: hsl(var(--surface-sunken));
+                border: 1px solid hsl(var(--border));
+                border-radius: var(--radius);
+              }
+              .view-seg button {
+                padding: 4px var(--space-4); height: 26px;
+                font: inherit; font-size: var(--text-xs); font-weight: 500;
+                color: hsl(var(--foreground-muted));
+                background: transparent; border: 0; cursor: pointer;
+                border-radius: var(--radius-sm); white-space: nowrap;
+                transition: color 0.12s ease, background 0.12s ease;
+              }
+              .view-seg button:hover { color: hsl(var(--foreground)); }
+              .view-seg button.is-on {
+                background: hsl(var(--surface-raised));
+                color: hsl(var(--foreground));
+                box-shadow: var(--shadow-rest);
+              }
+            </style>
+            <div class="footnote" style="margin-bottom: var(--space-4);">Segmented control · single-select toggle</div>
+            <p style="color: hsl(var(--foreground-muted)); font-size: var(--text-sm); max-width: 60ch; margin: 0 0 var(--space-5);">
+              Two variants, chosen by intent — not by where they sit. Use the
+              <strong style="color: hsl(var(--foreground));">input toggle</strong> when a segment
+              <em>commits a value</em> (it reads as accent, like other inputs). Use the
+              <strong style="color: hsl(var(--foreground));">view switcher</strong> when a segment only
+              <em>changes what's shown</em> — a neutral raised thumb that stays out of the way of actionable accent.
+            </p>
+            <div class="grid-2" style="align-items:start;">
+              <div>
+                <label class="input-label">Input toggle <span style="color: hsl(var(--foreground-subtle)); font-weight:400;">· accent · <code style="font-family: var(--font-mono); font-size: var(--text-2xs);">.freq-seg</code></span></label>
+                <div class="freq-seg" data-seg>
+                  <button type="button">Weekly</button>
+                  <button type="button">Fortnightly</button>
+                  <button type="button" class="is-on">Monthly</button>
+                  <button type="button">Annual</button>
+                </div>
+                <div class="input-help">Full-width: equal segments fill the row. Commits the frequency in the household editor.</div>
+                <label class="input-label" style="margin-top: var(--space-5);">Disabled</label>
+                <div class="segmented is-disabled">
+                  <button type="button" class="is-on">Accrual</button>
+                  <button type="button">Cash</button>
+                </div>
+              </div>
+              <div>
+                <label class="input-label">View switcher <span style="color: hsl(var(--foreground-subtle)); font-weight:400;">· neutral · <code style="font-family: var(--font-mono); font-size: var(--text-2xs);">.view-seg</code></span></label>
+                <div class="view-seg" data-seg>
+                  <button type="button" class="is-on">Monthly</button>
+                  <button type="button">Annual</button>
+                  <button type="button">Both</button>
+                </div>
+                <div class="input-help">Content-width: segments size to their label. Switches which derived columns the household table shows.</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2862,5 +2950,16 @@
       </div>
     </footer>
   </main>
+  <script>
+    // Make segmented-control demos selectable so the toggle behaviour reads clearly.
+    document.querySelectorAll('[data-seg]').forEach(function (seg) {
+      seg.addEventListener('click', function (e) {
+        var btn = e.target.closest('button');
+        if (!btn) return;
+        seg.querySelectorAll('button').forEach(function (b) { b.classList.remove('is-on'); });
+        btn.classList.add('is-on');
+      });
+    });
+  </script>
 </body>
 </html>
