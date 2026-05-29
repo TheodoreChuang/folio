@@ -89,7 +89,7 @@ function FreqToggle({
           className={[
             'flex-1 py-2 font-medium transition-colors',
             opt.value === value
-              ? 'bg-ink text-bg'
+              ? 'bg-ink text-surface'
               : 'bg-surface text-muted hover:text-ink',
           ].join(' ')}
         >
@@ -261,7 +261,7 @@ function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => voi
           className={[
             'px-3 py-1.5 font-medium transition-colors',
             opt.value === view
-              ? 'bg-ink text-bg'
+              ? 'bg-ink text-surface'
               : 'bg-surface text-muted hover:text-ink',
           ].join(' ')}
         >
