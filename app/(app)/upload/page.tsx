@@ -116,6 +116,7 @@ export default function UploadPage() {
   const [sessionLoanMap, setSessionLoanMap] = useState<Record<string, string>>({})
   const [savingSessions, setSavingSessions] = useState<Set<string>>(new Set())
   const [savingLoanSessions, setSavingLoanSessions] = useState<Set<string>>(new Set())
+  const [loanItemEdits, setLoanItemEdits] = useState<Record<string, { interest: string; principal: string }>>({})
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
   const [committing, setCommitting] = useState(false)
   const [loanCommitting, setLoanCommitting] = useState(false)
@@ -146,6 +147,23 @@ export default function UploadPage() {
 
   useEffect(() => { loadStaged() }, [loadStaged])
   useEffect(() => { loadLoanSessions() }, [loadLoanSessions])
+
+  useEffect(() => {
+    setLoanItemEdits(prev => {
+      const next = { ...prev }
+      for (const session of loanSessions) {
+        for (const item of session.items) {
+          if (!(item.id in next)) {
+            next[item.id] = {
+              interest: item.interestCents != null ? (item.interestCents / 100).toFixed(2) : '',
+              principal: item.principalCents != null ? (item.principalCents / 100).toFixed(2) : '',
+            }
+          }
+        }
+      }
+      return next
+    })
+  }, [loanSessions])
 
   useEffect(() => {
     if (uploadState === 'review') {
@@ -183,11 +201,6 @@ export default function UploadPage() {
 
   // Loan session state buckets
   const loanNeedsLoanSessions = loanSessions.filter(s => s.items.some(i => !i.installmentLoanId))
-  const loanNeedsApprovalSessions = loanSessions.filter(s =>
-    s.items.length > 0 &&
-    s.items.every(i => i.installmentLoanId) &&
-    !s.items.every(i => i.status === 'approved')
-  )
   const loanApprovedSessions = loanSessions.filter(s =>
     s.items.length > 0 &&
     s.items.every(i => i.installmentLoanId && i.status === 'approved')
@@ -233,6 +246,20 @@ export default function UploadPage() {
     }
   }
 
+  async function handlePatchLoanItem(itemId: string, field: 'interest' | 'principal', value: string) {
+    const cents = value === '' ? null : Math.round(parseFloat(value) * 100)
+    if (cents !== null && (isNaN(cents) || cents < 0)) return
+    try {
+      await fetch(`/api/ingestion/loan-staged/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(field === 'interest' ? { interestCents: cents } : { principalCents: cents }),
+      })
+    } catch {
+      toast.error('Failed to save')
+    }
+  }
+
   async function handleAssignLoan(session: LoanStagedSession) {
     const installmentLoanId = sessionLoanMap[session.sourceDocumentId]
     if (!installmentLoanId) { toast.error('Select a loan first'); return }
@@ -243,37 +270,12 @@ export default function UploadPage() {
           fetch(`/api/ingestion/loan-staged/${item.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ installmentLoanId }),
+            body: JSON.stringify({ installmentLoanId, status: 'approved' }),
           })
         )
       )
       if (results.some(r => !r.ok)) {
         toast.error('Failed to assign loan to some items')
-        await loadLoanSessions()
-        return
-      }
-      await loadLoanSessions()
-    } catch {
-      toast.error('Network error')
-    } finally {
-      setSavingLoanSessions(prev => { const s = new Set(prev); s.delete(session.sourceDocumentId); return s })
-    }
-  }
-
-  async function handleApproveAll(session: LoanStagedSession) {
-    setSavingLoanSessions(prev => new Set(prev).add(session.sourceDocumentId))
-    try {
-      const results = await Promise.all(
-        session.items.map(item =>
-          fetch(`/api/ingestion/loan-staged/${item.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'approved' }),
-          })
-        )
-      )
-      if (results.some(r => !r.ok)) {
-        toast.error('Failed to approve some items')
         await loadLoanSessions()
         return
       }
@@ -606,19 +608,33 @@ export default function UploadPage() {
                         <div className="grid grid-cols-4 px-4 py-2 bg-sunken">
                           <span className="text-xs font-medium text-muted">Date</span>
                           <span className="text-xs font-medium text-muted text-right">Amount</span>
-                          <span className="text-xs font-medium text-muted text-right">Interest</span>
-                          <span className="text-xs font-medium text-muted text-right">Principal</span>
+                          <span className="text-xs font-medium text-muted text-right">Interest ($)</span>
+                          <span className="text-xs font-medium text-muted text-right">Principal ($)</span>
                         </div>
                         {session.items.map(item => (
-                          <div key={item.id} className="grid grid-cols-4 px-4 py-2.5 items-center">
+                          <div key={item.id} className="grid grid-cols-4 px-4 py-2 items-center gap-2">
                             <span className="text-xs text-muted">{item.paymentDate}</span>
                             <span className="text-sm text-ink text-right">{formatCents(item.amountCents)}</span>
-                            <span className="text-xs text-muted text-right">
-                              {item.interestCents != null ? formatCents(item.interestCents) : '—'}
-                            </span>
-                            <span className="text-xs text-muted text-right">
-                              {item.principalCents != null ? formatCents(item.principalCents) : '—'}
-                            </span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={loanItemEdits[item.id]?.interest ?? ''}
+                              onChange={e => setLoanItemEdits(prev => ({ ...prev, [item.id]: { ...prev[item.id], interest: e.target.value } }))}
+                              onBlur={e => handlePatchLoanItem(item.id, 'interest', e.target.value)}
+                              placeholder="—"
+                              className="text-xs text-right border border-border rounded px-2 py-1 bg-surface text-ink w-full"
+                            />
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={loanItemEdits[item.id]?.principal ?? ''}
+                              onChange={e => setLoanItemEdits(prev => ({ ...prev, [item.id]: { ...prev[item.id], principal: e.target.value } }))}
+                              onBlur={e => handlePatchLoanItem(item.id, 'principal', e.target.value)}
+                              placeholder="—"
+                              className="text-xs text-right border border-border rounded px-2 py-1 bg-surface text-ink w-full"
+                            />
                           </div>
                         ))}
                       </div>
@@ -641,60 +657,6 @@ export default function UploadPage() {
                           onClick={() => handleAssignLoan(session)}
                         >
                           {isSaving ? 'Saving…' : 'Assign loan →'}
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Loan sessions — needs approval */}
-          {loanNeedsApprovalSessions.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Loan statements — review entries</p>
-                <span className="text-xs bg-border text-muted rounded-full px-2 py-0.5">{loanNeedsApprovalSessions.length}</span>
-              </div>
-              <div className="space-y-3">
-                {loanNeedsApprovalSessions.map(session => {
-                  const isSaving = savingLoanSessions.has(session.sourceDocumentId)
-                  const loan = allLoans.find(l => l.id === session.items[0]?.installmentLoanId)
-                  return (
-                    <div key={session.sourceDocumentId} className="bg-surface border border-border rounded-lg overflow-hidden">
-                      <div className="px-4 py-3 border-b border-border flex items-center gap-3">
-                        <p className="text-sm font-medium text-ink truncate flex-1">{session.documentFileName}</p>
-                        {loan && <p className="text-xs text-muted">{loanLabel(loan)}</p>}
-                        <span className="text-xs text-muted">{session.items.length} payment{session.items.length !== 1 ? 's' : ''}</span>
-                      </div>
-                      <div className="divide-y divide-ruled">
-                        <div className="grid grid-cols-4 px-4 py-2 bg-sunken">
-                          <span className="text-xs font-medium text-muted">Date</span>
-                          <span className="text-xs font-medium text-muted text-right">Amount</span>
-                          <span className="text-xs font-medium text-muted text-right">Interest</span>
-                          <span className="text-xs font-medium text-muted text-right">Principal</span>
-                        </div>
-                        {session.items.map(item => (
-                          <div key={item.id} className="grid grid-cols-4 px-4 py-2.5 items-center">
-                            <span className="text-xs text-muted">{item.paymentDate}</span>
-                            <span className="text-sm text-ink text-right">{formatCents(item.amountCents)}</span>
-                            <span className="text-xs text-muted text-right">
-                              {item.interestCents != null ? formatCents(item.interestCents) : '—'}
-                            </span>
-                            <span className="text-xs text-muted text-right">
-                              {item.principalCents != null ? formatCents(item.principalCents) : '—'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="px-4 py-3 border-t border-border bg-surface/50 flex justify-end">
-                        <Button
-                          size="sm"
-                          disabled={isSaving}
-                          onClick={() => handleApproveAll(session)}
-                        >
-                          {isSaving ? 'Saving…' : 'Approve all →'}
                         </Button>
                       </div>
                     </div>
@@ -842,15 +804,13 @@ export default function UploadPage() {
                 {loanApprovedSessions.length > 0 ? (
                   <p className="text-sm text-ink">
                     Will record <strong>{loanApprovedSessions.reduce((sum, s) => sum + s.items.length, 0)} loan payments</strong> from {loanApprovedSessions.length} document{loanApprovedSessions.length !== 1 ? 's' : ''}.
-                    {(loanNeedsLoanSessions.length + loanNeedsApprovalSessions.length) > 0 && (
-                      <span className="text-muted"> {loanNeedsLoanSessions.length + loanNeedsApprovalSessions.length} not ready — will stay in queue.</span>
+                    {loanNeedsLoanSessions.length > 0 && (
+                      <span className="text-muted"> {loanNeedsLoanSessions.length} not ready — will stay in queue.</span>
                     )}
                   </p>
                 ) : (
                   <p className="text-sm text-muted">
-                    {loanNeedsLoanSessions.length > 0
-                      ? `${loanNeedsLoanSessions.length} loan statement${loanNeedsLoanSessions.length !== 1 ? 's need' : ' needs'} a loan assigned.`
-                      : `${loanNeedsApprovalSessions.length} loan statement${loanNeedsApprovalSessions.length !== 1 ? 's need' : ' needs'} approval.`}
+                    {`${loanNeedsLoanSessions.length} loan statement${loanNeedsLoanSessions.length !== 1 ? 's need' : ' needs'} a loan assigned.`}
                   </p>
                 )}
               </div>

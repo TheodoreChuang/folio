@@ -10,6 +10,8 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const patchSchema = z.object({
   installmentLoanId: z.string().regex(UUID_REGEX, 'installmentLoanId must be a valid UUID').nullable().optional(),
   status: z.enum(['pending', 'approved', 'rejected']).optional(),
+  interestCents: z.number().int().nonnegative().nullable().optional(),
+  principalCents: z.number().int().nonnegative().nullable().optional(),
 })
 
 export async function PATCH(

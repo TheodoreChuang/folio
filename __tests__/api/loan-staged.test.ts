@@ -242,4 +242,49 @@ describe('PATCH /api/ingestion/loan-staged/[id]', () => {
     expect(res.status).toBe(200)
     expect(mocks.mockPatchLoanStagedItem).toHaveBeenCalledWith(VALID_ID, 'user-123', { installmentLoanId: null })
   })
+
+  it('sets interestCents and returns updated item', async () => {
+    const patchedItem = { ...loanStagingItem, interestCents: 90000 }
+    mocks.mockPatchLoanStagedItem.mockResolvedValue(patchedItem)
+    const res = await PATCH(makePatchRequest(VALID_ID, { interestCents: 90000 }), {
+      params: Promise.resolve({ id: VALID_ID }),
+    })
+    expect(res.status).toBe(200)
+    expect(mocks.mockPatchLoanStagedItem).toHaveBeenCalledWith(VALID_ID, 'user-123', { interestCents: 90000 })
+  })
+
+  it('sets principalCents and returns updated item', async () => {
+    const patchedItem = { ...loanStagingItem, principalCents: 160000 }
+    mocks.mockPatchLoanStagedItem.mockResolvedValue(patchedItem)
+    const res = await PATCH(makePatchRequest(VALID_ID, { principalCents: 160000 }), {
+      params: Promise.resolve({ id: VALID_ID }),
+    })
+    expect(res.status).toBe(200)
+    expect(mocks.mockPatchLoanStagedItem).toHaveBeenCalledWith(VALID_ID, 'user-123', { principalCents: 160000 })
+  })
+
+  it('allows setting interestCents to null', async () => {
+    mocks.mockPatchLoanStagedItem.mockResolvedValue({ ...loanStagingItem, interestCents: null })
+    const res = await PATCH(makePatchRequest(VALID_ID, { interestCents: null }), {
+      params: Promise.resolve({ id: VALID_ID }),
+    })
+    expect(res.status).toBe(200)
+    expect(mocks.mockPatchLoanStagedItem).toHaveBeenCalledWith(VALID_ID, 'user-123', { interestCents: null })
+  })
+
+  it('returns 400 for negative interestCents', async () => {
+    const res = await PATCH(makePatchRequest(VALID_ID, { interestCents: -100 }), {
+      params: Promise.resolve({ id: VALID_ID }),
+    })
+    expect(res.status).toBe(400)
+    expect(mocks.mockPatchLoanStagedItem).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for non-integer principalCents', async () => {
+    const res = await PATCH(makePatchRequest(VALID_ID, { principalCents: 1.5 }), {
+      params: Promise.resolve({ id: VALID_ID }),
+    })
+    expect(res.status).toBe(400)
+    expect(mocks.mockPatchLoanStagedItem).not.toHaveBeenCalled()
+  })
 })
