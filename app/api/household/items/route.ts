@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { listBudgetItems, createBudgetItem } from '@/lib/household'
-import { toMonthlyCents, computeSummary } from '@/lib/household/compute'
+import { toMonthlyCents, toAnnualCents, computeSummary } from '@/lib/household/compute'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -24,6 +24,7 @@ export async function GET() {
     const enrichedItems = items.map(item => ({
       ...item,
       monthlyCents: toMonthlyCents(item.amountCents, item.frequency),
+      annualCents:  toAnnualCents(item.amountCents, item.frequency),
     }))
     const summary = computeSummary(items)
 
@@ -46,7 +47,11 @@ export async function POST(request: Request) {
     }
 
     const created = await createBudgetItem({ userId: user.id, ...parsed.data })
-    const item = { ...created, monthlyCents: toMonthlyCents(created.amountCents, created.frequency) }
+    const item = {
+      ...created,
+      monthlyCents: toMonthlyCents(created.amountCents, created.frequency),
+      annualCents:  toAnnualCents(created.amountCents, created.frequency),
+    }
 
     return NextResponse.json({ item }, { status: 201 })
   } catch (err) {

@@ -41,6 +41,7 @@ vi.mock('@/lib/household', () => ({
 
 vi.mock('@/lib/household/compute', () => ({
   toMonthlyCents: vi.fn((amountCents: number) => amountCents),
+  toAnnualCents:  vi.fn((amountCents: number) => amountCents),
   computeSummary: vi.fn(() => ({
     totalIncomeMonthlyCents: 0,
     totalExpensesMonthlyCents: 0,

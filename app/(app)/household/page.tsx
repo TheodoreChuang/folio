@@ -10,7 +10,7 @@ import type { PersonalBudgetItem, BudgetItemType, BudgetItemFrequency } from '@/
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type EnrichedItem = PersonalBudgetItem & { monthlyCents: number }
+type EnrichedItem = PersonalBudgetItem & { monthlyCents: number; annualCents: number }
 type View = 'monthly' | 'annual' | 'both'
 
 type Summary = {
@@ -26,6 +26,13 @@ const MONTHLY_FACTOR: Record<BudgetItemFrequency, number> = {
   fortnightly: 26 / 12,
   monthly:     1,
   annual:      1 / 12,
+}
+
+const ANNUAL_FACTOR: Record<BudgetItemFrequency, number> = {
+  weekly:      52,
+  fortnightly: 26,
+  monthly:     12,
+  annual:      1,
 }
 
 const FREQ_ABBR: Record<BudgetItemFrequency, string> = {
@@ -135,6 +142,7 @@ function ItemForm({
 
   const amountCents = Math.round(parseFloat(amountDollars || '0') * 100)
   const previewMonthly = amountCents > 0 ? toMonthlyLocal(amountCents, frequency) : null
+  const previewAnnual  = amountCents > 0 ? Math.round(amountCents * ANNUAL_FACTOR[frequency]) : null
 
   function handleSave() {
     const trimmed = name.trim()
@@ -194,9 +202,9 @@ function ItemForm({
       </div>
 
       {/* Preview */}
-      {previewMonthly !== null && (
+      {previewMonthly !== null && previewAnnual !== null && (
         <p className="text-xs text-muted mb-3">
-          ≈ {formatCents(previewMonthly)} / mo · {formatCents(previewMonthly * 12)} / yr
+          ≈ {formatCents(previewMonthly)} / mo · {formatCents(previewAnnual)} / yr
         </p>
       )}
 
@@ -300,7 +308,7 @@ function TableHeader({ view }: { view: View }) {
 // ── Item row ────────────────────────────────────────────────────────────────
 
 function ItemRow({ item, view, onEdit }: { item: EnrichedItem; view: View; onEdit: () => void }) {
-  const annualCents = item.monthlyCents * 12
+  const annualCents = item.annualCents
   return (
     <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2.5 items-center hover:bg-surface/50 group border-b border-border/40 last:border-0`}>
       <div>

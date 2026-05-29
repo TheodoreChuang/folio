@@ -27,6 +27,7 @@ vi.mock('@/lib/household', () => ({
 
 vi.mock('@/lib/household/compute', () => ({
   toMonthlyCents: vi.fn((amountCents: number) => amountCents),
+  toAnnualCents:  vi.fn((amountCents: number) => amountCents),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({

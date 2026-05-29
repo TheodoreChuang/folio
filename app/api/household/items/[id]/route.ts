@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { updateBudgetItem, softDeleteBudgetItem } from '@/lib/household'
-import { toMonthlyCents } from '@/lib/household/compute'
+import { toMonthlyCents, toAnnualCents } from '@/lib/household/compute'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -40,7 +40,11 @@ export async function PATCH(
     const updated = await updateBudgetItem(user.id, id, parsed.data)
     if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const item = { ...updated, monthlyCents: toMonthlyCents(updated.amountCents, updated.frequency) }
+    const item = {
+      ...updated,
+      monthlyCents: toMonthlyCents(updated.amountCents, updated.frequency),
+      annualCents:  toAnnualCents(updated.amountCents, updated.frequency),
+    }
     return NextResponse.json({ item })
   } catch (err) {
     captureError(err, { route: 'PATCH /api/household/items/[id]' })
