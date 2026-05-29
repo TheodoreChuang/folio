@@ -511,7 +511,7 @@ export default function UploadPage() {
                             <option key={p.id} value={p.id}>{propertyLabel(p)}</option>
                           ))}
                         </select>
-                        <a href="/properties" className="text-xs text-accent hover:underline flex-shrink-0">Add a property →</a>
+                        <a href="/properties/new" className="text-xs text-accent hover:underline flex-shrink-0">Add a property →</a>
                         <Button
                           size="sm"
                           disabled={!selectedProperty || isSaving}
@@ -634,7 +634,7 @@ export default function UploadPage() {
                             <option key={l.id} value={l.id}>{loanLabel(l)}</option>
                           ))}
                         </select>
-                        <a href="/loans" className="text-xs text-accent hover:underline flex-shrink-0">Add a loan →</a>
+                        <a href="/loans/new" className="text-xs text-accent hover:underline flex-shrink-0">Add a loan →</a>
                         <Button
                           size="sm"
                           disabled={!selectedLoan || isSaving}
