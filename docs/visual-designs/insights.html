@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>Folio — Insights</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,30..100&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="folio.css" />
+</head>
+<!--
+  Folio — Insights screen
+  ─────────────────────────────────────────────────────────────────
+  Maps to Next.js route:  /insights
+  Shared shell:           sidebar.js (injects <aside class="sidebar">)
+                          folio.css  (all design tokens + components)
+                          folio.js   (tabs, collapsibles, in-page state)
+
+  Performance & analysis surface — answers "How is the portfolio
+  performing?" (yield, growth, total return, cashflow trends). This is
+  the reflective counterpart to the Portfolio pulse (which answers
+  "Am I okay / does anything need me?") and the Plan page (forecasting).
+
+  Seeded with Return + the cashflow composition chart moved off the
+  dashboard. The full Insights design (net yield, return-on-equity,
+  expense ratios, per-property performance) is still to be built out.
+-->
+<body data-page="insights">
+<div class="app">
+
+  <!-- Sidebar is injected here by sidebar.js -->
+
+  <main class="main">
+    <div class="main-inner">
+
+    <section class="screen is-active" data-screen="insights" data-screen-label="Insights">
+
+      <div class="page-head">
+        <div>
+          <h1 class="title">Insights</h1>
+          <p class="subtitle">Trailing 12 months · 1 May 2025 – 30 Apr 2026</p>
+        </div>
+        <div class="controls">
+          <span class="chip-select"><span class="label">Entity</span>All entities <span class="chevron"></span></span>
+          <span class="chip-select"><span class="label">Period</span>Last 12 months <span class="chevron"></span></span>
+        </div>
+      </div>
+
+      <div class="stack-7">
+
+        <!-- Return -->
+        <div>
+          <div class="section-label">Return · trailing 12 months</div>
+          <div class="metric-strip" style="grid-template-columns: repeat(3, 1fr);">
+
+            <div class="metric">
+              <div class="label">Gross yield</div>
+              <div class="value">4.4<span class="unit">%</span></div>
+              <div class="footrow">
+                <span class="subtle">$92k rent / yr</span>
+                <span class="subtle">on $2.07m</span>
+              </div>
+            </div>
+
+            <div class="metric">
+              <div class="label">Capital growth</div>
+              <div class="value">+5.8<span class="unit">%</span></div>
+              <div class="footrow">
+                <span class="trend trend--up"><svg viewBox="0 0 10 10"><polyline points="1,7 4,4 6,6 9,2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>+$114k</span>
+                <span class="subtle">vs Apr 2025</span>
+              </div>
+            </div>
+
+            <div class="metric">
+              <div class="label">Total return</div>
+              <div class="value">+10.2<span class="unit">%</span></div>
+              <div class="footrow">
+                <span class="trend trend--up"><svg viewBox="0 0 10 10"><polyline points="1,7 4,4 6,6 9,2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>+6.2pp</span>
+                <span class="subtle">vs 4.0% cash</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cashflow chart -->
+        <div>
+          <div class="section-label">Cashflow · last 12 months
+            <span style="margin-left: var(--space-3); font-size: 10px; letter-spacing: 0.06em; text-transform: none; color: hsl(var(--foreground-muted));">— portfolio operating cashflow</span>
+          </div>
+          <div class="chart">
+            <div class="chart-head">
+              <div class="chart-title">Monthly cashflow composition</div>
+              <div class="chart-legend">
+                <span class="key"><i style="background: hsl(var(--positive) / 0.55)"></i>Rent</span>
+                <span class="key"><i style="background: hsl(var(--negative) / 0.5)"></i>Expenses</span>
+                <span class="key"><i style="background: hsl(var(--foreground-muted) / 0.45)"></i>Loan repayments</span>
+                <span class="key"><i style="background: hsl(var(--accent))"></i>Net</span>
+              </div>
+            </div>
+            <svg class="cashflow-svg" viewBox="0 0 920 200" preserveAspectRatio="none">
+              <!-- horizontal zero line + grid -->
+              <line x1="40" y1="100" x2="920" y2="100" stroke="hsl(36 12% 86%)" stroke-width="1"/>
+              <line x1="40" y1="50"  x2="920" y2="50"  stroke="hsl(36 14% 92%)" stroke-width="1" stroke-dasharray="2 3"/>
+              <line x1="40" y1="150" x2="920" y2="150" stroke="hsl(36 14% 92%)" stroke-width="1" stroke-dasharray="2 3"/>
+
+              <!-- Y axis labels -->
+              <text x="34" y="54" text-anchor="end" font-size="10" fill="hsl(34 5% 56%)" font-family="Inter">+$10k</text>
+              <text x="34" y="104" text-anchor="end" font-size="10" fill="hsl(34 5% 56%)" font-family="Inter">$0</text>
+              <text x="34" y="154" text-anchor="end" font-size="10" fill="hsl(34 5% 56%)" font-family="Inter">−$10k</text>
+
+              <!-- X axis months -->
+              <g font-size="10" fill="hsl(34 5% 56%)" font-family="Inter" text-anchor="middle">
+                <text x="80"  y="190">May</text>
+                <text x="150" y="190">Jun</text>
+                <text x="220" y="190">Jul</text>
+                <text x="290" y="190">Aug</text>
+                <text x="360" y="190">Sep</text>
+                <text x="430" y="190">Oct</text>
+                <text x="500" y="190">Nov</text>
+                <text x="570" y="190">Dec</text>
+                <text x="640" y="190">Jan</text>
+                <text x="710" y="190">Feb</text>
+                <text x="780" y="190">Mar</text>
+                <text x="850" y="190">Apr</text>
+              </g>
+
+              <!-- Bars: each month: rent (positive, above zero), expenses + loan stacked below.
+                   Bars centered on month x, width 32 -->
+              <g>
+                <!-- May -->
+                <rect x="64" y="62"  width="32" height="38" fill="hsl(152 38% 30% / 0.55)"/>
+                <rect x="64" y="100" width="32" height="18" fill="hsl(14 58% 42% / 0.5)"/>
+                <rect x="64" y="118" width="32" height="28" fill="hsl(32 6% 38% / 0.45)"/>
+                <!-- Jun -->
+                <rect x="134" y="60"  width="32" height="40" fill="hsl(152 38% 30% / 0.55)"/>
+                <rect x="134" y="100" width="32" height="16" fill="hsl(14 58% 42% / 0.5)"/>
+                <rect x="134" y="116" width="32" height="28" fill="hsl(32 6% 38% / 0.45)"/>
+                <!-- Jul -->
+                <rect x="204" y="58"  width="32" height="42" fill="hsl(152 38% 30% / 0.55)"/>
+                <rect x="204" y="100" width="32" height="22" fill="hsl(14 58% 42% / 0.5)"/>
+                <rect x="204" y="122" width="32" height="28" fill="hsl(32 6% 38% / 0.45)"/>
+                <!-- Aug -->
+                <rect x="274" y="61"  width="32" height="39" fill="hsl(152 38% 30% / 0.55)"/>
+                <rect x="274" y="100" width="32" height="18" fill="hsl(14 58% 42% / 0.5)"/>
+                <rect x="274" y="118" width="32" height="28" fill="hsl(32 6% 38% / 0.45)"/>
+                <!-- Sep -->
+                <rect x="344" y="58"  width="32" height="42" fill="hsl(152 38% 30% / 0.55)"/>
+                <rect x="344" y="100" width="32" height="14" fill="hsl(14 58% 42% / 0.5)"/>
+                <rect x="344" y="114" width="32" height="28" fill="hsl(32 6% 38% / 0.45)"/>
+                <!-- Oct -->
+                <rect x="414" y="57"  width="32" height="43" fill="hsl(152 38% 30% / 0.55)"/>
+                <rect x="414" y="100" width="32" height="16" fill="hsl(14 58% 42% / 0.5)"/>
+                <rect x="414" y="116" width="32" height="28" fill="hsl(32 6% 38% / 0.45)"/>
+                <!-- Nov -->
+                <rect x="484" y="60"  width="32" height="40" fill="hsl(152 38% 30% / 0.55)"/>
+                <rect x="484" y="100" width="32" height="20" fill="hsl(14 58% 42% / 0.5)"/>
+                <rect x="484" y="120" width="32" height="28" fill="hsl(32 6% 38% / 0.45)"/>
+                <!-- Dec -->
+                <rect x="554" y="62"  width="32" height="38" fill="hsl(152 38% 30% / 0.55)"/>
+                <rect x="554" y="100" width="32" height="22" fill="hsl(14 58% 42% / 0.5)"/>
+                <rect x="554" y="122" width="32" height="28" fill="hsl(32 6% 38% / 0.45)"/>
+                <!-- Jan -->
+                <rect x="624" y="58"  width="32" height="42" fill="hsl(152 38% 30% / 0.55)"/>
+                <rect x="624" y="100" width="32" height="18" fill="hsl(14 58% 42% / 0.5)"/>
+                <rect x="624" y="118" width="32" height="28" fill="hsl(32 6% 38% / 0.45)"/>
+                <!-- Feb -->
+                <rect x="694" y="59"  width="32" height="41" fill="hsl(152 38% 30% / 0.55)"/>
+                <rect x="694" y="100" width="32" height="20" fill="hsl(14 58% 42% / 0.5)"/>
+                <rect x="694" y="120" width="32" height="28" fill="hsl(32 6% 38% / 0.45)"/>
+                <!-- Mar -->
+                <rect x="764" y="61"  width="32" height="39" fill="hsl(152 38% 30% / 0.55)"/>
+                <rect x="764" y="100" width="32" height="20" fill="hsl(14 58% 42% / 0.5)"/>
+                <rect x="764" y="120" width="32" height="28" fill="hsl(32 6% 38% / 0.45)"/>
+                <!-- Apr (current, missing some data — slightly faded) -->
+                <rect x="834" y="72"  width="32" height="28" fill="hsl(152 38% 30% / 0.35)" stroke="hsl(152 38% 30% / 0.45)" stroke-dasharray="2 2"/>
+                <rect x="834" y="100" width="32" height="22" fill="hsl(14 58% 42% / 0.35)"/>
+                <rect x="834" y="122" width="32" height="28" fill="hsl(32 6% 38% / 0.35)"/>
+              </g>
+
+              <!-- Net line overlay (cumulative net = rent − expenses − loan) -->
+              <!-- All months net negative (below zero) -->
+              <polyline
+                fill="none"
+                stroke="hsl(188 32% 32%)"
+                stroke-width="1.6"
+                points="80,108 150,104 220,110 290,107 360,104 430,101 500,108 570,112 640,104 710,109 780,110 850,124"/>
+              <!-- Dots -->
+              <g fill="hsl(188 32% 32%)">
+                <circle cx="80" cy="108" r="2.2"/>
+                <circle cx="150" cy="104" r="2.2"/>
+                <circle cx="220" cy="110" r="2.2"/>
+                <circle cx="290" cy="107" r="2.2"/>
+                <circle cx="360" cy="104" r="2.2"/>
+                <circle cx="430" cy="101" r="2.2"/>
+                <circle cx="500" cy="108" r="2.2"/>
+                <circle cx="570" cy="112" r="2.2"/>
+                <circle cx="640" cy="104" r="2.2"/>
+                <circle cx="710" cy="109" r="2.2"/>
+                <circle cx="780" cy="110" r="2.2"/>
+                <circle cx="850" cy="124" r="3" stroke="white" stroke-width="1.5"/>
+              </g>
+
+              <!-- Apr annotation -->
+              <text x="850" y="62" text-anchor="middle" font-size="10" font-family="Inter" fill="hsl(34 70% 42%)">Partial</text>
+            </svg>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    </div>
+  </main>
+</div>
+
+<script src="sidebar.js"></script>
+<script src="folio.js"></script>
+</body>
+</html>

@@ -60,7 +60,11 @@
       <button class="nav-item is-add" data-goto="add-loan">+ Add loan</button>
     </div>
 
-    <button class="nav-item" data-goto="plan" style="margin-top: var(--space-3);">
+    <button class="nav-item" data-goto="insights" style="margin-top: var(--space-3);">
+      <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 14h12"/><path d="M4 14V8M8 14V3M12 14V6"/></svg>
+      Insights
+    </button>
+    <button class="nav-item" data-goto="plan">
       <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 13l3-4 3 2 4-6 2 3"/></svg>
       Plan
     </button>
