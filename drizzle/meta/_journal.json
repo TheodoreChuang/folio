@@ -169,6 +169,20 @@
             "when": 1779755255000,
             "tag": "0023_idx_loan_staging_source_doc",
             "breakpoints": true
+        },
+        {
+            "idx": 24,
+            "version": "7",
+            "when": 1779755256000,
+            "tag": "0024_personal_budget_items",
+            "breakpoints": true
+        },
+        {
+            "idx": 25,
+            "version": "7",
+            "when": 1779755257000,
+            "tag": "0025_add_detail_to_budget_items",
+            "breakpoints": true
         }
     ]
 }

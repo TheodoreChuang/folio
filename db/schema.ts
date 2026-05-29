@@ -20,6 +20,12 @@ export const statementCadenceEnum = pgEnum('statement_cadence', [
   'weekly', 'fortnightly', 'monthly', 'bi_monthly',
 ])
 
+export const budgetItemTypeEnum = pgEnum('budget_item_type', ['income', 'expense'])
+
+export const budgetItemFrequencyEnum = pgEnum('budget_item_frequency', [
+  'weekly', 'fortnightly', 'monthly', 'annual',
+])
+
 export const entities = pgTable('entities', {
   id:        uuid('id').primaryKey().defaultRandom(),
   userId:    uuid('user_id').notNull(),
@@ -285,6 +291,24 @@ export const propertyManagementAgents = pgTable('property_management_agents', {
   index('idx_mgmt_agents_property').on(t.propertyId, t.userId),
 ])
 
+export const personalBudgetItems = pgTable('personal_budget_items', {
+  id:            uuid('id').primaryKey().defaultRandom(),
+  userId:        uuid('user_id').notNull(),
+  type:          budgetItemTypeEnum('type').notNull(),
+  name:          text('name').notNull(),
+  amountCents:   integer('amount_cents').notNull(),
+  frequency:     budgetItemFrequencyEnum('frequency').notNull(),
+  effectiveFrom: date('effective_from').notNull(),
+  detail:        text('detail'),
+  category:      text('category'),
+  deletedAt:     timestamp('deleted_at', { withTimezone: true }),
+  createdAt:     timestamp('created_at').defaultNow().notNull(),
+  updatedAt:     timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+                   .$onUpdate(() => new Date()),
+}, (t) => [
+  index('idx_personal_budget_items_user').on(t.userId),
+])
+
 export type Property               = typeof properties.$inferSelect
 export type SourceDocument         = typeof sourceDocuments.$inferSelect
 export type InstallmentLoan        = typeof installmentLoans.$inferSelect
@@ -311,6 +335,11 @@ export type LoanType    = typeof loanTypeEnum.enumValues[number]
 export type RateType    = typeof rateTypeEnum.enumValues[number]
 export type LoanLedger  = typeof loanLedger.$inferSelect
 export type NewLoanLedger = typeof loanLedger.$inferInsert
+
+export type PersonalBudgetItem    = typeof personalBudgetItems.$inferSelect
+export type NewPersonalBudgetItem = typeof personalBudgetItems.$inferInsert
+export type BudgetItemType        = typeof budgetItemTypeEnum.enumValues[number]
+export type BudgetItemFrequency   = typeof budgetItemFrequencyEnum.enumValues[number]
 
 // Backward-compatible aliases — used by frontend pages pending the Frontend rebuild phase
 export type LoanBalance = InstallmentLoanBalance
