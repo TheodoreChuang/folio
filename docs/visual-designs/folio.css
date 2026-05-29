@@ -5630,3 +5630,374 @@ body[data-design-state="delete-valuation"] [data-confirm-anchor="valuation"] .ro
   white-space: nowrap;
 }
 
+/* =====================================================================
+   TOOLTIP — primitive
+   ---------------------------------------------------------------------
+   Hover/focus reveal. Pure-CSS, no JS. Use on any element by adding
+   `data-tooltip="..."` plus an optional placement modifier class.
+   Two variants:
+     • inline  (default)  short, single-line, e.g. icon labels
+     • block   (.tooltip--block)  multi-line, ~220px, used for
+                                  explanations like “Delete disabled
+                                  because…”
+   Placement classes: .tooltip--top (default), .tooltip--bottom,
+                      .tooltip--left, .tooltip--right
+   For elements with `pointer-events: none` we use the parent's
+   `.tooltip-host` wrapper so hover still resolves.
+   ===================================================================== */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]::after,
+.tooltip-host[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translate(-50%, 4px);
+  background: hsl(var(--foreground));
+  color: hsl(var(--surface-raised));
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.35;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 100ms ease, transform 100ms ease;
+  z-index: 60;
+  box-shadow: var(--shadow-pop);
+}
+[data-tooltip]::before,
+.tooltip-host[data-tooltip]::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translate(-50%, 4px);
+  border: 4px solid transparent;
+  border-top-color: hsl(var(--foreground));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 100ms ease, transform 100ms ease;
+  z-index: 60;
+}
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after,
+.tooltip-host:hover[data-tooltip]::after,
+[data-tooltip]:hover::before,
+[data-tooltip]:focus-visible::before,
+.tooltip-host:hover[data-tooltip]::before {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+[data-tooltip].tooltip--block::after {
+  white-space: normal;
+  text-align: left;
+  width: max-content;
+  max-width: 220px;
+}
+[data-tooltip].tooltip--right::after {
+  bottom: 50%;
+  left: calc(100% + 8px);
+  transform: translate(-4px, 50%);
+}
+[data-tooltip].tooltip--right::before {
+  bottom: 50%;
+  left: 100%;
+  transform: translate(-4px, 50%);
+  border-top-color: transparent;
+  border-right-color: hsl(var(--foreground));
+}
+[data-tooltip].tooltip--right:hover::after,
+[data-tooltip].tooltip--right:hover::before {
+  transform: translate(0, 50%);
+}
+[data-tooltip].tooltip--bottom::after {
+  bottom: auto;
+  top: calc(100% + 6px);
+  transform: translate(-50%, -4px);
+}
+[data-tooltip].tooltip--bottom::before {
+  bottom: auto;
+  top: 100%;
+  transform: translate(-50%, -4px);
+  border-top-color: transparent;
+  border-bottom-color: hsl(var(--foreground));
+}
+[data-tooltip].tooltip--bottom:hover::after,
+[data-tooltip].tooltip--bottom:hover::before {
+  transform: translate(-50%, 0);
+}
+
+/* =====================================================================
+   ENTITY CARD v2 — editable in place
+   ---------------------------------------------------------------------
+   Overrides the older entity-card layout (kept on .entity-card for the
+   archived state). v2 cards have:
+     • header row: editable name + status + kebab
+     • field-list of editable details (type, ABN/ACN, dates)
+     • compact footer with just the counts
+   ===================================================================== */
+.entity-card.v2 {
+  display: block;
+  padding: 0;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  position: relative;
+  overflow: visible;
+}
+.entity-card.v2 .ec-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid hsl(var(--rule));
+}
+.entity-card.v2 .ec-name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-data);
+  font-weight: 600;
+  font-size: var(--text-lg);
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+  cursor: pointer;
+  padding: 2px 6px;
+  margin-left: -6px;
+  border-radius: var(--radius-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.entity-card.v2 .ec-name:hover { background: hsl(var(--surface-sunken)); }
+.entity-card.v2 .ec-name::after {
+  content: "";
+  width: 11px; height: 11px;
+  display: inline-block;
+  opacity: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 10 10'><path d='M6.5 1.5l2 2L3 9H1V7z' fill='none' stroke='%23676159' stroke-width='1.2' stroke-linejoin='round'/></svg>");
+  background-size: contain; background-repeat: no-repeat;
+  transition: opacity 120ms;
+}
+.entity-card.v2:hover .ec-name::after { opacity: 0.55; }
+
+.entity-card.v2 .ec-status {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  color: hsl(var(--positive));
+  background: hsl(var(--positive-soft));
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid hsl(var(--positive) / 0.2);
+}
+.entity-card.v2 .ec-status--empty {
+  color: hsl(var(--negative));
+  background: hsl(var(--negative-soft));
+  border-color: hsl(var(--negative) / 0.2);
+}
+
+.entity-card.v2 .ec-fields {
+  padding: var(--space-3) var(--space-6) var(--space-3);
+}
+.entity-card.v2 .ec-fields .field-row {
+  grid-template-columns: 160px 1fr;
+  padding: var(--space-3) 0;
+}
+.entity-card.v2 .ec-fields .field-row:last-child { border-bottom: none; }
+
+.entity-card.v2 .ec-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-7);
+  padding: var(--space-4) var(--space-6);
+  background: hsl(var(--surface-sunken) / 0.45);
+  border-top: 1px solid hsl(var(--rule));
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.entity-card.v2 .ec-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: hsl(var(--foreground-muted));
+}
+.entity-card.v2 .ec-count .n {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.entity-card.v2 .ec-count.is-empty .n { color: hsl(var(--foreground-faint)); }
+.entity-card.v2 .ec-foot a {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: hsl(var(--foreground-muted));
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.entity-card.v2 .ec-foot a:hover { color: hsl(var(--accent)); text-decoration: none; }
+
+/* Compact (tweak: density) — collapses field-list into a meta row */
+.entity-card.v2.is-compact .ec-fields { display: none; }
+.entity-card.v2.is-compact .ec-head { border-bottom: none; padding-bottom: var(--space-3); }
+.entity-card.v2.is-compact .ec-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  padding: 0 var(--space-6) var(--space-4);
+  font-size: var(--text-xs);
+  color: hsl(var(--foreground-muted));
+}
+.entity-card.v2.is-compact .ec-meta .kv { display: inline-flex; gap: 4px; align-items: baseline; }
+.entity-card.v2.is-compact .ec-meta .k {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(var(--foreground-subtle));
+  font-weight: 500;
+}
+.entity-card.v2:not(.is-compact) .ec-meta { display: none; }
+
+/* Editing the name — no chrome, just the input replaces the span */
+.entity-card.v2 .ec-name-edit {
+  display: none;
+  flex: 1;
+  min-width: 0;
+}
+.entity-card.v2 .ec-name-edit .input {
+  height: 32px;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-family: var(--font-data);
+  letter-spacing: -0.005em;
+  padding: 0 var(--space-3);
+  margin-left: -6px;
+  background: hsl(var(--surface-raised));
+  border-color: hsl(var(--accent));
+  box-shadow: var(--shadow-focus);
+}
+.entity-card.v2.is-renaming .ec-name { display: none; }
+.entity-card.v2.is-renaming .ec-name-edit { display: inline-flex; }
+
+/* Rename impact warning — shown only while the name is being edited
+   on an entity with downstream references. Sits between header and fields. */
+.entity-card.v2 .ec-rename-note {
+  display: none;
+  padding: var(--space-3) var(--space-6);
+  background: hsl(var(--accent-soft) / 0.5);
+  border-bottom: 1px solid hsl(var(--accent) / 0.18);
+  font-size: var(--text-xs);
+  color: hsl(var(--accent));
+  line-height: var(--leading-snug);
+}
+.entity-card.v2 .ec-rename-note strong { font-weight: 600; }
+.entity-card.v2.is-renaming .ec-rename-note { display: block; }
+
+/* Kebab v2 — simplified */
+.entity-card.v2 .ec-kebab {
+  position: relative;
+}
+.entity-card.v2 .ec-kebab-trigger {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: hsl(var(--foreground-subtle));
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.entity-card.v2 .ec-kebab-trigger:hover,
+.entity-card.v2 .ec-kebab-trigger.is-open {
+  background: hsl(var(--surface-sunken));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+.entity-card.v2 .ec-kebab-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  background: hsl(var(--surface-raised));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  padding: var(--space-2);
+  min-width: 200px;
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+}
+.entity-card.v2 .ec-kebab.is-open .ec-kebab-menu { display: flex; }
+.entity-card.v2 .ec-kebab-menu button {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-sm);
+  text-align: left;
+  color: hsl(var(--foreground));
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+.entity-card.v2 .ec-kebab-menu button:hover { background: hsl(var(--surface-sunken)); }
+.entity-card.v2 .ec-kebab-menu button.is-destructive { color: hsl(var(--negative)); }
+.entity-card.v2 .ec-kebab-menu button.is-destructive:hover { background: hsl(var(--negative) / 0.08); }
+.entity-card.v2 .ec-kebab-menu button.is-disabled {
+  color: hsl(var(--foreground-faint));
+  cursor: not-allowed;
+}
+.entity-card.v2 .ec-kebab-menu button.is-disabled .glyph { opacity: 0.5; }
+.entity-card.v2 .ec-kebab-menu button.is-disabled:hover { background: transparent; }
+.entity-card.v2 .ec-kebab-menu button .glyph {
+  color: hsl(var(--foreground-subtle));
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.entity-card.v2 .ec-kebab-menu .sep {
+  height: 1px;
+  background: hsl(var(--rule));
+  margin: 4px 6px;
+}
+
+/* Empty-trust delete confirmation in v2 */
+.entity-card.v2.is-confirming-delete {
+  border-color: hsl(var(--negative) / 0.35);
+}
+.entity-card.v2 .ec-confirm {
+  display: none;
+  padding: var(--space-5) var(--space-6);
+  background: hsl(var(--negative-soft));
+  border-top: 1px solid hsl(var(--negative) / 0.2);
+  border-radius: 0 0 var(--radius) var(--radius);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+.entity-card.v2.is-confirming-delete .ec-confirm { display: flex; }
+.entity-card.v2.is-confirming-delete .ec-foot { display: none; }
+.entity-card.v2 .ec-confirm .copy {
+  font-size: var(--text-sm);
+  color: hsl(var(--negative));
+}
+.entity-card.v2 .ec-confirm .copy strong { font-weight: 600; }
+.entity-card.v2 .ec-confirm .actions { display: flex; gap: var(--space-3); }
+.entity-card.v2 .ec-confirm .btn--danger {
+  background: hsl(var(--negative));
+  color: white;
+  border-color: transparent;
+}
+.entity-card.v2 .ec-confirm .btn--danger:hover { background: hsl(var(--negative) / 0.9); }
+
