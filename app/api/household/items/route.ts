@@ -11,6 +11,7 @@ const postSchema = z.object({
   amountCents: z.number().int().positive('amountCents must be a positive integer'),
   frequency: z.enum(['weekly', 'fortnightly', 'monthly', 'annual']),
   effectiveFrom: z.string().optional(),
+  detail: z.string().max(200).optional(),
 })
 
 export async function GET() {

@@ -11,6 +11,7 @@ const patchSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   amountCents: z.number().int().positive().optional(),
   frequency: z.enum(['weekly', 'fortnightly', 'monthly', 'annual']).optional(),
+  detail: z.string().max(200).optional(),
 })
 
 export async function PATCH(

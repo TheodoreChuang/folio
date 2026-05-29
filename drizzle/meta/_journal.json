@@ -176,6 +176,13 @@
             "when": 1779755256000,
             "tag": "0024_personal_budget_items",
             "breakpoints": true
+        },
+        {
+            "idx": 25,
+            "version": "7",
+            "when": 1779755257000,
+            "tag": "0025_add_detail_to_budget_items",
+            "breakpoints": true
         }
     ]
 }

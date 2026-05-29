@@ -1,3 +1,10 @@
+export function formatCentsEntered(cents: number): string {
+  return '$' + (cents / 100).toLocaleString('en-AU', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
+}
+
 export function formatCents(cents: number): string {
   return new Intl.NumberFormat('en-AU', {
     style: 'currency',

@@ -299,6 +299,7 @@ export const personalBudgetItems = pgTable('personal_budget_items', {
   amountCents:   integer('amount_cents').notNull(),
   frequency:     budgetItemFrequencyEnum('frequency').notNull(),
   effectiveFrom: date('effective_from').notNull(),
+  detail:        text('detail'),
   category:      text('category'),
   deletedAt:     timestamp('deleted_at', { withTimezone: true }),
   createdAt:     timestamp('created_at').defaultNow().notNull(),

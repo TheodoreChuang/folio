@@ -10,12 +10,14 @@ export type CreateBudgetItemInput = {
   amountCents: number
   frequency: BudgetItemFrequency
   effectiveFrom?: string
+  detail?: string
 }
 
 export type UpdateBudgetItemData = {
   name?: string
   amountCents?: number
   frequency?: BudgetItemFrequency
+  detail?: string
 }
 
 export async function listBudgetItems(userId: string): Promise<PersonalBudgetItem[]> {
@@ -45,6 +47,7 @@ export async function createBudgetItem(input: CreateBudgetItemInput): Promise<Pe
       amountCents: input.amountCents,
       frequency: input.frequency,
       effectiveFrom: input.effectiveFrom ?? new Date().toISOString().slice(0, 10),
+      detail: input.detail,
     })
     .returning()
   return row

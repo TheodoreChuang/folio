@@ -11,6 +11,7 @@ function makeItem(overrides: Partial<PersonalBudgetItem> = {}): PersonalBudgetIt
     amountCents: 100000,
     frequency: 'monthly',
     effectiveFrom: '2024-01-01',
+    detail: null,
     category: null,
     deletedAt: null,
     createdAt: new Date(),

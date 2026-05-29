@@ -13,6 +13,7 @@ const updatedItem = {
   amountCents: 600000,
   frequency: 'monthly' as const,
   effectiveFrom: '2024-01-01',
+  detail: null,
   category: null,
   deletedAt: null,
   createdAt: new Date(),
