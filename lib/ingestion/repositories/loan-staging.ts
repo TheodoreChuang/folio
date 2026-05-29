@@ -56,6 +56,8 @@ export async function listApprovedLoanItems(
 type LoanStagedItemPatch = Partial<{
   installmentLoanId: string | null
   status: 'pending' | 'approved' | 'rejected'
+  interestCents: number | null
+  principalCents: number | null
 }>
 
 export async function patchLoanStagedItem(

@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils'
 import { MAX_UPLOAD_BYTES } from '@/lib/constants'
 import { formatCents } from '@/lib/format'
 
-type DocumentType = 'pm_statement' | 'bank_statement' | 'loan_statement'
 type UploadState = 'idle' | 'review'
 
 type FileUploadStatus = {
@@ -37,6 +36,26 @@ type StagedSession = {
   items: StagedItem[]
 }
 
+type LoanStagedItem = {
+  id: string
+  sourceDocumentId: string
+  lineItemIndex: number
+  paymentDate: string
+  amountCents: number
+  interestCents: number | null
+  principalCents: number | null
+  description: string | null
+  confidence: string
+  installmentLoanId: string | null
+  status: string
+}
+
+type LoanStagedSession = {
+  sourceDocumentId: string
+  documentFileName: string
+  items: LoanStagedItem[]
+}
+
 type Property = {
   id: string
   address: string
@@ -49,11 +68,7 @@ type Loan = {
   nickname: string | null
 }
 
-const DOCUMENT_TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
-  { value: 'pm_statement', label: 'PM statement' },
-  { value: 'bank_statement', label: 'Bank statement' },
-  { value: 'loan_statement', label: 'Loan statement' },
-]
+type LoanWithContext = Loan & { propertyAddress: string }
 
 const CATEGORY_OPTIONS = [
   { value: 'rent', label: 'Rent' },
@@ -75,6 +90,11 @@ function propertyLabel(p: Property): string {
   return p.nickname ? `${p.address} — ${p.nickname}` : p.address
 }
 
+function loanLabel(l: LoanWithContext): string {
+  const name = l.nickname ? `${l.lender} — ${l.nickname}` : l.lender
+  return `${name} (${l.propertyAddress})`
+}
+
 function sessionNetCents(items: StagedItem[]): number {
   return items.reduce((sum, item) => (
     item.category === 'rent' ? sum + item.amountCents : sum - item.amountCents
@@ -85,16 +105,21 @@ export default function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [uploadState, setUploadState] = useState<UploadState>('idle')
-  const [documentType, setDocumentType] = useState<DocumentType>('pm_statement')
   const [fileStatuses, setFileStatuses] = useState<FileUploadStatus[]>([])
   const [stagedSessions, setStagedSessions] = useState<StagedSession[]>([])
+  const [loanSessions, setLoanSessions] = useState<LoanStagedSession[]>([])
 
   // Review state
   const [properties, setProperties] = useState<Property[]>([])
+  const [allLoans, setAllLoans] = useState<LoanWithContext[]>([])
   const [sessionPropertyMap, setSessionPropertyMap] = useState<Record<string, string>>({})
+  const [sessionLoanMap, setSessionLoanMap] = useState<Record<string, string>>({})
   const [savingSessions, setSavingSessions] = useState<Set<string>>(new Set())
+  const [savingLoanSessions, setSavingLoanSessions] = useState<Set<string>>(new Set())
+  const [loanItemEdits, setLoanItemEdits] = useState<Record<string, { interest: string; principal: string }>>({})
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
   const [committing, setCommitting] = useState(false)
+  const [loanCommitting, setLoanCommitting] = useState(false)
 
   // Mortgage form
   const [mortgagePropertyId, setMortgagePropertyId] = useState('')
@@ -112,13 +137,53 @@ export default function UploadPage() {
     }
   }, [])
 
+  const loadLoanSessions = useCallback(async () => {
+    const res = await fetch('/api/ingestion/loan-staged')
+    if (res.ok) {
+      const data = await res.json() as { sessions?: LoanStagedSession[] }
+      setLoanSessions(data.sessions ?? [])
+    }
+  }, [])
+
   useEffect(() => { loadStaged() }, [loadStaged])
+  useEffect(() => { loadLoanSessions() }, [loadLoanSessions])
+
+  useEffect(() => {
+    setLoanItemEdits(prev => {
+      const next = { ...prev }
+      for (const session of loanSessions) {
+        for (const item of session.items) {
+          if (!(item.id in next)) {
+            next[item.id] = {
+              interest: item.interestCents != null ? (item.interestCents / 100).toFixed(2) : '',
+              principal: item.principalCents != null ? (item.principalCents / 100).toFixed(2) : '',
+            }
+          }
+        }
+      }
+      return next
+    })
+  }, [loanSessions])
 
   useEffect(() => {
     if (uploadState === 'review') {
       fetch('/api/properties')
         .then(r => r.json())
-        .then((d: { properties?: Property[] }) => setProperties(d.properties ?? []))
+        .then(async (d: { properties?: Property[] }) => {
+          const props = d.properties ?? []
+          setProperties(props)
+          const loanArrays = await Promise.all(
+            props.map(p =>
+              fetch(`/api/properties/${p.id}/loans`)
+                .then(r => r.json())
+                .then((ld: { loans?: Loan[] }) =>
+                  (ld.loans ?? []).map(l => ({ ...l, propertyAddress: propertyLabel(p) }))
+                )
+                .catch(() => [] as LoanWithContext[])
+            )
+          )
+          setAllLoans(loanArrays.flat())
+        })
         .catch(() => {})
     }
   }, [uploadState])
@@ -133,6 +198,13 @@ export default function UploadPage() {
 
   const needsInputSessions = stagedSessions.filter(s => s.items.some(i => !i.propertyId))
   const matchedSessions = stagedSessions.filter(s => s.items.length > 0 && s.items.every(i => i.propertyId))
+
+  // Loan session state buckets
+  const loanNeedsLoanSessions = loanSessions.filter(s => s.items.some(i => !i.installmentLoanId))
+  const loanApprovedSessions = loanSessions.filter(s =>
+    s.items.length > 0 &&
+    s.items.every(i => i.installmentLoanId && i.status === 'approved')
+  )
 
   async function handleAssignProperty(session: StagedSession) {
     const propertyId = sessionPropertyMap[session.sourceDocumentId]
@@ -150,6 +222,7 @@ export default function UploadPage() {
       )
       if (results.some(r => !r.ok)) {
         toast.error('Failed to assign property to some items')
+        await loadStaged()
         return
       }
       await loadStaged()
@@ -173,6 +246,47 @@ export default function UploadPage() {
     }
   }
 
+  async function handlePatchLoanItem(itemId: string, field: 'interest' | 'principal', value: string) {
+    const cents = value === '' ? null : Math.round(parseFloat(value) * 100)
+    if (cents !== null && (isNaN(cents) || cents < 0)) return
+    try {
+      await fetch(`/api/ingestion/loan-staged/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(field === 'interest' ? { interestCents: cents } : { principalCents: cents }),
+      })
+    } catch {
+      toast.error('Failed to save')
+    }
+  }
+
+  async function handleAssignLoan(session: LoanStagedSession) {
+    const installmentLoanId = sessionLoanMap[session.sourceDocumentId]
+    if (!installmentLoanId) { toast.error('Select a loan first'); return }
+    setSavingLoanSessions(prev => new Set(prev).add(session.sourceDocumentId))
+    try {
+      const results = await Promise.all(
+        session.items.map(item =>
+          fetch(`/api/ingestion/loan-staged/${item.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ installmentLoanId, status: 'approved' }),
+          })
+        )
+      )
+      if (results.some(r => !r.ok)) {
+        toast.error('Failed to assign loan to some items')
+        await loadLoanSessions()
+        return
+      }
+      await loadLoanSessions()
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setSavingLoanSessions(prev => { const s = new Set(prev); s.delete(session.sourceDocumentId); return s })
+    }
+  }
+
   async function handleCommit() {
     if (matchedSessions.length === 0) return
     setCommitting(true)
@@ -185,6 +299,7 @@ export default function UploadPage() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string }
         toast.error(err.error ?? 'Commit failed')
+        await loadStaged()
         return
       }
       const data = await res.json() as { committed: number }
@@ -195,6 +310,32 @@ export default function UploadPage() {
       toast.error('Network error during commit')
     } finally {
       setCommitting(false)
+    }
+  }
+
+  async function handleLoanCommit() {
+    if (loanApprovedSessions.length === 0) return
+    setLoanCommitting(true)
+    try {
+      const res = await fetch('/api/ingestion/loan-commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceDocumentIds: loanApprovedSessions.map(s => s.sourceDocumentId) }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        toast.error(err.error ?? 'Loan commit failed')
+        await loadLoanSessions()
+        return
+      }
+      const data = await res.json() as { committed: number }
+      toast.success(`${data.committed} payment${data.committed !== 1 ? 's' : ''} recorded`)
+      await loadLoanSessions()
+      setUploadState('idle')
+    } catch {
+      toast.error('Network error during loan commit')
+    } finally {
+      setLoanCommitting(false)
     }
   }
 
@@ -235,7 +376,6 @@ export default function UploadPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('documentType', documentType)
       const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
       if (!uploadRes.ok) {
         const err = await uploadRes.json().catch(() => ({})) as { error?: string }
@@ -255,7 +395,7 @@ export default function UploadPage() {
         return
       }
       updateStatus({ status: 'staged' })
-      await loadStaged()
+      await Promise.all([loadStaged(), loadLoanSessions()])
     } catch {
       updateStatus({ status: 'error', error: 'Network error' })
     }
@@ -273,7 +413,9 @@ export default function UploadPage() {
     handleFiles(e.dataTransfer.files)
   }
 
+  const totalSessions = stagedSessions.length + loanSessions.length
   const pendingCount = stagedSessions.reduce((sum, s) => sum + s.items.length, 0)
+    + loanSessions.reduce((sum, s) => sum + s.items.length, 0)
 
   return (
     <div>
@@ -282,7 +424,7 @@ export default function UploadPage() {
           <h1 className="font-serif text-2xl text-ink">Upload</h1>
           <p className="text-sm text-muted mt-0.5">Drop a statement. Folio classifies it and asks only when uncertain.</p>
         </div>
-        {stagedSessions.length > 0 && (
+        {totalSessions > 0 && (
           <div className="inline-flex items-center gap-0.5 p-0.5 bg-sunken border border-border rounded-lg">
             <button
               onClick={() => setUploadState('idle')}
@@ -296,7 +438,7 @@ export default function UploadPage() {
             >
               In review
               <span className="px-1.5 py-px bg-warn text-white rounded-full text-[10px] font-semibold leading-none">
-                {stagedSessions.length}
+                {totalSessions}
               </span>
             </button>
           </div>
@@ -309,7 +451,7 @@ export default function UploadPage() {
           {/* Review banner */}
           <div className="bg-accent/5 border border-accent/20 rounded-lg px-5 py-4 flex items-center justify-between">
             <span className="text-sm text-accent">
-              Reviewing {stagedSessions.length} document{stagedSessions.length !== 1 ? 's' : ''}.
+              Reviewing {totalSessions} document{totalSessions !== 1 ? 's' : ''}.
               Confirm at the bottom, or{' '}
               <button
                 onClick={() => setUploadState('idle')}
@@ -323,7 +465,7 @@ export default function UploadPage() {
             </Button>
           </div>
 
-          {/* Needs your input */}
+          {/* PM sessions — needs input */}
           {needsInputSessions.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
@@ -371,6 +513,7 @@ export default function UploadPage() {
                             <option key={p.id} value={p.id}>{propertyLabel(p)}</option>
                           ))}
                         </select>
+                        <a href="/properties/new" className="text-xs text-accent hover:underline flex-shrink-0">Add a property →</a>
                         <Button
                           size="sm"
                           disabled={!selectedProperty || isSaving}
@@ -386,7 +529,7 @@ export default function UploadPage() {
             </div>
           )}
 
-          {/* Matched */}
+          {/* PM sessions — matched */}
           {matchedSessions.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
@@ -436,6 +579,115 @@ export default function UploadPage() {
                           ))}
                         </div>
                       )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Loan sessions — needs loan assignment */}
+          {loanNeedsLoanSessions.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Loan statements — assign loan</p>
+                <span className="text-xs bg-border text-muted rounded-full px-2 py-0.5">{loanNeedsLoanSessions.length}</span>
+              </div>
+              <div className="space-y-3">
+                {loanNeedsLoanSessions.map(session => {
+                  const isSaving = savingLoanSessions.has(session.sourceDocumentId)
+                  const selectedLoan = sessionLoanMap[session.sourceDocumentId] ?? ''
+                  return (
+                    <div key={session.sourceDocumentId} className="bg-surface border border-border rounded-lg overflow-hidden">
+                      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+                        <span className="text-accent font-bold text-sm">?</span>
+                        <p className="text-sm font-medium text-ink truncate flex-1">{session.documentFileName}</p>
+                        <span className="text-xs text-muted">{session.items.length} payment{session.items.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="divide-y divide-ruled">
+                        <div className="grid grid-cols-4 px-4 py-2 bg-sunken">
+                          <span className="text-xs font-medium text-muted">Date</span>
+                          <span className="text-xs font-medium text-muted text-right">Amount</span>
+                          <span className="text-xs font-medium text-muted text-right">Interest ($)</span>
+                          <span className="text-xs font-medium text-muted text-right">Principal ($)</span>
+                        </div>
+                        {session.items.map(item => (
+                          <div key={item.id} className="grid grid-cols-4 px-4 py-2 items-center gap-2">
+                            <span className="text-xs text-muted">{item.paymentDate}</span>
+                            <span className="text-sm text-ink text-right">{formatCents(item.amountCents)}</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={loanItemEdits[item.id]?.interest ?? ''}
+                              onChange={e => setLoanItemEdits(prev => ({ ...prev, [item.id]: { ...prev[item.id], interest: e.target.value } }))}
+                              onBlur={e => handlePatchLoanItem(item.id, 'interest', e.target.value)}
+                              placeholder="—"
+                              className="text-xs text-right border border-border rounded px-2 py-1 bg-surface text-ink w-full"
+                            />
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={loanItemEdits[item.id]?.principal ?? ''}
+                              onChange={e => setLoanItemEdits(prev => ({ ...prev, [item.id]: { ...prev[item.id], principal: e.target.value } }))}
+                              onBlur={e => handlePatchLoanItem(item.id, 'principal', e.target.value)}
+                              placeholder="—"
+                              className="text-xs text-right border border-border rounded px-2 py-1 bg-surface text-ink w-full"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="px-4 py-3 border-t border-border bg-surface/50 flex items-center gap-3">
+                        <span className="text-xs text-muted flex-shrink-0">Which loan?</span>
+                        <select
+                          value={selectedLoan}
+                          onChange={e => setSessionLoanMap(prev => ({ ...prev, [session.sourceDocumentId]: e.target.value }))}
+                          className="flex-1 text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-ink"
+                        >
+                          <option value="">Select a loan…</option>
+                          {allLoans.map(l => (
+                            <option key={l.id} value={l.id}>{loanLabel(l)}</option>
+                          ))}
+                        </select>
+                        <a href="/loans/new" className="text-xs text-accent hover:underline flex-shrink-0">Add a loan →</a>
+                        <Button
+                          size="sm"
+                          disabled={!selectedLoan || isSaving}
+                          onClick={() => handleAssignLoan(session)}
+                        >
+                          {isSaving ? 'Saving…' : 'Assign loan →'}
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Loan sessions — approved */}
+          {loanApprovedSessions.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Loan payments approved</p>
+                <span className="text-xs bg-border text-muted rounded-full px-2 py-0.5">{loanApprovedSessions.length}</span>
+              </div>
+              <div className="space-y-2">
+                {loanApprovedSessions.map(session => {
+                  const loan = allLoans.find(l => l.id === session.items[0]?.installmentLoanId)
+                  const total = session.items.reduce((sum, i) => sum + i.amountCents, 0)
+                  return (
+                    <div key={session.sourceDocumentId} className="bg-surface border border-border rounded-lg px-4 py-3 flex items-center gap-3">
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-600 flex-shrink-0" aria-hidden>
+                        <polyline points="2,8 6,12 14,4"/>
+                      </svg>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-ink truncate">{session.documentFileName}</p>
+                        {loan && <p className="text-xs text-muted">{loanLabel(loan)}</p>}
+                      </div>
+                      <span className="text-xs text-muted">{session.items.length} payments</span>
+                      <span className="text-xs font-medium text-ink">{formatCents(total)}</span>
                     </div>
                   )
                 })}
@@ -515,7 +767,7 @@ export default function UploadPage() {
             </div>
           </div>
 
-          {/* Commit bar */}
+          {/* PM commit bar */}
           <div className="bg-surface border border-border rounded-lg px-5 py-4 flex items-center justify-between gap-4">
             <div className="min-w-0">
               {matchedSessions.length > 0 ? (
@@ -529,7 +781,7 @@ export default function UploadPage() {
                 <p className="text-sm text-muted">
                   {needsInputSessions.length > 0
                     ? `${needsInputSessions.length} document${needsInputSessions.length !== 1 ? 's need' : ' needs'} a property before committing.`
-                    : 'No documents ready to commit.'}
+                    : 'No PM documents ready to commit.'}
                 </p>
               )}
             </div>
@@ -540,32 +792,41 @@ export default function UploadPage() {
                 disabled={matchedSessions.length === 0 || committing}
                 onClick={handleCommit}
               >
-                {committing ? 'Committing…' : 'Confirm — add to portfolio →'}
+                {committing ? 'Committing…' : 'Confirm entries →'}
               </Button>
             </div>
           </div>
 
+          {/* Loan commit bar */}
+          {loanSessions.length > 0 && (
+            <div className="bg-surface border border-border rounded-lg px-5 py-4 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                {loanApprovedSessions.length > 0 ? (
+                  <p className="text-sm text-ink">
+                    Will record <strong>{loanApprovedSessions.reduce((sum, s) => sum + s.items.length, 0)} loan payments</strong> from {loanApprovedSessions.length} document{loanApprovedSessions.length !== 1 ? 's' : ''}.
+                    {loanNeedsLoanSessions.length > 0 && (
+                      <span className="text-muted"> {loanNeedsLoanSessions.length} not ready — will stay in queue.</span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted">
+                    {`${loanNeedsLoanSessions.length} loan statement${loanNeedsLoanSessions.length !== 1 ? 's need' : ' needs'} a loan assigned.`}
+                  </p>
+                )}
+              </div>
+              <Button
+                size="sm"
+                disabled={loanApprovedSessions.length === 0 || loanCommitting}
+                onClick={handleLoanCommit}
+              >
+                {loanCommitting ? 'Recording…' : 'Confirm loan payments →'}
+              </Button>
+            </div>
+          )}
+
         </div>
       ) : (
         <div className="space-y-6">
-
-          <div className="grid grid-cols-3 gap-3">
-            {DOCUMENT_TYPE_OPTIONS.map(opt => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setDocumentType(opt.value)}
-                className={[
-                  'py-2 px-3 rounded-md border text-sm font-medium transition-colors',
-                  documentType === opt.value
-                    ? 'bg-accent text-white border-accent'
-                    : 'bg-surface border-border text-muted hover:border-accent hover:text-ink',
-                ].join(' ')}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
 
           <div
             className={cn(
@@ -603,13 +864,13 @@ export default function UploadPage() {
             />
           </div>
 
-          {stagedSessions.length > 0 && (
+          {totalSessions > 0 && (
             <div className="flex items-center justify-between bg-warning-soft border border-warning/25 rounded-lg px-5 py-4">
               <div className="flex items-center gap-3">
                 <span className="text-warning font-bold text-base">!</span>
                 <div>
-                  <p className="text-sm font-medium text-ink">{stagedSessions.length} {stagedSessions.length === 1 ? 'document is' : 'documents are'} waiting on your input.</p>
-                  <p className="text-xs text-muted">{pendingCount} items from your last {stagedSessions.length === 1 ? 'upload' : `${stagedSessions.length} uploads`}</p>
+                  <p className="text-sm font-medium text-ink">{totalSessions} {totalSessions === 1 ? 'document is' : 'documents are'} waiting on your input.</p>
+                  <p className="text-xs text-muted">{pendingCount} items from your last {totalSessions === 1 ? 'upload' : `${totalSessions} uploads`}</p>
                 </div>
               </div>
               <Button size="sm" variant="outline" onClick={() => setUploadState('review')}>
