@@ -10,26 +10,35 @@
 <link rel="stylesheet" href="folio.css" />
 </head>
 <!--
-  Folio — Entities screen
+  Folio — Entities screen  (v3 — options solidified, May 2026)
   ─────────────────────────────────────────────────────────────────
-  Maps to Next.js route:  /settings/entities
-  Shared shell:           sidebar.js (injects <aside class="sidebar">)
-                          folio.css  (all design tokens + components)
-                          folio.js   (tabs, collapsibles, in-page state)
-  Screens linked from here use ordinary <a href="X.html"> patterns;
-  in the Next.js port these become <Link href="/X">.
+  Locked decisions (Tweaks panel removed):
+    • Card: name, type, identifier(s), type-specific dates, counts only
+    • Date vocabulary is TYPE-SPECIFIC — the labels are real legal
+      milestones users already think in:
+        Trust   → Established / Vesting date
+        Company → Incorporated / Deregistered
+        Personal → no dates
+    • Identifiers (all optional, shown where appropriate):
+        Trust   → ABN
+        Company → ABN + ACN
+        Personal → ABN  (sole traders can be ABN-registered)
+    • Density: comfortable — entity counts are small (1–5) and every
+      field is inline-editable, so the expanded field-list is the
+      default. (Archived cards stay compact as a contrast state.)
+    • Overflow menu: Archive + Delete, Delete disabled w/ tooltip
+      reason when records are attached.
+  Interactions kept: inline rename, kebab menu, delete confirmation.
 -->
 <body data-page="entities">
 <div class="app">
-
-  <!-- Sidebar is injected here by sidebar.js -->
 
   <main class="main">
     <div class="main-inner">
 
     <section class="screen is-active" data-screen="entities" data-screen-label="Entities">
 
-      <a href="#" class="crumb-back" data-goto="settings">
+      <a href="settings.html" class="crumb-back">
         <svg width="9" height="9" viewBox="0 0 10 10"><polyline points="6,2 2,5 6,8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Settings
       </a>
@@ -40,197 +49,227 @@
           <p class="subtitle">Trusts, companies, and individuals that own property in Folio.</p>
         </div>
         <div class="controls">
-          <button class="btn btn--primary btn--sm">+ Add entity</button>
+          <button class="btn btn--primary btn--sm" onclick="window.location.href='add-entity.html'">+ Add entity</button>
         </div>
       </div>
 
-      <div class="stack-7">
+      <div class="stack-7" id="entity-stack">
 
         <!-- ACTIVE entities -->
         <div>
           <div class="section-label" style="display: flex; justify-content: space-between; align-items: center;">
             <span>Active · 3</span>
-            <span style="font-size: var(--text-xs); text-transform: none; letter-spacing: 0; color: hsl(var(--foreground-subtle));">Click any name to rename it.</span>
+            <span style="font-size: var(--text-xs); text-transform: none; letter-spacing: 0; color: hsl(var(--foreground-subtle));">Click any value to edit in place.</span>
           </div>
 
           <div class="entity-list">
 
-            <!-- =============== Entity 1: default state =============== -->
-            <article class="entity-card">
-              <div>
-                <div class="entity-top">
-                  <h3 class="entity-name">Okafor Family Trust</h3>
-                </div>
-                <div class="entity-meta">
-                  <span>Discretionary trust</span>
-                  <span class="dot"></span>
-                  <span class="num">ABN 22 444 555 666</span>
-                  <span class="dot"></span>
-                  <span>Created Apr 2021</span>
-                </div>
-                <div class="entity-stats">
-                  <div class="stat">
-                    <div class="k">Properties</div>
-                    <div class="v">2 <span class="label">· $1.56M value</span></div>
-                    <a href="#" data-goto="properties">View →</a>
-                  </div>
-                  <div class="stat">
-                    <div class="k">Loans</div>
-                    <div class="v">2 <span class="label">· $1.10M balance</span></div>
-                    <a href="#" data-goto="loans">View →</a>
-                  </div>
-                  <div class="stat">
-                    <div class="k">Last activity</div>
-                    <div class="v" style="font-weight: 500; font-size: var(--text-sm);">12 Apr 2026</div>
-                    <span style="font-size: var(--text-xs); color: hsl(var(--foreground-subtle));">CBA statement</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="entity-actions">
-                <span class="entity-status">Active</span>
-                <div class="kebab">
-                  <button type="button" class="kebab-trigger" aria-label="Actions">⋯</button>
-                </div>
-              </div>
-            </article>
-
-            <!-- =============== Entity 2: inline rename (typo fix) =============== -->
-            <article class="entity-card is-editing">
-              <div>
-                <div class="rename-row">
-                  <input class="input" value="Personal · Theo Okafor" autofocus />
-                  <button type="button" class="btn btn--ghost btn--sm">Cancel</button>
-                  <button type="button" class="btn btn--primary btn--sm">Save rename</button>
-                </div>
-                <div class="entity-meta" style="margin-top: 6px;">
-                  <span>Individual</span>
-                  <span class="dot"></span>
-                  <span>Created Jul 2022</span>
-                </div>
-                <div class="rename-warning">
-                  <span class="glyph">i</span>
-                  Renaming will update <strong style="font-weight: 600;">1 property</strong>, <strong style="font-weight: 600;">1 loan</strong>, and references in <strong style="font-weight: 600;">48 transactions</strong>. Historical statements remain unchanged.
-                </div>
-              </div>
-
-              <div class="entity-actions">
-                <span class="entity-status">Active</span>
-                <button type="button" class="kebab-trigger" aria-label="Actions" style="opacity: 0.4; cursor: not-allowed;">⋯</button>
-              </div>
-            </article>
-
-            <!-- =============== Entity 3: delete confirmation (empty, accident) =============== -->
-            <article class="entity-card is-confirming-delete">
-              <div>
-                <div class="entity-top">
-                  <h3 class="entity-name" style="cursor: default;">Okafer Investment Trust</h3>
-                  <span style="font-size: var(--text-xs); color: hsl(var(--negative)); font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em;">About to delete</span>
-                </div>
-                <div class="entity-meta">
-                  <span>Discretionary trust</span>
-                  <span class="dot"></span>
-                  <span>Created 14 May 2026 · 1 day ago</span>
-                </div>
-                <div class="entity-stats">
-                  <div class="stat">
-                    <div class="k">Properties</div>
-                    <div class="v" style="color: hsl(var(--foreground-muted));">0</div>
-                  </div>
-                  <div class="stat">
-                    <div class="k">Loans</div>
-                    <div class="v" style="color: hsl(var(--foreground-muted));">0</div>
-                  </div>
-                  <div class="stat">
-                    <div class="k">Last activity</div>
-                    <div class="v" style="font-weight: 400; font-size: var(--text-sm); color: hsl(var(--foreground-muted));">never</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="entity-actions">
-                <span class="entity-status" style="background: hsl(var(--negative-soft)); color: hsl(var(--negative)); border-color: hsl(var(--negative) / 0.2);">Empty</span>
-              </div>
-
-              <div class="delete-confirm">
-                <div class="copy">
-                  <strong>Delete this entity?</strong>
-                  No properties, loans, or transactions are attached — deletion is safe and permanent.
-                </div>
-                <div class="actions">
-                  <button type="button" class="btn btn--ghost btn--sm">Cancel</button>
-                  <button type="button" class="btn btn--danger btn--sm">Delete permanently</button>
-                </div>
-              </div>
-            </article>
-
-            <!-- =============== Entity 4: kebab open, showing menu states =============== -->
-            <article class="entity-card">
-              <div>
-                <div class="entity-top">
-                  <h3 class="entity-name">Okafor Holdings Pty Ltd</h3>
-                </div>
-                <div class="entity-meta">
-                  <span>Company</span>
-                  <span class="dot"></span>
-                  <span class="num">ACN 123 456 789</span>
-                  <span class="dot"></span>
-                  <span class="num">ABN 33 555 666 777</span>
-                  <span class="dot"></span>
-                  <span>Created Mar 2024</span>
-                </div>
-                <div class="entity-stats">
-                  <div class="stat">
-                    <div class="k">Properties</div>
-                    <div class="v">1 <span class="label">· $510k value</span></div>
-                    <a href="#" data-goto="properties">View →</a>
-                  </div>
-                  <div class="stat">
-                    <div class="k">Loans</div>
-                    <div class="v" style="color: hsl(var(--foreground-muted));">0</div>
-                  </div>
-                  <div class="stat">
-                    <div class="k">Last activity</div>
-                    <div class="v" style="font-weight: 500; font-size: var(--text-sm);">28 Mar 2026</div>
-                    <span style="font-size: var(--text-xs); color: hsl(var(--foreground-subtle));">Rates notice</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="entity-actions">
-                <span class="entity-status">Active</span>
-                <div class="kebab">
-                  <button type="button" class="kebab-trigger is-open" aria-label="Actions">⋯</button>
-                  <div class="kebab-menu">
-                    <button type="button">
-                      <span class="glyph">
-                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 10L9 3l2 2-7 7H2v-2z"/></svg>
-                      </span>
-                      Rename…
-                    </button>
-                    <button type="button">
-                      <span class="glyph">
-                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="7" cy="7" r="5"/><path d="M7 4v3l2 1"/></svg>
-                      </span>
-                      Edit details (ABN, type)…
-                    </button>
-                    <div class="sep"></div>
+            <!-- =============== Entity 1: Trust =============== -->
+            <article class="entity-card v2" data-kind="trust" data-impact="2 properties, 2 loans, and references in 64 transactions">
+              <header class="ec-head">
+                <span class="ec-name" data-rename-trigger>Okafor Family Trust</span>
+                <span class="ec-name-edit">
+                  <input class="input" value="Okafor Family Trust" data-rename-input />
+                </span>
+                <span class="ec-status">Active</span>
+                <div class="ec-kebab">
+                  <button type="button" class="ec-kebab-trigger" aria-label="Actions" data-kebab-trigger>⋯</button>
+                  <div class="ec-kebab-menu" role="menu">
                     <button type="button">
                       <span class="glyph">
                         <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="4" width="10" height="8" rx="0.5"/><path d="M2 7h10M5 4V2.5h4V4"/></svg>
                       </span>
                       Archive
                     </button>
-                    <button type="button" class="is-disabled">
+                    <div class="sep"></div>
+                    <button type="button" class="is-destructive is-disabled tooltip-host" data-tooltip="Delete is disabled while this entity holds 2 properties and 2 loans. Archive instead, or move them to another entity." style="position: relative;">
                       <span class="glyph">
                         <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h8l-1 8H4z"/><path d="M5 4V2h4v2"/></svg>
                       </span>
                       Delete
                     </button>
-                    <div class="menu-note">
-                      Delete is disabled while this entity holds <strong>1 property</strong>. Archive it first, or move the property to another entity.
-                    </div>
                   </div>
+                </div>
+              </header>
+
+              <div class="ec-fields field-list">
+                <div class="field-row">
+                  <div class="k">Type</div>
+                  <div class="v"><span class="is-dropdown">Discretionary trust</span></div>
+                </div>
+                <div class="field-row">
+                  <div class="k">ABN</div>
+                  <div class="v editable num">22 444 555 666</div>
+                </div>
+                <div class="field-row">
+                  <div class="k">Established</div>
+                  <div class="v editable">Apr 2021</div>
+                </div>
+                <div class="field-row">
+                  <div class="k">Vesting date</div>
+                  <div class="v editable" style="color: hsl(var(--foreground-subtle));">Apr 2101</div>
+                </div>
+              </div>
+
+              <footer class="ec-foot">
+                <span class="ec-count"><span class="n">2</span> Properties</span>
+                <span class="ec-count"><span class="n">2</span> Loans</span>
+                <a href="properties.html">View properties →</a>
+              </footer>
+            </article>
+
+            <!-- =============== Entity 2: Individual (rename in progress) =============== -->
+            <article class="entity-card v2 is-renaming" data-kind="personal" data-impact="1 property, 1 loan, and references in 48 transactions">
+              <header class="ec-head">
+                <span class="ec-name" data-rename-trigger>Personal · Theo Okafor</span>
+                <span class="ec-name-edit">
+                  <input class="input" value="Personal · Theo Okafor" data-rename-input />
+                </span>
+                <span class="ec-status">Active</span>
+                <div class="ec-kebab">
+                  <button type="button" class="ec-kebab-trigger" aria-label="Actions" data-kebab-trigger>⋯</button>
+                  <div class="ec-kebab-menu" role="menu">
+                    <button type="button">
+                      <span class="glyph">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="4" width="10" height="8" rx="0.5"/><path d="M2 7h10M5 4V2.5h4V4"/></svg>
+                      </span>
+                      Archive
+                    </button>
+                    <div class="sep"></div>
+                    <button type="button" class="is-destructive is-disabled tooltip-host" data-tooltip="Delete is disabled while this entity holds 1 property and 1 loan. Archive instead." style="position: relative;">
+                      <span class="glyph">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h8l-1 8H4z"/><path d="M5 4V2h4v2"/></svg>
+                      </span>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </header>
+
+              <div class="ec-fields field-list">
+                <div class="field-row">
+                  <div class="k">Type</div>
+                  <div class="v"><span class="is-dropdown">Individual</span></div>
+                </div>
+                <div class="field-row">
+                  <div class="k">ABN</div>
+                  <div class="v editable num">88 111 222 333</div>
+                </div>
+              </div>
+
+              <footer class="ec-foot">
+                <span class="ec-count"><span class="n">1</span> Property</span>
+                <span class="ec-count"><span class="n">1</span> Loan</span>
+                <a href="properties.html">View properties →</a>
+              </footer>
+            </article>
+
+            <!-- =============== Entity 3: Company =============== -->
+            <article class="entity-card v2" data-kind="company" data-impact="1 property and references in 32 transactions">
+              <header class="ec-head">
+                <span class="ec-name" data-rename-trigger>Okafor Holdings Pty Ltd</span>
+                <span class="ec-name-edit">
+                  <input class="input" value="Okafor Holdings Pty Ltd" data-rename-input />
+                </span>
+                <span class="ec-status">Active</span>
+                <div class="ec-kebab">
+                  <button type="button" class="ec-kebab-trigger" aria-label="Actions" data-kebab-trigger>⋯</button>
+                  <div class="ec-kebab-menu" role="menu">
+                    <button type="button">
+                      <span class="glyph">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="4" width="10" height="8" rx="0.5"/><path d="M2 7h10M5 4V2.5h4V4"/></svg>
+                      </span>
+                      Archive
+                    </button>
+                    <div class="sep"></div>
+                    <button type="button" class="is-destructive is-disabled tooltip-host" data-tooltip="Delete is disabled while this entity holds 1 property. Archive instead, or move it to another entity." style="position: relative;">
+                      <span class="glyph">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h8l-1 8H4z"/><path d="M5 4V2h4v2"/></svg>
+                      </span>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </header>
+
+              <div class="ec-fields field-list">
+                <div class="field-row">
+                  <div class="k">Type</div>
+                  <div class="v"><span class="is-dropdown">Company (Pty Ltd)</span></div>
+                </div>
+                <div class="field-row">
+                  <div class="k">ACN</div>
+                  <div class="v editable num">123 456 789</div>
+                </div>
+                <div class="field-row">
+                  <div class="k">ABN</div>
+                  <div class="v editable num">33 555 666 777</div>
+                </div>
+                <div class="field-row">
+                  <div class="k">Incorporated</div>
+                  <div class="v editable">Mar 2024</div>
+                </div>
+                <div class="field-row">
+                  <div class="k">Deregistered</div>
+                  <div class="v editable" style="color: hsl(var(--foreground-subtle));">Not deregistered</div>
+                </div>
+              </div>
+
+              <footer class="ec-foot">
+                <span class="ec-count"><span class="n">1</span> Property</span>
+                <span class="ec-count is-empty"><span class="n">0</span> Loans</span>
+                <a href="properties.html">View property →</a>
+              </footer>
+            </article>
+
+            <!-- =============== Entity 4: Empty trust — delete confirm visible =============== -->
+            <article class="entity-card v2 is-confirming-delete" data-kind="trust">
+              <header class="ec-head">
+                <span class="ec-name" style="cursor: default;">Okafer Investment Trust</span>
+                <span class="ec-status ec-status--empty">Empty</span>
+                <div class="ec-kebab">
+                  <button type="button" class="ec-kebab-trigger" aria-label="Actions" data-kebab-trigger>⋯</button>
+                  <div class="ec-kebab-menu" role="menu">
+                    <button type="button">
+                      <span class="glyph">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="4" width="10" height="8" rx="0.5"/><path d="M2 7h10M5 4V2.5h4V4"/></svg>
+                      </span>
+                      Archive
+                    </button>
+                    <div class="sep"></div>
+                    <button type="button" class="is-destructive">
+                      <span class="glyph">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h8l-1 8H4z"/><path d="M5 4V2h4v2"/></svg>
+                      </span>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </header>
+
+              <div class="ec-fields field-list">
+                <div class="field-row">
+                  <div class="k">Type</div>
+                  <div class="v"><span class="is-dropdown">Discretionary trust</span></div>
+                </div>
+                <div class="field-row">
+                  <div class="k">ABN</div>
+                  <div class="v editable" style="color: hsl(var(--foreground-subtle));">Not set</div>
+                </div>
+                <div class="field-row">
+                  <div class="k">Established</div>
+                  <div class="v editable">14 May 2026</div>
+                </div>
+              </div>
+
+              <div class="ec-confirm">
+                <div class="copy">
+                  <strong>Delete this entity?</strong>
+                  No properties, loans, or transactions are attached — deletion is safe and permanent.
+                </div>
+                <div class="actions">
+                  <button type="button" class="btn btn--ghost btn--sm" data-cancel-delete>Cancel</button>
+                  <button type="button" class="btn btn--danger btn--sm">Delete permanently</button>
                 </div>
               </div>
             </article>
@@ -238,10 +277,10 @@
           </div>
         </div>
 
-        <!-- ARCHIVED entities -->
+        <!-- ARCHIVED entities — compact contrast state -->
         <div class="archived-group">
           <div class="head">
-            <span style="display: inline-flex; align-items: center;">
+            <span style="display: inline-flex; align-items: center; gap: 6px;">
               <span class="twist"></span>
               Archived · 1
             </span>
@@ -250,42 +289,24 @@
 
           <div class="entity-list">
 
-            <!-- Archived entity -->
-            <article class="entity-card is-archived">
-              <div>
-                <div class="entity-top">
-                  <h3 class="entity-name" style="cursor: default;">Sunset Holdings Pty Ltd</h3>
-                </div>
-                <div class="entity-meta">
-                  <span>Company · wound up</span>
-                  <span class="dot"></span>
-                  <span class="num">ACN 998 877 766</span>
-                  <span class="dot"></span>
-                  <span>Archived 12 Nov 2025</span>
-                </div>
-                <div class="entity-stats">
-                  <div class="stat">
-                    <div class="k">Historical properties</div>
-                    <div class="v" style="font-size: var(--text-sm); font-weight: 500;">1 sold</div>
-                    <span style="font-size: var(--text-xs); color: hsl(var(--foreground-subtle));">3 Garibaldi Ave · settled Oct 2025</span>
-                  </div>
-                  <div class="stat">
-                    <div class="k">Historical loans</div>
-                    <div class="v" style="font-size: var(--text-sm); font-weight: 500;">1 closed</div>
-                    <span style="font-size: var(--text-xs); color: hsl(var(--foreground-subtle));">CBA · paid out Oct 2025</span>
-                  </div>
-                  <div class="stat">
-                    <div class="k">Records retained</div>
-                    <div class="v" style="font-size: var(--text-sm); font-weight: 500;">86 transactions</div>
-                    <a href="#">View history →</a>
-                  </div>
-                </div>
+            <article class="entity-card v2 is-archived is-compact" data-kind="company" style="background: transparent; border-style: dashed;">
+              <header class="ec-head">
+                <span class="ec-name" style="cursor: default; color: hsl(var(--foreground-muted)); font-weight: 500;">Sunset Holdings Pty Ltd</span>
+                <span class="ec-status" style="background: hsl(var(--surface-sunken)); color: hsl(var(--foreground-muted)); border-color: hsl(var(--border));">Archived</span>
+                <button type="button" class="btn btn--secondary btn--sm">Restore</button>
+              </header>
+
+              <div class="ec-meta" style="color: hsl(var(--foreground-muted));">
+                <span class="kv"><span class="k">Type</span> <span>Company · wound up</span></span>
+                <span class="kv"><span class="k">ACN</span> <span class="num">998 877 766</span></span>
+                <span class="kv"><span class="k">Archived</span> <span>12 Nov 2025</span></span>
               </div>
 
-              <div class="entity-actions">
-                <span class="entity-status">Archived</span>
-                <button type="button" class="btn btn--secondary btn--sm">Restore</button>
-              </div>
+              <footer class="ec-foot" style="background: transparent;">
+                <span class="ec-count"><span class="n" style="color: hsl(var(--foreground-muted));">1</span> Historical property</span>
+                <span class="ec-count"><span class="n" style="color: hsl(var(--foreground-muted));">1</span> Closed loan</span>
+                <a href="#">View 86 transactions →</a>
+              </footer>
             </article>
 
           </div>
@@ -312,5 +333,123 @@
 
 <script src="sidebar.js"></script>
 <script src="folio.js"></script>
+
+<!-- Page-local interactivity: kebab, inline rename, delete confirmation -->
+<script>
+(function () {
+  /* ---- Kebab open/close ---- */
+  function closeAllKebabs() {
+    document.querySelectorAll('.entity-card.v2 .ec-kebab.is-open').forEach(function (k) {
+      k.classList.remove('is-open');
+      var trigger = k.querySelector('[data-kebab-trigger]');
+      if (trigger) trigger.classList.remove('is-open');
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var trigger = e.target.closest('[data-kebab-trigger]');
+    if (trigger) {
+      e.stopPropagation();
+      var kebab = trigger.closest('.ec-kebab');
+      var wasOpen = kebab.classList.contains('is-open');
+      closeAllKebabs();
+      if (!wasOpen) {
+        kebab.classList.add('is-open');
+        trigger.classList.add('is-open');
+      }
+      return;
+    }
+    var menuItem = e.target.closest('.ec-kebab-menu button');
+    if (menuItem && !menuItem.classList.contains('is-disabled')) {
+      closeAllKebabs();
+      return;
+    }
+    if (menuItem && menuItem.classList.contains('is-disabled')) {
+      /* swallow click, keep menu open so user can read the tooltip */
+      e.stopPropagation();
+      return;
+    }
+    closeAllKebabs();
+  });
+
+  /* ---- Inline rename: click name → input swaps in. Enter / blur commit; Esc cancels. ---- */
+  function ensureRenameNote(card) {
+    var impact = card.getAttribute('data-impact');
+    if (!impact) return;
+    if (card.querySelector('.ec-rename-note')) return;
+    var note = document.createElement('div');
+    note.className = 'ec-rename-note';
+    note.innerHTML = 'Renaming will update <strong>' + impact + '</strong>. Historical statements keep the imported name.';
+    var head = card.querySelector('.ec-head');
+    head.insertAdjacentElement('afterend', note);
+  }
+  function startRename(card) {
+    if (!card || card.classList.contains('is-archived')) return;
+    ensureRenameNote(card);
+    var nameEl = card.querySelector('.ec-name');
+    var input = card.querySelector('[data-rename-input]');
+    if (input && nameEl) input.value = nameEl.textContent.trim();
+    card.classList.add('is-renaming');
+    if (input) {
+      input.dataset.original = input.value;
+      requestAnimationFrame(function () { input.focus(); input.select(); });
+    }
+  }
+  function commitRename(card) {
+    var input = card.querySelector('[data-rename-input]');
+    var nameEl = card.querySelector('.ec-name');
+    if (input && nameEl && input.value.trim()) {
+      nameEl.textContent = input.value.trim();
+    }
+    card.classList.remove('is-renaming');
+  }
+  function cancelRename(card) {
+    var input = card.querySelector('[data-rename-input]');
+    if (input && input.dataset.original != null) input.value = input.dataset.original;
+    card.classList.remove('is-renaming');
+  }
+
+  /* Pre-prime any entity that ships in is-renaming so the warning shows,
+     and capture every rename input's initial value as its 'original'. */
+  document.querySelectorAll('.entity-card.v2.is-renaming').forEach(ensureRenameNote);
+  document.querySelectorAll('[data-rename-input]').forEach(function (i) {
+    i.dataset.original = i.value;
+  });
+
+  document.addEventListener('click', function (e) {
+    var trigger = e.target.closest('[data-rename-trigger]');
+    if (trigger) {
+      var card = trigger.closest('.entity-card.v2');
+      startRename(card);
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    var input = e.target.closest('[data-rename-input]');
+    if (!input) return;
+    var card = input.closest('.entity-card.v2');
+    if (e.key === 'Enter') { e.preventDefault(); commitRename(card); }
+    if (e.key === 'Escape') { e.preventDefault(); cancelRename(card); }
+  });
+
+  /* Commit on blur — unless focus moved elsewhere within the same card. */
+  document.addEventListener('focusout', function (e) {
+    var input = e.target.closest('[data-rename-input]');
+    if (!input) return;
+    var card = input.closest('.entity-card.v2');
+    setTimeout(function () {
+      if (!card.contains(document.activeElement)) commitRename(card);
+    }, 0);
+  });
+
+  /* ---- Cancel delete confirmation ---- */
+  document.addEventListener('click', function (e) {
+    var c = e.target.closest('[data-cancel-delete]');
+    if (c) {
+      var card = c.closest('.entity-card.v2');
+      if (card) card.classList.remove('is-confirming-delete');
+    }
+  });
+})();
+</script>
 </body>
 </html>

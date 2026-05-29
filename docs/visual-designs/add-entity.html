@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>Folio — Add entity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,30..100&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="folio.css" />
+</head>
+<!--
+  Folio — Add entity (v3: mirrors the editable entity card)
+  ─────────────────────────────────────────────────────────────────
+  Same fields, same vocabulary, same order as entities.html so there
+  are no surprises after creation. Only Type and Name are required;
+  everything else is optional and can also be edited later inline.
+
+  Field set by type:
+    Trust    → Name · ABN · Established · Vesting date
+    Company  → Name · ACN · ABN · Incorporated · Deregistered
+    Personal → Name · ABN
+-->
+<body data-page="add-entity">
+<div class="app">
+
+  <main class="main">
+    <div class="main-inner">
+
+    <section class="screen is-active" data-screen="add-entity" data-screen-label="Add entity">
+
+      <a href="entities.html" class="crumb-back">
+        <svg width="9" height="9" viewBox="0 0 10 10"><polyline points="6,2 2,5 6,8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Entities
+      </a>
+
+      <div class="page-head">
+        <div>
+          <h1 class="title">Add an entity</h1>
+          <p class="subtitle">Entities own properties and loans. Only a type and name are required — everything else is optional and editable later.</p>
+        </div>
+      </div>
+
+      <div class="add-entity-simple">
+
+        <!-- Type (required) -->
+        <div class="row">
+          <label class="row-label">Type</label>
+          <div class="row-body">
+            <div class="seg" role="radiogroup" data-entity-type>
+              <button type="button" class="is-on" data-type="trust">
+                <svg class="ico" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 12V7l5-4 5 4v5z"/><path d="M5.5 12V9h3v3"/></svg>
+                Trust
+              </button>
+              <button type="button" data-type="company">
+                <svg class="ico" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="10" height="9"/><path d="M5 12V8h4v4M5 6h1M8 6h1"/></svg>
+                Company
+              </button>
+              <button type="button" data-type="personal">
+                <svg class="ico" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="7" cy="5" r="2.2"/><path d="M2.5 12.5c0-2.4 2-4 4.5-4s4.5 1.6 4.5 4"/></svg>
+                Personal
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Name (required) -->
+        <div class="row">
+          <label class="row-label" data-name-label>Trust name</label>
+          <div class="row-body">
+            <input class="input" placeholder="e.g. Okafor Family Trust" data-name-input autofocus />
+          </div>
+        </div>
+
+        <!-- ACN — company only, optional -->
+        <div class="row" data-acn-row hidden>
+          <label class="row-label">ACN <span class="row-label__opt">optional</span></label>
+          <div class="row-body">
+            <input class="input num" placeholder="000 000 000" maxlength="11" data-acn-input style="max-width: 240px;" />
+          </div>
+        </div>
+
+        <!-- ABN — all types, optional -->
+        <div class="row" data-abn-row>
+          <label class="row-label">ABN <span class="row-label__opt">optional</span></label>
+          <div class="row-body">
+            <input class="input num" placeholder="00 000 000 000" maxlength="14" data-abn-input style="max-width: 240px;" />
+          </div>
+        </div>
+
+        <!-- Start date — trust + company, optional -->
+        <div class="row" data-date-start-row>
+          <label class="row-label" data-date-start-label>Established <span class="row-label__opt">optional</span></label>
+          <div class="row-body">
+            <input class="input" placeholder="dd / mm / yyyy" data-date-start-input style="max-width: 240px;" />
+          </div>
+        </div>
+
+        <!-- End date — trust + company, optional -->
+        <div class="row" data-date-end-row>
+          <label class="row-label" data-date-end-label>Vesting date <span class="row-label__opt">optional</span></label>
+          <div class="row-body">
+            <input class="input" placeholder="dd / mm / yyyy" data-date-end-input style="max-width: 240px;" />
+            <div class="input-help" data-date-end-help style="margin-top: var(--space-2);">Trusts vest 80 years after they're established, by default in NSW.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Sticky commit footer -->
+      <div class="commit-bar is-sticky" style="margin-top: var(--space-9);">
+        <div class="summary">
+          Adds <strong data-summary-name>a new trust</strong><span class="muted" data-summary-detail></span>.
+          You can edit any of these details later from the entity card.
+        </div>
+        <div style="display: flex; gap: var(--space-3);">
+          <a href="entities.html" class="btn btn--ghost">Cancel</a>
+          <button type="button" class="btn btn--primary" data-create>Add entity</button>
+        </div>
+      </div>
+
+    </section>
+
+    </div>
+  </main>
+</div>
+
+<script src="sidebar.js"></script>
+<script src="folio.js"></script>
+
+<style>
+  /* Simple stacked form: label on left, single control on right.
+     Inherits .input / .seg / .commit-bar from folio.css. */
+  .add-entity-simple {
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+  }
+  .add-entity-simple .row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: var(--space-6);
+    align-items: baseline;
+    padding: var(--space-5) 0;
+    border-bottom: 1px solid hsl(var(--rule));
+  }
+  .add-entity-simple .row[hidden] { display: none; }
+  .add-entity-simple .row:last-of-type { border-bottom: none; }
+  .add-entity-simple .row-label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    font-family: var(--font-data);
+    padding-top: 9px;
+  }
+  .add-entity-simple .row-label__opt {
+    font-size: 10px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--foreground-subtle));
+    margin-left: var(--space-2);
+  }
+  .add-entity-simple .row-body {
+    min-width: 0;
+  }
+</style>
+
+<script>
+(function () {
+  /* Vocabulary + field visibility per type — mirrors entities.html exactly. */
+  const VOCAB = {
+    trust: {
+      name: 'Trust name', placeholder: 'e.g. Okafor Family Trust', summary: 'a new trust',
+      acn: false, abn: true, dates: true,
+      startLabel: 'Established', endLabel: 'Vesting date',
+      endHelp: "Trusts vest 80 years after they're established, by default in NSW.",
+    },
+    company: {
+      name: 'Company name', placeholder: 'e.g. Okafor Holdings Pty Ltd', summary: 'a new company',
+      acn: true, abn: true, dates: true,
+      startLabel: 'Incorporated', endLabel: 'Deregistered',
+      endHelp: "Leave blank unless the company has been wound up.",
+    },
+    personal: {
+      name: 'Full name', placeholder: 'e.g. Theo Okafor', summary: 'a personal entity',
+      acn: false, abn: true, dates: false,
+      startLabel: '', endLabel: '', endHelp: '',
+    },
+  };
+
+  const state = { type: 'trust' };
+  const $  = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+  function optTag() { return ' <span class="row-label__opt">optional</span>'; }
+
+  function render() {
+    const v = VOCAB[state.type];
+
+    /* Name */
+    $('[data-name-label]').textContent = v.name;
+    $('[data-name-input]').setAttribute('placeholder', v.placeholder);
+
+    /* Identifiers */
+    $('[data-acn-row]').hidden = !v.acn;
+    $('[data-abn-row]').hidden = !v.abn;
+
+    /* Dates */
+    $('[data-date-start-row]').hidden = !v.dates;
+    $('[data-date-end-row]').hidden = !v.dates;
+    if (v.dates) {
+      $('[data-date-start-label]').innerHTML = v.startLabel + optTag();
+      $('[data-date-end-label]').innerHTML = v.endLabel + optTag();
+      $('[data-date-end-help]').textContent = v.endHelp;
+    }
+
+    /* Commit-bar summary */
+    const name = $('[data-name-input]').value.trim();
+    $('[data-summary-name]').textContent = name || v.summary;
+
+    let detail = '';
+    const acn = v.acn ? $('[data-acn-input]').value.trim() : '';
+    const abn = v.abn ? $('[data-abn-input]').value.trim() : '';
+    const start = v.dates ? $('[data-date-start-input]').value.trim() : '';
+    if (acn) detail += ' · ACN ' + acn;
+    if (abn) detail += ' · ABN ' + abn;
+    if (start) detail += ' · ' + v.startLabel.toLowerCase() + ' ' + start;
+    $('[data-summary-detail]').textContent = detail;
+
+    /* Require name before enabling Create */
+    const create = $('[data-create]');
+    create.disabled = !name;
+    create.style.opacity = name ? '' : '0.5';
+    create.style.cursor = name ? '' : 'not-allowed';
+  }
+
+  /* Type switch */
+  $('[data-entity-type]').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-type]');
+    if (!btn) return;
+    $$('[data-entity-type] button').forEach(b => b.classList.toggle('is-on', b === btn));
+    state.type = btn.getAttribute('data-type');
+    render();
+  });
+
+  /* Live summary */
+  document.addEventListener('input', (e) => {
+    if (e.target.matches('[data-name-input], [data-acn-input], [data-abn-input], [data-date-start-input], [data-date-end-input]')) {
+      render();
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
