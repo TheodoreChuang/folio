@@ -1,0 +1,566 @@
+---
+title: "feat: Add Household personal budget screen"
+type: feat
+status: active
+created: 2026-05-29
+origin: docs/brainstorms/household-requirements.md
+---
+
+# feat: Add Household personal budget screen
+
+**Origin:** `docs/brainstorms/household-requirements.md`
+**Visual design:** `docs/visual-designs/household.html`
+
+---
+
+## Problem Frame
+
+Folio's portfolio cashflow numbers alone cannot answer "what is my total monthly surplus?" or "can I afford to service another loan?" The `/household` screen closes this gap by letting users maintain standing personal income and expense estimates. A personal surplus figure derived here will eventually feed the Dashboard and Plan pages.
+
+---
+
+## Scope Boundaries
+
+### In scope
+
+- `personal_budget_items` DB table with soft delete, enums, and RLS policy
+- Pure frequency-derivation compute module (`lib/household/compute.ts`), unit-tested
+- `lib/household/` domain module (repository functions)
+- REST API: `GET /api/household/items`, `POST /api/household/items`, `PATCH /api/household/items/[id]`, `DELETE /api/household/items/[id]`
+- Full frontend UI at `/household` — view toggle, summary table, inline add/edit forms, null state
+
+### Deferred to Follow-Up Work
+
+- `effective_from` exposed in the form UI — the column is stored and defaults to today in the repository (V1 behaviour); the form field itself is deferred
+- Category taxonomy in the UI (`category` column reserved for future bank-feed work)
+- Historical timeline analysis (data is stored; query UI is deferred)
+- Combined portfolio + household surplus view on Dashboard and Plan pages
+
+### Outside this product's identity
+
+- Bank feed ingestion or personal transaction tracking
+- Budget vs actuals comparison
+- Multi-currency amounts
+
+---
+
+## Key Technical Decisions
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Frequency derivation placement | Pure function in `lib/household/compute.ts`; called by route handler which returns `monthlyCents` per item + summary totals | Matches "financial logic lives in a testable pure function" convention; allows exhaustive unit testing |
+| Frontend live-preview math | Simple local constant map (`MONTHLY_FACTOR`) in the page component | Inline form preview is pure UI state, not business logic; avoids an extra API round-trip per keystroke |
+| Services layer | Omitted — repository functions exposed directly from `lib/household/index.ts` | `personal_budget_items` has no parent resource ownership chain; the simpler `lib/entities/` pattern fits |
+| Unit test mock boundary | Mock `@/lib/household` (not `@/lib/db`) in route unit tests | Avoids `DATABASE_URL` env requirement; matches tenancies/management-agents test pattern from `docs/testing-strategy.md` |
+| Soft delete | `deletedAt` + `isNull` filter on all queries (no hard deletes) | Consistent with entity-table convention and audit safety |
+
+---
+
+## High-Level Technical Design
+
+*Directional guidance for review — not implementation specification.*
+
+```
+GET /api/household/items
+  → listBudgetItems(userId)         [repository]
+  → items.map(i => ({ ...i, monthlyCents: toMonthlyCents(i.amountCents, i.frequency) }))
+  → computeSummary(items)           [pure compute]
+  → { items, summary }
+
+POST /api/household/items
+  → Zod validation
+  → createBudgetItem(input)         [repository]
+  → toMonthlyCents(...)             [pure compute]
+  → { item: { ...created, monthlyCents } }  201
+
+PATCH /api/household/items/[id]
+  → Zod validation (at-least-one-field check)
+  → updateBudgetItem(userId, id, data)   [repository]
+  → toMonthlyCents(...)
+  → { item: { ...updated, monthlyCents } }
+
+DELETE /api/household/items/[id]
+  → softDeleteBudgetItem(userId, id)    [repository]
+  → { success: true }
+```
+
+**GET response shape:**
+```json
+{
+  "items": [
+    { "id": "...", "type": "income", "name": "...",
+      "amountCents": 326900, "frequency": "fortnightly",
+      "monthlyCents": 708283, "effectiveFrom": "2024-01-01", ... }
+  ],
+  "summary": {
+    "totalIncomeMonthlyCents": 758283,
+    "totalExpensesMonthlyCents": 518333,
+    "surplusMonthlyCents": 239950
+  }
+}
+```
+
+---
+
+## Output Structure
+
+```
+lib/household/
+  repositories/
+    budget-items.ts
+  compute.ts
+  index.ts
+
+app/api/household/
+  items/
+    route.ts
+    [id]/
+      route.ts
+
+app/(app)/household/
+  page.tsx          ← replaces stub
+
+__tests__/api/
+  household-items.test.ts
+  household-items-id.test.ts
+  household-items.integration.test.ts
+
+__tests__/lib/
+  household-compute.test.ts
+```
+
+---
+
+## Implementation Units
+
+### U1. DB schema + migration
+
+**Goal:** Add `budget_item_type` and `budget_item_frequency` enums plus the `personal_budget_items` table to `db/schema.ts`; generate and apply the migration.
+
+**Requirements:** brainstorm §Data model
+
+**Dependencies:** none
+
+**Files:**
+- `db/schema.ts` (modify — add enums, table, type exports)
+- `drizzle/0024_personal_budget_items.sql` (generated by `pnpm db:generate`)
+- `drizzle/meta/_journal.json` (updated by `pnpm db:generate`)
+
+**Approach:**
+
+Add two `pgEnum` definitions before the table:
+- `budgetItemTypeEnum`: `'income' | 'expense'`
+- `budgetItemFrequencyEnum`: `'weekly' | 'fortnightly' | 'monthly' | 'annual'`
+
+`personalBudgetItems` table columns (following brainstorm schema):
+- `id` — uuid PK, defaultRandom
+- `userId` — uuid, notNull
+- `type` — `budgetItemTypeEnum`, notNull
+- `name` — text, notNull
+- `amountCents` — integer, notNull (stored in the item's native frequency)
+- `frequency` — `budgetItemFrequencyEnum`, notNull
+- `effectiveFrom` — date, notNull (no DB-level default; the repository sets today's date when absent)
+- `category` — text, nullable (reserved; unused in V1)
+- `deletedAt` — timestamptz, nullable
+- `createdAt` — timestamptz, defaultNow, notNull
+- `updatedAt` — timestamptz with `$onUpdate`, notNull
+
+Index: `idx_personal_budget_items_user` on `userId`.
+
+Export types: `PersonalBudgetItem` (`$inferSelect`), `NewPersonalBudgetItem` (`$inferInsert`), `BudgetItemType`, `BudgetItemFrequency`.
+
+Run `pnpm db:generate` to produce the migration (never hand-write). The generated SQL will include `CREATE TYPE`, `CREATE TABLE`, the index, `ENABLE ROW LEVEL SECURITY`, and an explicit RLS policy:
+```sql
+CREATE POLICY "users manage own personal_budget_items"
+  ON "personal_budget_items" FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+```
+
+Run `pnpm db:migrate` to apply.
+
+**Patterns to follow:** `db/schema.ts` enum definitions (lines 7–22); `propertyTenancies` table for the soft-delete column shape; `0015_property_management_agents.sql` for the migration SQL structure including RLS.
+
+**Test expectation:** none — schema and migration changes are verified by `pnpm tsc --noEmit` passing and `pnpm db:migrate` succeeding without error.
+
+**Verification:** `pnpm tsc --noEmit` passes; `pnpm db:migrate` runs cleanly on the local DB; `personal_budget_items` table is visible in Supabase Studio.
+
+---
+
+### U2. Frequency compute module
+
+**Goal:** Pure, testable functions for converting stored amounts to monthly/annual equivalents and computing summary totals.
+
+**Requirements:** brainstorm §Frequency derivation
+
+**Dependencies:** U1 (imports `BudgetItemFrequency`, `PersonalBudgetItem` types from `db/schema`)
+
+**Files:**
+- `lib/household/compute.ts` (create)
+- `__tests__/lib/household-compute.test.ts` (create)
+
+**Approach:**
+
+`MONTHLY_FACTOR` constant map — `Record<BudgetItemFrequency, number>`:
+- `weekly`: 52 / 12
+- `fortnightly`: 26 / 12
+- `monthly`: 1
+- `annual`: 1 / 12
+
+`toMonthlyCents(amountCents: number, frequency: BudgetItemFrequency): number` — `Math.round(amountCents * MONTHLY_FACTOR[frequency])`.
+
+`computeSummary(items: PersonalBudgetItem[]): { totalIncomeMonthlyCents: number, totalExpensesMonthlyCents: number, surplusMonthlyCents: number }` — splits by type, sums `toMonthlyCents`, derives surplus.
+
+These are pure functions with no I/O — no DB, no fetch.
+
+**Patterns to follow:** `lib/reporting/compute.ts` (pure financial aggregation pattern per `docs/testing-strategy.md §1`)
+
+**Test scenarios:**
+
+Happy path:
+- Weekly 10000 cents → `Math.round(10000 * 52/12)` = 43333 cents
+- Fortnightly 326900 cents → `Math.round(326900 * 26/12)` = 708283 cents
+- Monthly 50000 cents → 50000 cents
+- Annual 120000 cents → 10000 cents
+
+Edge cases:
+- Zero amount → 0 cents for all frequencies
+- `computeSummary([])` → all zeros
+- `computeSummary` with only income items → expenses = 0, surplus = income total
+- `computeSummary` with only expense items → income = 0, surplus is negative
+- Mixed: total income 150000 + total expenses 80000 → surplus 70000
+
+**Verification:** `pnpm test __tests__/lib/household-compute.test.ts` passes.
+
+---
+
+### U3. Repository + domain index
+
+**Goal:** Drizzle repository functions for all budget item DB operations, exposed via `lib/household/index.ts`.
+
+**Requirements:** brainstorm §Data model
+
+**Dependencies:** U1 (table + types from `db/schema.ts`)
+
+**Files:**
+- `lib/household/repositories/budget-items.ts` (create)
+- `lib/household/index.ts` (create)
+
+**Approach:**
+
+`listBudgetItems(userId: string): Promise<PersonalBudgetItem[]>`
+— SELECT all non-deleted items for user, ORDER BY type using a SQL CASE expression to put income rows before expense rows (do NOT use `asc(type)` — `'expense' < 'income'` alphabetically so ascending sort puts expenses first), then `createdAt` ASC. Includes `isNull(personalBudgetItems.deletedAt)`.
+
+`createBudgetItem(input: CreateBudgetItemInput): Promise<PersonalBudgetItem>`
+— INSERT + RETURNING. Apply date default in the repository: `effectiveFrom: input.effectiveFrom ?? new Date().toISOString().slice(0, 10)` — the column is `notNull` with no DB-level default.
+
+`updateBudgetItem(userId: string, id: string, data: UpdateBudgetItemData): Promise<PersonalBudgetItem | undefined>`
+— UPDATE + RETURNING; WHERE includes `userId`, `id`, and `isNull(deletedAt)`.
+
+`softDeleteBudgetItem(userId: string, id: string): Promise<PersonalBudgetItem | undefined>`
+— UPDATE SET `deletedAt = new Date()` + RETURNING; same WHERE clause.
+
+`findBudgetItemById(userId: string, id: string): Promise<PersonalBudgetItem | undefined>`
+— SELECT with `userId`, `id`, `isNull(deletedAt)`, LIMIT 1.
+
+`CreateBudgetItemInput` type: `{ userId, type, name, amountCents, frequency, effectiveFrom? }`.
+`UpdateBudgetItemData` type: `{ name?, amountCents?, frequency? }` (partial, all optional).
+
+Every mutation includes `eq(table.userId, userId)` in WHERE — never rely on ID alone (see drizzle-service-security-checklist learning). Every write uses `.returning()`.
+
+`lib/household/index.ts` re-exports all repository functions — the domain's only public API.
+
+**Patterns to follow:** `lib/property/repositories/tenancies.ts` for soft-delete query shape; `lib/entities/index.ts` for the simple single-line re-export style; `lib/entities/repositories/entities.ts` for `findById`.
+
+**Test expectation:** none at unit level — repository correctness is covered by the integration test in U6. Type-correctness verified by `pnpm tsc --noEmit`.
+
+**Verification:** `pnpm tsc --noEmit` passes with no type errors in new files.
+
+---
+
+### U4. API collection route — GET + POST
+
+**Goal:** Route handler for `GET /api/household/items` and `POST /api/household/items`.
+
+**Requirements:** brainstorm §Screen, §Manage line items, §Frequency derivation
+
+**Dependencies:** U2 (compute), U3 (repository)
+
+**Files:**
+- `app/api/household/items/route.ts` (create)
+- `__tests__/api/household-items.test.ts` (create)
+
+**Approach:**
+
+GET:
+1. Auth check → 401 if no user
+2. `listBudgetItems(user.id)` → raw items
+3. Map each item: append `monthlyCents: toMonthlyCents(item.amountCents, item.frequency)`
+4. `computeSummary(items)` → summary totals
+5. Return `{ items: enrichedItems, summary }`
+
+POST Zod schema:
+```
+z.object({
+  type: z.enum(['income', 'expense']),
+  name: z.string().trim().min(1, 'name is required').max(200),
+  amountCents: z.number().int().positive('amountCents must be a positive integer'),
+  frequency: z.enum(['weekly', 'fortnightly', 'monthly', 'annual']),
+  effectiveFrom: z.string().optional(),
+})
+```
+
+POST:
+1. Auth → 401
+2. `safeParse(await request.json().catch(() => null))` → 400 on failure
+3. `createBudgetItem({ userId: user.id, ...parsed.data })` — omit `effectiveFrom` when absent; the DB `defaultNow()` handles it
+4. Enrich with `monthlyCents`
+5. Return `{ item: enrichedItem }` at 201
+
+Unit tests mock `@/lib/household` and `@/lib/household/compute`.
+
+**Patterns to follow:** `app/api/properties/[id]/tenancies/route.ts` for the Zod + lib-call + `captureError` structure; `app/api/entities/route.ts` for the collection GET/POST shape.
+
+**Test scenarios:**
+
+GET — authentication:
+- Returns 401 when `getUser` returns null user
+
+GET — happy path:
+- Returns 200 `{ items: [], summary: { totalIncomeMonthlyCents: 0, totalExpensesMonthlyCents: 0, surplusMonthlyCents: 0 } }` when no items exist
+- Returns 200 with items that each include `monthlyCents` computed from `amountCents` + `frequency`
+- Summary totals match the sum of income and expense `monthlyCents` values
+- Items appear in order: income items before expense items
+
+POST — authentication:
+- Returns 401 when unauthenticated
+
+POST — validation:
+- Returns 400 with error matching `/type/i` when `type` is missing
+- Returns 400 when `type` is not `'income'` or `'expense'`
+- Returns 400 with error matching `/name/i` when `name` is missing
+- Returns 400 when `name` is an empty string
+- Returns 400 when `amountCents` is zero
+- Returns 400 when `amountCents` is negative
+- Returns 400 when `frequency` is not one of the four valid values
+
+POST — happy path:
+- Returns 201 `{ item }` with the created item including `monthlyCents`
+- Accepts all four frequency values: `weekly`, `fortnightly`, `monthly`, `annual`
+- Accepts optional `effectiveFrom` date string; defaults to today when absent
+- Returns 500 when repository throws
+
+**Verification:** `pnpm test __tests__/api/household-items.test.ts` passes.
+
+---
+
+### U5. API item route — PATCH + DELETE
+
+**Goal:** Route handler for `PATCH /api/household/items/[id]` and `DELETE /api/household/items/[id]`.
+
+**Requirements:** brainstorm §Manage line items
+
+**Dependencies:** U3 (repository), U2 (compute), U4 (patterns established)
+
+**Files:**
+- `app/api/household/items/[id]/route.ts` (create)
+- `__tests__/api/household-items-id.test.ts` (create)
+
+**Approach:**
+
+Both handlers:
+1. Auth → 401
+2. UUID validation with `UUID_REGEX` → 400 if invalid
+
+PATCH Zod schema (all fields optional, but at least one must be present):
+```
+z.object({
+  name: z.string().trim().min(1).max(200).optional(),
+  amountCents: z.number().int().positive().optional(),
+  frequency: z.enum(['weekly', 'fortnightly', 'monthly', 'annual']).optional(),
+})
+```
+After `safeParse`, check `Object.keys(parsed.data).length === 0` → 400 "at least one field required".
+
+PATCH:
+1. `updateBudgetItem(user.id, id, parsed.data)` → `undefined` means 404
+2. Enrich updated item with `monthlyCents`
+3. Return `{ item: enrichedItem }` at 200
+
+DELETE:
+1. `softDeleteBudgetItem(user.id, id)` → `undefined` means 404 (item not found or already deleted)
+2. Return `{ success: true }` at 200
+
+Unit tests mock `@/lib/household` and `@/lib/household/compute`.
+
+**Patterns to follow:** `app/api/entities/[id]/route.ts` for UUID validation + 404 pattern; `app/api/properties/[id]/tenancies/[tenancyId]/route.ts` for PATCH/DELETE on a nested resource.
+
+**Test scenarios:**
+
+PATCH — authentication:
+- Returns 401 when unauthenticated
+
+PATCH — input validation:
+- Returns 400 for a non-UUID `id` path param
+- Returns 400 for an empty body `{}` (no fields to update)
+- Returns 400 when `name` is an empty string `""`
+- Returns 400 when `amountCents` is negative or zero
+- Returns 400 when `frequency` is an unrecognised string
+
+PATCH — business logic:
+- Returns 404 when `updateBudgetItem` returns `undefined`
+- Returns 200 `{ item }` with updated fields and freshly computed `monthlyCents`
+- Accepts partial update with only `name` supplied
+- Accepts partial update with only `amountCents` and `frequency` supplied
+
+DELETE — authentication:
+- Returns 401 when unauthenticated
+
+DELETE — input validation:
+- Returns 400 for a non-UUID `id`
+
+DELETE — business logic:
+- Returns 404 when `softDeleteBudgetItem` returns `undefined`
+- Returns 200 `{ success: true }` on successful soft delete
+
+**Verification:** `pnpm test __tests__/api/household-items-id.test.ts` passes.
+
+---
+
+### U6. Integration test — soft-delete filter
+
+**Goal:** Verify that soft-deleted items are excluded from GET responses, PATCH, and DELETE handlers, using the real local DB.
+
+**Requirements:** brainstorm §Data model (deletedAt soft delete); `docs/testing-strategy.md §2` (soft-delete WHERE clause correctness)
+
+**Dependencies:** U4, U5 (routes must be implemented)
+
+**Files:**
+- `__tests__/api/household-items.integration.test.ts` (create)
+
+**Approach:**
+
+Follow the established integration test pattern: `if (!hasEnv) return` guard, real Supabase client, clean up inserted rows in `afterEach`. Requires `supabase start` and `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` env vars.
+
+Create items directly via the repository (or the API), then soft-delete one, and assert API responses.
+
+**Execution note:** Start with a failing integration test that inserts a row, soft-deletes it, and asserts it is excluded — then implement until the test passes. This is the only way to verify `isNull(deletedAt)` is actually present in the WHERE clause.
+
+**Test scenarios:**
+
+Soft-delete filter:
+- Insert an income item and a soft-deleted income item for the test user; `GET /api/household/items` returns only the non-deleted item
+- Summary totals exclude the soft-deleted item's contribution
+- `PATCH` on the soft-deleted item's ID returns 404
+- `DELETE` on the soft-deleted item's ID returns 404
+
+Auth isolation:
+- Items created by user A do not appear in `GET /api/household/items` for user B (RLS + userId WHERE clause both verified)
+
+**Patterns to follow:** `__tests__/api/documents.integration.test.ts` for the `hasEnv` guard and Supabase admin client setup; `__tests__/api/management-agents.integration.test.ts` for the soft-delete assertion shape.
+
+**Verification:** `pnpm test:integration __tests__/api/household-items.integration.test.ts` passes with `supabase start` running and env vars set.
+
+---
+
+### U7. Frontend page
+
+**Goal:** Replace the "Coming soon" stub at `app/(app)/household/page.tsx` with the full Household UI matching `docs/visual-designs/household.html`.
+
+**Requirements:** brainstorm §Screen, §Manage line items, §Null state, §Frequency derivation
+
+**Dependencies:** U4, U5 (API routes must be live)
+
+**Files:**
+- `app/(app)/household/page.tsx` (replace stub)
+
+**Approach:**
+
+Top of file: `'use client'`
+
+**Important:** This is a ground-up rebuild in Tailwind utility classes and shadcn components. Do NOT port or import `folio.css` classes — the visual design file uses static CSS that has no relationship to the Next.js design system. The design is reference only; every class name must be a Tailwind utility or a shadcn component.
+
+**State:**
+- `items: (PersonalBudgetItem & { monthlyCents: number })[]`
+- `summary: { totalIncomeMonthlyCents, totalExpensesMonthlyCents, surplusMonthlyCents }`
+- `loading: boolean`
+- `view: 'monthly' | 'annual' | 'both'`
+- `editingId: string | null` (null = no inline form open)
+- `addingType: 'income' | 'expense' | null`
+
+**Data fetch:** `useEffect` on mount → `GET /api/household/items` → set items + summary; redirect to `/login` on 401.
+
+**View toggle:** Three-segment control. Toggling `view` drives column visibility — the "Monthly" and "Annual" columns show/hide via conditional rendering or a CSS class on the table wrapper, matching the `data-view` attribute pattern in the visual design.
+
+**Summary table layout (five columns):**
+1. Label (name / row type label)
+2. As entered (native `amountCents` formatted + frequency abbreviation)
+3. Monthly (derived — shown when `view` is `monthly` or `both`)
+4. Annual (= monthly × 12 — shown when `view` is `annual` or `both`)
+5. Edit glyph column
+
+**Sections:** Income rows → "Total income" subtotal → Expense rows → "Total expenses" subtotal → "Personal surplus" grand total. Surplus row colored green when positive, red when negative.
+
+**Inline add form** (below the section's last item):
+- Appears when "Add income source" / "Add expense category" is clicked
+- Fields: Name (text input), Amount (number input), Frequency (select: Weekly / Fortnightly / Monthly / Annual)
+- Live preview of monthly equivalent uses local `MONTHLY_FACTOR` constant (same factors as `lib/household/compute.ts`) — this is display-only state, not business logic
+- Save → `POST /api/household/items` → append returned item to local state and update summary → close form
+- Cancel → close form
+
+**Inline edit form** (replaces item row):
+- Appears when edit glyph is clicked; only one edit form open at a time
+- Same fields as add form, pre-populated with current values
+- Includes Delete button (red, separate from Save/Cancel)
+- Save → `PATCH /api/household/items/[id]` → update item in local state and recompute summary → close form
+- Delete → `DELETE /api/household/items/[id]` → remove item from local state and recompute summary → close form
+- Cancel → close form, revert to display row
+
+**Local summary recompute:** After any mutation, recompute `summary` from the updated `items` array using the same `MONTHLY_FACTOR` formula directly (avoids a refetch). If the server PATCH response includes updated values, merge them.
+
+**Null / empty state:** When `items.length === 0` and not loading, show the empty state from the visual design: icon, "Set your household baseline" lede, subtitle, "Add your first income source" and "Add an expense" buttons. Clicking either opens the inline add form for that type.
+
+**Error handling:** `toast.error(...)` on any API failure. Loading spinner or skeleton during initial fetch.
+
+**Patterns to follow:** `app/(app)/entities/page.tsx` for the client page structure, inline form sub-components, and optimistic UI approach; `docs/visual-designs/household.html` + `household.js` for the exact visual design and interaction model.
+
+**Test expectation:** none — frontend page tests are Playwright e2e (future slice). Manual verification required before marking done.
+
+**Verification:**
+- `pnpm dev` → navigate to `/household`
+- Empty state appears correctly with no items in DB
+- Adding an income item: inline form opens, frequency selector works, save calls API, item appears in table with correct monthly/annual values
+- Adding an expense item: same
+- View toggle cycles correctly — Monthly/Annual/Both columns show as expected
+- Edit: clicking edit glyph opens inline form pre-populated; saving updates the row
+- Delete: clicking Delete in edit form removes the row; personal surplus updates
+- Surplus positive = green; surplus negative = red
+- `pnpm tsc --noEmit` passes (no type errors)
+- `pnpm lint` passes
+
+---
+
+## Done Criteria
+
+- [ ] `pnpm tsc --noEmit` passes
+- [ ] `pnpm lint` passes
+- [ ] `pnpm test` passes (unit tests for compute module + all four route files)
+- [ ] `pnpm test:integration` passes for `household-items.integration.test.ts` (requires `supabase start`)
+- [ ] Manual browser verification: empty state, add income, add expense, edit, delete, view toggle, surplus sign colouring
+- [ ] PR open targeting `main`, referencing the brainstorm doc
+
+---
+
+## Deferred Implementation Notes
+
+- The ordering of items within a type group (income or expense) is by `createdAt ASC` for simplicity. A drag-to-reorder feature is not in scope and would require a `sort_order` column.
+- `effectiveFrom` is stored and defaults to today's date. Exposing it in the form UI is deferred to a future enhancement tied to the historical timeline analysis feature.
+- The `category` column is nullable and unused in V1. No migration is needed to add it later — it's already in the schema.
+
+---
+
+## Risk Notes
+
+- **RLS policy omission:** The migration must include the explicit RLS policy. The auto-enable trigger in `0001_rls.sql` enables RLS on new tables but does NOT create a policy — without the policy, PostgREST denies all access. Verify the policy is present before testing the API.
+- **Drizzle journal timestamp monotonicity:** Running `pnpm db:generate` is safe; hand-editing `drizzle/meta/_journal.json` is not. Do not touch the journal file manually.
+- **Integration test isolation:** Each integration test must clean up its inserted rows in `afterEach`. Leaked rows across tests cause summary-total assertions to fail non-deterministically.
