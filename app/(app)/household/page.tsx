@@ -217,7 +217,7 @@ function ItemForm({
           <Button size="sm" variant="ghost" onClick={onCancel} disabled={saving}>
             Cancel
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving}>
+          <Button size="sm" variant="accent" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : isEditing ? 'Save changes' : 'Add'}
           </Button>
         </div>
