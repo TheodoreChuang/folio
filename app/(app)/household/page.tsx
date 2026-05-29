@@ -384,18 +384,18 @@ function SectionHead({ label, count }: { label: string; count: number }) {
 
 function EmptyState({ onAdd }: { onAdd: (type: BudgetItemType) => void }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-10 h-10 rounded-full bg-surface border border-border flex items-center justify-center mb-4">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+    <div className="bg-surface border border-border rounded-[7px] py-12 px-10 flex flex-col items-center text-center gap-4">
+      <div className="w-12 h-12 rounded-full bg-accent-light text-accent flex items-center justify-center">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
           <path d="M12 5v14M5 12h14" />
         </svg>
       </div>
-      <p className="text-base font-semibold text-ink mb-1">Set your household baseline</p>
-      <p className="text-sm text-muted mb-6 max-w-xs">
+      <p className="font-serif font-normal text-2xl tracking-tight leading-tight text-ink">Set your household baseline</p>
+      <p className="text-sm text-muted max-w-[46ch] leading-snug">
         Add the income you bring in and the expenses you carry.
       </p>
-      <div className="flex gap-3">
-        <Button onClick={() => onAdd('income')}>Add your first income source</Button>
+      <div className="flex gap-2 mt-2">
+        <Button variant="accent" onClick={() => onAdd('income')}>Add your first income source</Button>
         <Button variant="outline" onClick={() => onAdd('expense')}>Add an expense</Button>
       </div>
     </div>
