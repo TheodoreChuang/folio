@@ -16,7 +16,7 @@ test.describe('Loans', () => {
     // deselect it, so only click if not already in the selected state.
     const propButton = page.getByRole('button', { name: /123 Smith St/ })
     await expect(propButton).toBeVisible({ timeout: 10000 })
-    const isAutoSelected = (await propButton.getAttribute('class') ?? '').includes('bg-accent-light')
+    const isAutoSelected = (await propButton.getAttribute('class') ?? '').includes('bg-accent-soft')
     if (!isAutoSelected) {
       await propButton.click()
     }
