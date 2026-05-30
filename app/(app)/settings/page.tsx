@@ -65,7 +65,7 @@ export default function SettingsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="font-serif text-2xl text-ink">Settings</h1>
+        <h1 className="font-display text-2xl text-ink">Settings</h1>
         <p className="text-sm text-muted mt-0.5">
           Admin areas that don&apos;t change often. Most live here so they stay out of your way.
         </p>

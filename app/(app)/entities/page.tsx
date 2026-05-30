@@ -103,7 +103,7 @@ function AddEntityForm({
             id="new-entity-type"
             value={type}
             onChange={e => setType(e.target.value as EntityType)}
-            className="w-full h-9 border border-border rounded-md px-3 text-sm bg-white text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-light"
+            className="w-full h-9 border border-border rounded-md px-3 text-sm bg-white text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft"
           >
             {ENTITY_TYPES.map(t => (
               <option key={t.value} value={t.value}>{t.label}</option>
@@ -516,7 +516,7 @@ export default function EntitiesPage() {
         {/* Page head */}
         <div className="flex items-start justify-between mb-2">
           <div>
-            <h1 className="font-serif text-2xl text-ink mb-1">Entities</h1>
+            <h1 className="font-display text-2xl text-ink mb-1">Entities</h1>
             <p className="text-sm text-foreground-muted">
               Trusts, companies, and individuals that own property in Folio.
             </p>

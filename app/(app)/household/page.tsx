@@ -96,7 +96,7 @@ function FreqToggle({
           className={[
             'flex-1 h-7 text-sm font-medium rounded-[5px] transition-colors',
             opt.value === value
-              ? 'bg-accent-light text-accent'
+              ? 'bg-accent-soft text-accent'
               : 'text-muted hover:text-ink',
           ].join(' ')}
         >
@@ -152,7 +152,7 @@ function ItemForm({
   }
 
   return (
-    <div className="bg-surface border border-border rounded-lg p-4 my-1">
+    <div>
       {/* Row 1: Name + Amount */}
       <div className="grid grid-cols-[1fr_auto] gap-3 mb-3">
         <div>
@@ -291,7 +291,7 @@ function gridCols(view: View) {
 
 function TableHeader({ view }: { view: View }) {
   return (
-    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2 border-b border-border text-[10px] font-semibold text-muted uppercase tracking-widest`}>
+    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2 border-b border-border text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-sunken`}>
       <div />
       <div className="text-right w-28">As entered</div>
       {(view === 'monthly' || view === 'both') && (
@@ -310,7 +310,7 @@ function TableHeader({ view }: { view: View }) {
 function ItemRow({ item, view, onEdit }: { item: EnrichedItem; view: View; onEdit: () => void }) {
   const annualCents = item.annualCents
   return (
-    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2.5 items-center hover:bg-surface/50 group border-b border-border/40 last:border-0`}>
+    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2.5 items-center hover:bg-surface-sunken/50 group border-b border-border/40 last:border-0`}>
       <div>
         <div className="text-sm text-ink font-medium">{item.name}</div>
         {item.detail && <div className="text-xs text-muted mt-0.5">{item.detail}</div>}
@@ -336,7 +336,7 @@ function ItemRow({ item, view, onEdit }: { item: EnrichedItem; view: View; onEdi
 
 function SubtotalRow({ label, monthlyCents, view }: { label: string; monthlyCents: number; view: View }) {
   return (
-    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2.5 items-center border-t border-border bg-surface/60`}>
+    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2.5 items-center border-t border-border bg-screen-bg`}>
       <div className="text-xs font-semibold text-muted uppercase tracking-widest">{label}</div>
       <div className="w-28" />
       {(view === 'monthly' || view === 'both') && (
@@ -355,8 +355,8 @@ function SubtotalRow({ label, monthlyCents, view }: { label: string; monthlyCent
 function SurplusRow({ monthlyCents, view }: { monthlyCents: number; view: View }) {
   const colorClass = monthlyCents >= 0 ? 'text-positive' : 'text-negative'
   return (
-    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-3 items-center border-t-2 border-border bg-surface`}>
-      <div className="text-sm font-semibold text-ink">Personal surplus</div>
+    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-3 items-baseline border-t border-border bg-surface-sunken`}>
+      <div className="font-display font-normal text-xl tracking-tight">Personal surplus</div>
       <div className="w-28" />
       {(view === 'monthly' || view === 'both') && (
         <div className={`text-sm font-semibold text-right w-24 tabular-nums ${colorClass}`}>{formatCents(monthlyCents)}</div>
@@ -373,9 +373,9 @@ function SurplusRow({ monthlyCents, view }: { monthlyCents: number; view: View }
 
 function SectionHead({ label, count }: { label: string; count: number }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-surface/40 border-b border-border">
-      <span className="text-xs font-semibold text-ink uppercase tracking-wider">{label}</span>
-      <span className="text-xs text-muted">· {count} {count === 1 ? 'item' : 'items'}</span>
+    <div className="flex items-center gap-2 px-4 py-2 bg-surface border-b border-border">
+      <span className="text-xs font-semibold text-foreground-subtle uppercase tracking-wider">{label}</span>
+      <span className="text-xs text-foreground-faint">· {count} {count === 1 ? 'item' : 'items'}</span>
     </div>
   )
 }
@@ -385,12 +385,12 @@ function SectionHead({ label, count }: { label: string; count: number }) {
 function EmptyState({ onAdd }: { onAdd: (type: BudgetItemType) => void }) {
   return (
     <div className="bg-surface border border-border rounded-[7px] py-12 px-10 flex flex-col items-center text-center gap-4">
-      <div className="w-12 h-12 rounded-full bg-accent-light text-accent flex items-center justify-center">
+      <div className="w-12 h-12 rounded-full bg-accent-soft text-accent flex items-center justify-center">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
           <path d="M12 5v14M5 12h14" />
         </svg>
       </div>
-      <p className="font-serif font-normal text-2xl tracking-tight leading-tight text-ink">Set your household baseline</p>
+      <p className="font-display font-normal text-2xl tracking-tight leading-tight text-ink">Set your household baseline</p>
       <p className="text-sm text-muted max-w-[46ch] leading-snug">
         Add the income you bring in and the expenses you carry.
       </p>
@@ -520,7 +520,7 @@ export default function HouseholdPage() {
     <div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="font-serif text-2xl text-ink">Household</h1>
+          <h1 className="font-display text-2xl text-ink">Household</h1>
           <p className="text-sm text-muted mt-0.5">
             Your personal income and expenses — independent of your portfolio.
           </p>
@@ -533,7 +533,7 @@ export default function HouseholdPage() {
       ) : !hasItems && !hasAnyAdd ? (
         <EmptyState onAdd={openAdd} />
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <div className="border border-border rounded-lg overflow-hidden bg-surface">
 
           {hasItems && <TableHeader view={view} />}
 
@@ -542,7 +542,7 @@ export default function HouseholdPage() {
 
           {incomeItems.map(item =>
             editingId === item.id ? (
-              <div key={item.id} className="px-4 py-2 border-b border-border/40">
+              <div key={item.id} className="bg-surface-sunken/45 border-b border-border border-l-2 border-l-accent py-4 px-5">
                 <ItemForm
                   initialName={item.name}
                   initialAmountDollars={String(item.amountCents / 100)}
@@ -561,15 +561,15 @@ export default function HouseholdPage() {
           )}
 
           {addingType === 'income' ? (
-            <div className="px-4 py-2 border-b border-border/40">
+            <div className="bg-surface-sunken/45 border-b border-border border-l-2 border-l-accent py-4 px-5">
               <ItemForm onSave={handleAdd} onCancel={closeAll} saving={savingAdd} />
             </div>
           ) : (
-            <div className="px-4 py-2 border-b border-border/40">
+            <div className="px-4 py-1.5 border-b border-border">
               <button
                 type="button"
                 onClick={() => openAdd('income')}
-                className="text-xs text-muted hover:text-ink transition-colors"
+                className="text-sm text-accent h-8 px-2 rounded hover:bg-accent-soft/60 transition-colors"
               >
                 + Add income source
               </button>
@@ -583,7 +583,7 @@ export default function HouseholdPage() {
 
           {expenseItems.map(item =>
             editingId === item.id ? (
-              <div key={item.id} className="px-4 py-2 border-b border-border/40">
+              <div key={item.id} className="bg-surface-sunken/45 border-b border-border border-l-2 border-l-accent py-4 px-5">
                 <ItemForm
                   initialName={item.name}
                   initialAmountDollars={String(item.amountCents / 100)}
@@ -602,15 +602,15 @@ export default function HouseholdPage() {
           )}
 
           {addingType === 'expense' ? (
-            <div className="px-4 py-2 border-b border-border/40">
+            <div className="bg-surface-sunken/45 border-b border-border border-l-2 border-l-accent py-4 px-5">
               <ItemForm onSave={handleAdd} onCancel={closeAll} saving={savingAdd} />
             </div>
           ) : (
-            <div className="px-4 py-2 border-b border-border/40">
+            <div className="px-4 py-1.5 border-b border-border">
               <button
                 type="button"
                 onClick={() => openAdd('expense')}
-                className="text-xs text-muted hover:text-ink transition-colors"
+                className="text-sm text-accent h-8 px-2 rounded hover:bg-accent-soft/60 transition-colors"
               >
                 + Add expense category
               </button>

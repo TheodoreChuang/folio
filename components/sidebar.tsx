@@ -31,7 +31,7 @@ function NavItem({
       className={cn(
         'relative flex items-center gap-[10px] h-[34px] px-3 rounded-[5px] text-[0.875rem] w-full transition-colors',
         active
-          ? 'bg-accent-light text-accent font-medium before:content-[""] before:absolute before:-left-1 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-sm before:bg-accent'
+          ? 'bg-accent-soft text-accent font-medium before:content-[""] before:absolute before:-left-1 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-sm before:bg-accent'
           : 'text-muted hover:bg-surface hover:text-ink',
         className,
       )}
@@ -106,7 +106,7 @@ function NavSection({
           className={cn(
             'relative flex flex-1 items-center gap-[10px] h-[34px] px-3 rounded-[5px] text-[0.875rem] min-w-0 transition-colors',
             active
-              ? 'bg-accent-light text-accent font-medium before:content-[""] before:absolute before:-left-1 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-sm before:bg-accent'
+              ? 'bg-accent-soft text-accent font-medium before:content-[""] before:absolute before:-left-1 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-sm before:bg-accent'
               : 'text-muted hover:bg-surface hover:text-ink',
           )}
         >
@@ -182,7 +182,7 @@ export function Sidebar() {
   return (
     <aside className="bg-sidebar border-r border-border flex flex-col gap-0.5 px-4 py-7 sticky top-0 h-screen overflow-y-auto">
       {/* Brand */}
-      <div className="font-serif text-2xl tracking-tight leading-none px-3 pb-6">
+      <div className="font-display text-2xl tracking-tight leading-none px-3 pb-6">
         Folio
         <em className="not-italic font-light text-muted ml-1" style={{ fontSize: '0.7em' }}>
           · beta

@@ -56,7 +56,7 @@ function Prompt({ tone = 'default', severity, message, context, actions, classNa
         </div>
 
         {/* Message */}
-        <div className="font-serif text-xl leading-snug tracking-[-0.005em] text-ink text-pretty max-w-[60ch]">
+        <div className="font-display text-xl leading-snug tracking-[-0.005em] text-ink text-pretty max-w-[60ch]">
           {message}
         </div>
 
