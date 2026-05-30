@@ -831,17 +831,19 @@ export default function UploadPage() {
           <div
             className={cn(
               'border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-4 py-16 px-8 transition-colors cursor-pointer',
-              isDragging ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50',
+              isDragging ? 'border-accent bg-accent-soft/45' : 'border-border bg-surface hover:border-accent hover:bg-accent-soft/45',
             )}
             onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
           >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-muted" aria-hidden>
-              <path d="M12 16V4M6 10l6-6 6 6" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <div className="w-14 h-14 rounded-full bg-accent-soft flex items-center justify-center text-accent">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+                <path d="M12 16V4M6 10l6-6 6 6" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
             <div className="text-center">
               <p className="text-sm font-medium text-ink">Drop documents here</p>
               <p className="text-xs text-muted mt-1">PM statements, bank statements, loan statements</p>
