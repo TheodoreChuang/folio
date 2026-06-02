@@ -109,16 +109,16 @@ function ScenarioCard({ card, context }: { card: CardDef; context: PlanContext |
         aria-disabled="true"
         className="relative text-left bg-surface-sunken/40 border border-border rounded-[10px] px-6 pt-6 pb-5 flex flex-col gap-4 min-h-[196px] overflow-hidden"
       >
-        <span className="text-[11px] uppercase tracking-[0.1em] text-foreground-faint font-semibold">
+        <span className="text-2xs uppercase tracking-[0.1em] text-foreground-faint font-semibold">
           {card.eyebrow}
         </span>
-        <div className="font-semibold text-base tracking-[-0.01em] text-foreground-subtle">
+        <div className="font-semibold text-lg tracking-[-0.01em] text-foreground-subtle">
           {card.title}
         </div>
         <p className="font-display font-normal text-xl leading-snug tracking-[-0.005em] text-foreground-subtle text-pretty m-0">
           {card.question}
         </p>
-        <div className="flex items-center mt-auto pt-4 border-t border-ruled text-[13px] text-foreground-subtle">
+        <div className="flex items-center mt-auto pt-4 border-t border-ruled text-sm text-foreground-subtle">
           <span className="inline-flex items-center gap-[7px] font-medium">
             <LockIcon />
             {card.disabledReason}
@@ -138,16 +138,16 @@ function ScenarioCard({ card, context }: { card: CardDef; context: PlanContext |
         aria-hidden="true"
         className="absolute inset-y-0 left-0 w-[3px] bg-accent opacity-0 group-hover:opacity-100 transition-opacity duration-150"
       />
-      <span className="text-[11px] uppercase tracking-[0.1em] text-foreground-subtle font-semibold">
+      <span className="text-2xs uppercase tracking-[0.1em] text-foreground-subtle font-semibold">
         {card.eyebrow}
       </span>
-      <div className="font-semibold text-base tracking-[-0.01em] text-ink">
+      <div className="font-semibold text-lg tracking-[-0.01em] text-ink">
         {card.title}
       </div>
       <p className="font-display font-normal text-xl leading-snug tracking-[-0.005em] text-ink text-pretty m-0">
         {card.question}
       </p>
-      <div className="flex items-center justify-between mt-auto pt-4 border-t border-ruled text-[13px] font-medium text-accent">
+      <div className="flex items-center justify-between mt-auto pt-4 border-t border-ruled text-sm font-medium text-accent">
         <span className="inline-flex items-center gap-1.5">
           {card.ctaLabel}
           <span className="transition-transform duration-150 group-hover:translate-x-0.5">→</span>
