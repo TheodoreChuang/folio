@@ -71,13 +71,17 @@
     const cashflowScenario = cashflowToday - repayDelta;
     const cashflowDelta = cashflowScenario - cashflowToday; // = -repayDelta
 
-    // Household buffer — how much of the monthly surplus is consumed.
+    // Household buffer — how much of the personal surplus the servicing
+    // consumes. Personal surplus (income − living expenses) is fixed; we
+    // only know how the MOVE changes cashflow versus today, not the
+    // portfolio's absolute position — so we never claim a surplus above it.
     const surplus = HOUSEHOLD.surplusMo;
     const consumed = Math.max(0, -cashflowScenario);
     const remaining = surplus - consumed;
     const household = {
       surplus, consumed, remaining,
       pct: surplus > 0 ? Math.min(1.6, consumed / surplus) : 0,
+      covered: consumed < 0.5,        // the move fully covers the servicing
       breached: remaining < 0
     };
 
