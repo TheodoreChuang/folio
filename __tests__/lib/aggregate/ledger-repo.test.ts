@@ -3,7 +3,7 @@ import {
   fetchPropertiesActiveInRange,
   fetchLoansActiveInRange,
   fetchLedgerEntriesInRange,
-} from '@/lib/reporting/repositories/ledger'
+} from '@/lib/aggregate/repositories/ledger'
 
 const PROP_ID = 'aaaa0001-0000-4000-a000-000000000001'
 const LOAN_ID = 'bbbb0001-0000-4000-b000-000000000001'

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import { lastDayOfMonth } from '@/lib/format'
-import { fetchPropertyTrendData } from '@/lib/reporting'
+import { fetchPropertyTrendData } from '@/lib/aggregate'
 import { findPropertyById } from '@/lib/property'
 
 export type TrendPoint = {

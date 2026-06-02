@@ -15,7 +15,7 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/reporting', () => ({
+vi.mock('@/lib/aggregate', () => ({
   fetchTrendData: mocks.mockFetchTrendData,
 }))
 

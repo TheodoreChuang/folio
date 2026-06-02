@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchTrendData } from '@/lib/reporting/repositories/trends'
+import { fetchTrendData } from '@/lib/aggregate/repositories/trends'
 
 const mocks = vi.hoisted(() => ({
   mockGroupBy: vi.fn(),

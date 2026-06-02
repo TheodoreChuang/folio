@@ -6,7 +6,7 @@ import {
   fetchLoansActiveInRange,
   fetchLedgerEntriesInRange,
   computeReport,
-} from '@/lib/reporting'
+} from '@/lib/aggregate'
 
 export async function GET(request: Request) {
   try {

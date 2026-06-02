@@ -22,7 +22,7 @@ vi.mock('@/lib/property', () => ({
   findPropertyById: mocks.mockFindPropertyById,
 }))
 
-vi.mock('@/lib/reporting', () => ({
+vi.mock('@/lib/aggregate', () => ({
   fetchPropertyTrendData: mocks.mockFetchPropertyTrendData,
 }))
 

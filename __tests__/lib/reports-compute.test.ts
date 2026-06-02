@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeReport } from '@/lib/reporting/services/compute'
+import { computeReport } from '@/lib/aggregate/services/compute'
 import type { PropertyLedger, Property, InstallmentLoan } from '@/db/schema'
 
 function makeProperty(overrides: Partial<Property> = {}): Property {

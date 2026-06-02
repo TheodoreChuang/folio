@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
-import { fetchPortfolioData, computePortfolioLVR } from '@/lib/reporting'
+import { fetchPortfolioData, computePortfolioLVR } from '@/lib/aggregate'
 
-export type { PortfolioLVR } from '@/lib/reporting'
+export type { PortfolioLVR } from '@/lib/aggregate'
 
 export async function GET(request: Request) {
   try {
