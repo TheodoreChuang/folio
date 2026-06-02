@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>Folio — Model a purchase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,30..100&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="folio.css" />
+<link rel="stylesheet" href="model-purchase.css" />
+</head>
+<!--
+  Folio — Model a purchase (live calculator)
+  ─────────────────────────────────────────────────────────────────
+  Maps to Next.js route:  /plan/model-purchase
+  Shared shell:           sidebar.js, folio.css
+  This screen:            model-purchase.css + a small React app
+                            mp-engine.jsx   pure calc engine + portfolio data
+                            mp-inputs.jsx   left column (controlled form)
+                            mp-outputs.jsx  right column (the hero outputs)
+                            mp-tweaks.jsx   Tweaks panel (impact treatment, household)
+                            mp-app.jsx      state, persistence, mount
+
+  Opened from the Plan command-deck card "Model a purchase". When this
+  design is settled it replaces the static tpl-purchase template in plan.html.
+-->
+<body data-page="plan">
+<div class="app">
+
+  <!-- Sidebar injected by sidebar.js -->
+
+  <main class="main">
+    <div class="main-inner">
+
+    <section class="screen is-active" data-screen="plan" data-screen-label="Model a purchase">
+
+      <button type="button" class="mp-back" data-goto="plan">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 2.5 3.5 6 7 9.5"/></svg>
+        All scenarios
+      </button>
+
+      <div class="page-head">
+        <div>
+          <h1 class="title">Model a purchase</h1>
+          <p class="subtitle">See the cashflow, funding and portfolio impact of a hypothetical next property.</p>
+        </div>
+      </div>
+
+      <div class="mp-wrap">
+        <div id="mp-root"></div>
+      </div>
+
+    </section>
+
+    </div>
+  </main>
+</div>
+
+<script src="sidebar.js"></script>
+<script src="folio.js"></script>
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="mp-engine.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="mp-inputs.jsx"></script>
+<script type="text/babel" src="mp-outputs.jsx"></script>
+<script type="text/babel" src="mp-tweaks.jsx"></script>
+<script type="text/babel" src="mp-app.jsx"></script>
+</body>
+</html>

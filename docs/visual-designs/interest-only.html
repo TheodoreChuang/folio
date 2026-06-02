@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>Folio — Interest-only rollover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,30..100&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="folio.css" />
+<link rel="stylesheet" href="interest-only.css" />
+</head>
+<!--
+  Folio — Interest-only rollover (schedule)
+  ─────────────────────────────────────────────────────────────────
+  Maps to Next.js route:  /plan/interest-only
+  Shared shell:           sidebar.js, folio.css
+  This screen:            interest-only.css + a small React app
+                            io-engine.jsx    loans + P&I math + time axis
+                            io-sections.jsx  verdict · timeline+schedule · chart
+                            io-tweaks.jsx    Tweaks (preview size, discount mode)
+                            io-app.jsx       state, persistence, mount
+
+  Opened from the Plan command-deck card "Interest-only rollover".
+  Everything is derived from the loan set + one assumption (how far the
+  P&I rate sits below each IO rate — the platform stores IO rates only),
+  so the timeline and cashflow chart adapt to 1 … 10+ loans.
+-->
+<body data-page="plan">
+<div class="app">
+
+  <!-- Sidebar injected by sidebar.js -->
+
+  <main class="main">
+    <div class="main-inner">
+
+    <section class="screen is-active" data-screen="plan" data-screen-label="Interest-only rollover">
+
+      <a class="io-back" href="plan.html">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 2.5 3.5 6 7 9.5"/></svg>
+        All scenarios
+      </a>
+
+      <div class="page-head">
+        <div>
+          <h1 class="title">Interest-only rollover</h1>
+          <p class="subtitle">When your interest-only periods end, can you cover the payment jump?</p>
+        </div>
+      </div>
+
+      <div class="io-wrap">
+        <div id="io-root"></div>
+      </div>
+
+    </section>
+
+    </div>
+  </main>
+</div>
+
+<script src="sidebar.js"></script>
+<script src="folio.js"></script>
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="io-engine.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="io-sections.jsx"></script>
+<script type="text/babel" src="io-tweaks.jsx"></script>
+<script type="text/babel" src="io-app.jsx"></script>
+</body>
+</html>
