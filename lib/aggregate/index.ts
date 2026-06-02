@@ -15,3 +15,6 @@ export {
   fetchLoansActiveInRange,
   fetchLedgerEntriesInRange,
 } from './repositories/ledger'
+
+export { fetchPlanContext } from './plan/context'
+export type { PlanContext, PlanContextProperty, PlanContextLoan } from './plan/context'
