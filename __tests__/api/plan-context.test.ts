@@ -274,7 +274,7 @@ describe('GET /api/plan/context', () => {
 
   // ── portfolio baseline ────────────────────────────────────────────────────
 
-  it('returns portfolioBaseline = null when no ledger entries exist', async () => {
+  it('returns portfolioBaseline = null when no ledger entries exist in the trailing 12-month window', async () => {
     mocks.mockFetchLedgerEntriesInRange.mockResolvedValue([])
     mocks.mockFetchPortfolioData.mockResolvedValue({
       properties: [makeProperty()],
@@ -287,14 +287,26 @@ describe('GET /api/plan/context', () => {
     expect(context.portfolioBaseline).toBeNull()
   })
 
-  it('returns rentMonthlyCents as a 3-month average when ledger data exists', async () => {
+  it('fetches ledger entries over a trailing 12-month window', async () => {
+    const res = await GET()
+    expect(res.status).toBe(200)
+    const [[, from, to]] = mocks.mockFetchLedgerEntriesInRange.mock.calls
+    const fromDate = new Date(from)
+    const toDate = new Date(to)
+    const monthsDiff =
+      (toDate.getFullYear() - fromDate.getFullYear()) * 12 +
+      (toDate.getMonth() - fromDate.getMonth())
+    expect(monthsDiff).toBe(12)
+  })
+
+  it('returns portfolioBaseline when ledger data spans less than 12 months (divides by actual span)', async () => {
     mocks.mockFetchPortfolioData.mockResolvedValue({
       properties: [makeProperty()],
       valuations: [],
       balances: [],
       loans: [],
     })
-    // 3 rent entries × $2,000 = $6,000 total → avg $2,000/month
+    // 3 months of rent data (Mar–May): 3 × $2,000 = $6,000 total → $2,000/month (span = 3)
     mocks.mockFetchLedgerEntriesInRange.mockResolvedValue([
       makeLedgerEntry({ id: 'e1', lineItemDate: '2026-03-10', amountCents: 200000, category: 'rent' }),
       makeLedgerEntry({ id: 'e2', lineItemDate: '2026-04-10', amountCents: 200000, category: 'rent' }),
@@ -303,25 +315,67 @@ describe('GET /api/plan/context', () => {
     const res = await GET()
     const { context } = await res.json()
     expect(context.portfolioBaseline).not.toBeNull()
-    expect(context.portfolioBaseline.rentMonthlyCents).toBe(200000)
+    expect(context.portfolioBaseline.rentMonthlyCents).toBe(200000) // 600000 / 3
   })
 
-  it('returns expensesMonthlyCents and loanRepaymentsMonthlyCents averaged over 3 months', async () => {
+  it('counts gap months in the span (calendar span, not distinct months)', async () => {
     mocks.mockFetchPortfolioData.mockResolvedValue({
       properties: [makeProperty()],
       valuations: [],
       balances: [],
       loans: [],
     })
+    // Entries in Jan and Mar only — Feb has no entries. Calendar span = 3 (Jan–Mar).
     mocks.mockFetchLedgerEntriesInRange.mockResolvedValue([
-      makeLedgerEntry({ id: 'e1', amountCents: 300000, category: 'insurance' }),
-      makeLedgerEntry({ id: 'e2', amountCents: 300000, category: 'rates' }),
-      makeLedgerEntry({ id: 'e3', amountCents: 150000, category: 'loan_payment' }),
+      makeLedgerEntry({ id: 'e1', lineItemDate: '2026-01-15', amountCents: 300000, category: 'rent' }),
+      makeLedgerEntry({ id: 'e2', lineItemDate: '2026-03-15', amountCents: 300000, category: 'rent' }),
     ])
     const res = await GET()
     const { context } = await res.json()
-    // expenses: 600000 total / 3 = 200000
-    // mortgage: 150000 total / 3 = 50000
+    expect(context.portfolioBaseline.rentMonthlyCents).toBe(200000) // 600000 / 3
+  })
+
+  it('returns correct monthly averages when ledger data spans a full 12 months', async () => {
+    mocks.mockFetchPortfolioData.mockResolvedValue({
+      properties: [makeProperty()],
+      valuations: [],
+      balances: [],
+      loans: [],
+    })
+    // 12 monthly rent entries × $2,000 = $24,000 total → $2,000/month
+    mocks.mockFetchLedgerEntriesInRange.mockResolvedValue(
+      Array.from({ length: 12 }, (_, i) =>
+        makeLedgerEntry({
+          id: `e${i + 1}`,
+          lineItemDate: `2025-${String(i + 1).padStart(2, '0')}-15`,
+          amountCents: 200000,
+          category: 'rent',
+        }),
+      ),
+    )
+    const res = await GET()
+    const { context } = await res.json()
+    expect(context.portfolioBaseline).not.toBeNull()
+    expect(context.portfolioBaseline.rentMonthlyCents).toBe(200000) // 2400000 / 12
+  })
+
+  it('averages expensesMonthlyCents and loanRepaymentsMonthlyCents by calendar span', async () => {
+    mocks.mockFetchPortfolioData.mockResolvedValue({
+      properties: [makeProperty()],
+      valuations: [],
+      balances: [],
+      loans: [],
+    })
+    // Entries spread across 3 months (Mar–May) → span = 3
+    mocks.mockFetchLedgerEntriesInRange.mockResolvedValue([
+      makeLedgerEntry({ id: 'e1', lineItemDate: '2026-03-15', amountCents: 300000, category: 'insurance' }),
+      makeLedgerEntry({ id: 'e2', lineItemDate: '2026-04-15', amountCents: 300000, category: 'rates' }),
+      makeLedgerEntry({ id: 'e3', lineItemDate: '2026-05-15', amountCents: 150000, category: 'loan_payment' }),
+    ])
+    const res = await GET()
+    const { context } = await res.json()
+    // expenses: 600000 / 3 = 200000
+    // mortgage: 150000 / 3 = 50000
     expect(context.portfolioBaseline.expensesMonthlyCents).toBe(200000)
     expect(context.portfolioBaseline.loanRepaymentsMonthlyCents).toBe(50000)
   })

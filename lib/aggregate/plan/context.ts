@@ -41,14 +41,25 @@ export type PlanContext = {
   } | null
 }
 
-// Trailing 3 full calendar months: first day 3 months ago → last day of last month
-function trailingThreeMonthRange(today: Date): { from: string; to: string } {
-  const from = new Date(today.getFullYear(), today.getMonth() - 3, 1)
+// Trailing 12 full calendar months: first day 12 months ago → last day of last month
+function trailingTwelveMonthRange(today: Date): { from: string; to: string } {
+  const from = new Date(today.getFullYear(), today.getMonth() - 12, 1)
   const to = new Date(today.getFullYear(), today.getMonth(), 0) // last day of prev month
   return {
     from: from.toISOString().slice(0, 10),
     to: to.toISOString().slice(0, 10),
   }
+}
+
+// Calendar months from earliest to latest entry date, inclusive — gap months count.
+function monthSpan(entries: { lineItemDate: string }[]): number {
+  if (entries.length === 0) return 1
+  const dates = entries.map(e => e.lineItemDate)
+  const earliest = dates.reduce((a, b) => (a < b ? a : b))
+  const latest = dates.reduce((a, b) => (a > b ? a : b))
+  const [ey, em] = earliest.split('-').map(Number)
+  const [ly, lm] = latest.split('-').map(Number)
+  return (ly - ey) * 12 + (lm - em) + 1
 }
 
 function latestByKey<T>(rows: T[], keyFn: (r: T) => string): Map<string, T> {
@@ -62,7 +73,7 @@ function latestByKey<T>(rows: T[], keyFn: (r: T) => string): Map<string, T> {
 export async function fetchPlanContext(userId: string): Promise<PlanContext> {
   const today = new Date()
   const todayStr = today.toISOString().slice(0, 10)
-  const { from, to } = trailingThreeMonthRange(today)
+  const { from, to } = trailingTwelveMonthRange(today)
 
   const [{ properties, valuations, balances, loans }, budgetItems, ledgerEntries] =
     await Promise.all([
@@ -119,10 +130,11 @@ export async function fetchPlanContext(userId: string): Promise<PlanContext> {
   let portfolioBaseline: PlanContext['portfolioBaseline'] = null
   if (ledgerEntries.length > 0) {
     const { totals } = computeReport(ledgerEntries, activeProperties, activeLoans)
+    const months = Math.min(monthSpan(ledgerEntries), 12)
     portfolioBaseline = {
-      rentMonthlyCents: Math.round(totals.totalRent / 3),
-      expensesMonthlyCents: Math.round(totals.totalExpenses / 3),
-      loanRepaymentsMonthlyCents: Math.round(totals.totalMortgage / 3),
+      rentMonthlyCents: Math.round(totals.totalRent / months),
+      expensesMonthlyCents: Math.round(totals.totalExpenses / months),
+      loanRepaymentsMonthlyCents: Math.round(totals.totalMortgage / months),
     }
   }
 

@@ -59,8 +59,8 @@ No Slider component exists in the project. Install via `pnpm dlx shadcn@latest a
 **Recharts for charts**
 IO Rollover stepped cashflow uses `LineChart` with `type="stepAfter"`. Hold vs Reinvest equity trajectory uses `ComposedChart` with `Line` + `Area` for shaded bands. Recharts is already a prod dependency (used on dashboard).
 
-**Portfolio baseline in plan context (trailing 3-month average)**
-Rate Sensitivity shows full portfolio cashflow (rent − expenses − recalculated repayments). The context endpoint computes a trailing 3-month ledger average via the existing `fetchLedgerEntriesInRange` + `computeReport` utilities. Returns `null` when no ledger data exists; calculators degrade gracefully to showing repayment-only impact.
+**Portfolio baseline in plan context (trailing 12-month average)**
+Rate Sensitivity shows full portfolio cashflow (rent − expenses − recalculated repayments). The context endpoint computes a trailing 12-month ledger average via the existing `fetchLedgerEntriesInRange` + `computeReport` utilities. A 12-month window is used to smooth out large one-off property expenses. The divisor is the calendar span of the data (earliest entry month → latest entry month, inclusive of gap months), capped at 12. Partial windows divide by the actual span, not 12. Returns `null` when no ledger data exists; calculators degrade gracefully to showing repayment-only impact.
 
 **IO P&I repayment: PMT formula**
 `PMT(r, n, pv) = r × pv / (1 − (1+r)^−n)` where `r = annualRatePct / 100 / 12`, `n = remainingP&IMonths`, `pv = balanceCents`. Implemented as a pure function in `lib/aggregate/plan/calculators/io-rollover.ts`. P&I rate defaults to `ioRate − 0.30%` (the 0.30% discount from PRD); user-editable per loan.
@@ -204,7 +204,7 @@ __tests__/
 Context orchestrator (`lib/aggregate/plan/context.ts`): No own DB queries. Calls existing functions in parallel via `Promise.all`:
 1. `fetchPortfolioData(userId)` from `lib/aggregate/repositories/portfolio.ts` — returns properties, valuations (desc by `valuedAt`), loans, balances (desc by `recordedAt`)
 2. `listBudgetItems(userId)` from `lib/household/repositories/budget-items.ts`
-3. `fetchLedgerEntriesInRange(userId, from, to)` from `lib/aggregate/repositories/ledger.ts` — date range: first day of the month 3 months ago through last day of last month
+3. `fetchLedgerEntriesInRange(userId, from, to)` from `lib/aggregate/repositories/ledger.ts` — date range: first day of the month 12 months ago through last day of last month
 
 Assembles results into the `PlanContext` shape: filters active properties/loans (no `endDate` or `endDate ≥ today`), deduplicates to latest valuation/balance per entity, derives counts. Calls `computeSummary` from `lib/household/compute.ts` for household surplus (returns `null` when `items.length === 0`). Calls `computeReport` from `lib/aggregate/services/compute.ts` on the ledger entries to derive `portfolioBaseline`; returns `null` when no ledger entries exist.
 
@@ -220,8 +220,10 @@ Route (`app/api/plan/context/route.ts`): Auth check → calls context orchestrat
 - Returns `latestValuation: null` for a property with no valuation rows
 - Returns `latestBalance: null` for a loan with no balance rows
 - Returns `householdSurplusMonthlyCents: null` when no budget items exist
-- Returns `portfolioBaseline: null` when no ledger entries exist in the trailing 3-month window
-- Returns `portfolioBaseline.rentMonthlyCents` as a 3-month average when ledger data exists
+- Fetches ledger entries over a trailing 12-month window
+- Returns `portfolioBaseline: null` when no ledger entries exist in the trailing 12-month window
+- Returns `portfolioBaseline` (non-null) when ledger data spans less than 12 months, dividing totals by the actual calendar span
+- Returns correct monthly averages when ledger data spans a full 12 months
 - Active property filter: a property with `endDate < today` is excluded from `properties` array (but may still count if `endDate` semantics differ — document this)
 - Active loan filter: a loan with `endDate < today` is excluded from `loans` array
 
