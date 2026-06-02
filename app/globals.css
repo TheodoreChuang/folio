@@ -92,6 +92,18 @@
 }
 
 /*
+  ── MISSING TAILWIND v4 UTILITIES ──────────────────────────────────────────
+  @theme inline suppresses :root variable emission, and Tailwind v4 only
+  auto-generates font-sans/font-mono utilities — not custom font-* names.
+  Declare font-display explicitly so all existing font-display usages work.
+*/
+@layer utilities {
+  .font-display {
+    font-family: 'Fraunces', 'Lora', ui-serif, Georgia, serif;
+  }
+}
+
+/*
   ── BASE OVERRIDES ──────────────────────────────────────────────────────────
   Tailwind v4 changed the default border colour to currentColor (not a grey).
   This restores the v3 behaviour so existing border-* utilities use our token.
