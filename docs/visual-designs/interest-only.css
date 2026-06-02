@@ -1,0 +1,306 @@
+/* =====================================================================
+   FOLIO — INTEREST-ONLY ROLLOVER
+   Supplemental styles for the IO rollover app. Reuses the .calc shell,
+   headline, capacity bar and section labels from folio.css; adds the
+   page chrome, the dynamic rollover timeline, the per-loan schedule
+   table (with the P&I-discount assumption controls) and the stepped
+   net-cashflow chart.
+   ===================================================================== */
+
+.io-wrap { max-width: 920px; }
+
+.io-back {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  height: 32px; padding: 0 var(--space-4) 0 var(--space-3);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--surface));
+  border-radius: var(--radius);
+  font-size: var(--text-sm); font-weight: 500;
+  color: hsl(var(--foreground-muted));
+  cursor: pointer; margin-bottom: var(--space-5);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.io-back:hover { background: hsl(var(--surface-sunken)); color: hsl(var(--foreground)); }
+
+.io-stack { display: flex; flex-direction: column; gap: var(--space-4); }
+
+/* ---------------------------------------------------------------------
+   1 · Verdict — the answer, up front
+   --------------------------------------------------------------------- */
+.io-verdict .calc-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--space-7);
+  padding: var(--space-6);
+}
+.io-verdict .verdict-lead .calc-section-label { margin-bottom: var(--space-3); }
+.io-verdict .headline-result { margin-bottom: var(--space-3); }
+.io-verdict .headline-result .value { color: hsl(var(--negative)); }
+.io-verdict .headline-result .delta {
+  color: hsl(var(--foreground-muted)); font-weight: 500;
+}
+.io-verdict .headline-context { line-height: var(--leading-snug); max-width: 44ch; }
+
+.io-verdict .verdict-aside {
+  border-left: 1px solid hsl(var(--rule));
+  padding-left: var(--space-7);
+  display: flex; flex-direction: column; justify-content: center;
+}
+.io-verdict .capacity-bar { margin-top: 0; }
+.io-verdict .capacity-bar .bar { height: 10px; }
+.io-verdict .capacity-bar .lab-row .num strong,
+.io-verdict .capacity-bar .legend strong {
+  color: hsl(var(--foreground)); font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.capacity-bar .bar .fill.is-breached {
+  background: hsl(var(--negative));
+}
+
+/* ---------------------------------------------------------------------
+   2 · Schedule — assumption note + editable per-loan P&I rate
+   --------------------------------------------------------------------- */
+.io-assume-note {
+  max-width: 30ch;
+  text-align: right;
+  font-size: var(--text-2xs);
+  line-height: var(--leading-snug);
+  color: hsl(var(--foreground-subtle));
+}
+
+/* ---------------------------------------------------------------------
+   Rollover timeline (dynamic, scales with the loan set)
+   --------------------------------------------------------------------- */
+.io-timeline {
+  position: relative;
+  padding: var(--space-6) var(--space-8) var(--space-7);
+}
+.io-timeline .axis {
+  position: relative;
+  height: 2px;
+  background: hsl(var(--border));
+  margin: 58px 0 56px;
+}
+.io-timeline .axis .tick {
+  position: absolute;
+  top: -4px;
+  width: 1px; height: 10px;
+  background: hsl(var(--foreground-subtle));
+}
+.io-timeline .axis .tick .lab {
+  position: absolute;
+  top: 14px; left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--text-2xs);
+  color: hsl(var(--foreground-subtle));
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.io-timeline .axis .today-marker {
+  position: absolute;
+  top: -10px; bottom: -10px;
+  width: 1.5px;
+  background: hsl(var(--accent));
+  z-index: 3;
+}
+.io-timeline .axis .today-marker .lab {
+  position: absolute;
+  top: -20px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 600;
+  color: hsl(var(--accent));
+  white-space: nowrap;
+  background: hsl(var(--surface));
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+}
+
+.io-timeline .event { position: absolute; top: 0; z-index: 2; }
+.io-timeline .event .pin {
+  position: relative;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: hsl(var(--warning));
+  border: 2px solid hsl(var(--surface));
+  transform: translate(-50%, -5px);
+  left: 0;
+}
+.io-timeline .event.is-future-far .pin,
+.io-timeline .event:nth-child(n+6) .pin { background: hsl(var(--foreground-subtle)); }
+
+/* Label group sits below the pin by default, above for alternating
+   events — keeps neighbours from colliding. A hairline stem bridges
+   the gap back to the axis. */
+.io-timeline .event .evt-text {
+  position: absolute; left: 0;
+  transform: translateX(-50%);
+  top: 14px;
+  text-align: center;
+  width: max-content; max-width: 130px;
+}
+.io-timeline .event .evt-text::before {
+  content: ""; position: absolute;
+  left: 50%; transform: translateX(-50%);
+  top: -12px; height: 12px; width: 1px;
+  background: hsl(var(--border-strong));
+}
+.io-timeline .event.is-alt .evt-text {
+  top: auto; bottom: 14px;
+}
+.io-timeline .event.is-alt .evt-text::before { top: auto; bottom: -12px; }
+.io-timeline .event .label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  color: hsl(var(--foreground));
+}
+.io-timeline .event .when {
+  font-size: 10px;
+  color: hsl(var(--foreground-muted));
+  margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.io-timeline.is-dense .event .when { font-weight: 600; color: hsl(var(--foreground)); }
+
+/* ---------------------------------------------------------------------
+   Per-loan rollover schedule
+   --------------------------------------------------------------------- */
+.io-rollover-list {
+  display: flex; flex-direction: column;
+  border-top: 1px solid hsl(var(--rule));
+}
+.io-rollover-list .row {
+  display: grid;
+  grid-template-columns: 1.4fr 100px 100px 100px 100px;
+  gap: var(--space-4);
+  align-items: baseline;
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid hsl(var(--rule));
+  font-size: var(--text-sm);
+}
+.io-rollover-list.is-perloan .row {
+  grid-template-columns: 1.4fr 88px 96px 96px 96px 96px;
+}
+.io-rollover-list .row:first-child { border-top: none; }
+.io-rollover-list .row.header {
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(var(--foreground-subtle));
+  font-weight: 500;
+  background: hsl(var(--surface-sunken));
+  padding: var(--space-3) var(--space-6);
+}
+.io-rollover-list .row .loan-name { font-weight: 600; }
+.io-rollover-list .row .loan-sub {
+  display: block;
+  font-size: var(--text-xs);
+  color: hsl(var(--foreground-subtle));
+  font-weight: 400;
+  margin-top: 1px;
+}
+.io-rollover-list .row .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.io-rollover-list .row .num.shock { color: hsl(var(--negative)); font-weight: 600; }
+
+/* editable per-loan P&I rate cell */
+.io-rollover-list .rate-field {
+  display: inline-flex; align-items: center; gap: 1px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--surface));
+  border-radius: var(--radius-xs);
+  padding: 1px 4px 1px 2px;
+}
+.io-rollover-list .rate-field:focus-within { border-color: hsl(var(--accent)); }
+.io-rollover-list .rate-field .num {
+  width: 38px; border: none; background: transparent;
+  text-align: right; font-size: var(--text-xs); font-weight: 600;
+  color: hsl(var(--foreground)); font-variant-numeric: tabular-nums; padding: 0;
+}
+.io-rollover-list .rate-field .num:focus { outline: none; }
+.io-rollover-list .rate-field .suffix { font-size: 10px; color: hsl(var(--foreground-subtle)); }
+
+/* ---------------------------------------------------------------------
+   3 · Net-cashflow chart — stepped, on the same time axis
+   --------------------------------------------------------------------- */
+.io-chart-key {
+  display: flex; gap: var(--space-4);
+  font-size: var(--text-2xs); color: hsl(var(--foreground-muted));
+}
+.io-chart-key .k-line { display: inline-flex; align-items: center; gap: 6px; }
+.io-chart-key .swatch { width: 14px; height: 0; border-top-width: 2px; border-top-style: solid; }
+.io-chart-key .swatch.line { border-color: hsl(var(--negative)); }
+.io-chart-key .swatch.limit { border-top-style: dashed; border-color: hsl(var(--foreground-subtle)); }
+
+.io-chart-wrap { padding: var(--space-5) var(--space-6) var(--space-2); }
+.io-chart { display: block; width: 100%; height: auto; overflow: visible; }
+
+.io-chart .grid { stroke: hsl(var(--rule)); stroke-width: 1; }
+.io-chart .grid-lab {
+  fill: hsl(var(--foreground-subtle));
+  font-size: 11px; font-variant-numeric: tabular-nums;
+  font-family: var(--font-sans);
+}
+.io-chart .today-line { stroke: hsl(var(--accent)); stroke-width: 1.5; }
+.io-chart .surplus-line {
+  stroke: hsl(var(--foreground-subtle)); stroke-width: 1.5; stroke-dasharray: 4 4;
+}
+.io-chart .surplus-lab {
+  fill: hsl(var(--foreground-muted)); font-size: 11px; font-weight: 500;
+  font-family: var(--font-sans); font-variant-numeric: tabular-nums;
+}
+.io-chart .area { fill: hsl(var(--negative) / 0.08); }
+.io-chart .line {
+  fill: none; stroke: hsl(var(--negative)); stroke-width: 2.5;
+  stroke-linejoin: round; stroke-linecap: round;
+}
+.io-chart .dot { fill: hsl(var(--negative)); stroke: hsl(var(--surface)); stroke-width: 2; }
+.io-chart .dot-lab {
+  fill: hsl(var(--foreground)); font-size: 11px; font-weight: 600;
+  font-family: var(--font-sans); font-variant-numeric: tabular-nums;
+}
+.io-chart .end-lab {
+  fill: hsl(var(--foreground)); font-size: 11.5px; font-weight: 600;
+  font-family: var(--font-sans); font-variant-numeric: tabular-nums;
+}
+
+/* footer stats below the chart — constant regardless of loan count */
+.io-chart-foot {
+  display: grid;
+  grid-template-columns: repeat(3, auto) 1fr;
+  gap: var(--space-6);
+  align-items: end;
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+.io-chart-foot .io-stat .lab {
+  font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: 0.08em;
+  color: hsl(var(--foreground-subtle)); font-weight: 600; margin-bottom: 3px;
+  white-space: nowrap;
+}
+.io-chart-foot .io-stat .val {
+  font-size: var(--text-xl); font-weight: 600; letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums; color: hsl(var(--foreground)); line-height: 1;
+}
+.io-chart-foot .io-stat .val .u {
+  font-size: var(--text-xs); font-weight: 500; color: hsl(var(--foreground-subtle)); margin-left: 2px;
+}
+.io-chart-foot .io-stat .val.neg { color: hsl(var(--negative)); }
+.io-chart-foot .io-stat .val.pos { color: hsl(var(--positive)); }
+.io-chart-foot .io-note {
+  grid-column: 4;
+  margin: 0; align-self: center;
+  font-size: var(--text-xs); color: hsl(var(--foreground-muted));
+  line-height: var(--leading-snug); max-width: 40ch;
+}
+.io-chart-foot .io-note strong { color: hsl(var(--foreground)); font-weight: 600; }
+
+@media (max-width: 760px) {
+  .io-verdict .calc-body { grid-template-columns: 1fr; gap: var(--space-6); }
+  .io-verdict .verdict-aside { border-left: none; padding-left: 0; }
+  .io-chart-foot { grid-template-columns: repeat(3, 1fr); }
+  .io-chart-foot .io-note { grid-column: 1 / -1; }
+}

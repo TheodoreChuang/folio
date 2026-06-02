@@ -1573,6 +1573,358 @@
     </section>
 
     <!-- ================================================================
+         04a — ICONOGRAPHY
+         ================================================================ -->
+    <style>
+      .ds-ico-rec {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: var(--space-6);
+        align-items: start;
+        padding: var(--space-6);
+        background: hsl(var(--surface-sunken));
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius);
+        margin-bottom: var(--space-8);
+      }
+      .ds-ico-rec .mark {
+        width: 48px; height: 48px;
+        display: flex; align-items: center; justify-content: center;
+        background: hsl(var(--surface-raised));
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius-sm);
+        color: hsl(var(--accent));
+      }
+      .ds-ico-rec .lib {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: 400;
+        letter-spacing: -0.01em;
+        line-height: 1.1;
+      }
+      .ds-ico-rec .lib a { color: hsl(var(--accent)); text-decoration: none; }
+      .ds-ico-rec .lib a:hover { text-decoration: underline; }
+      .ds-ico-rec .why {
+        margin-top: var(--space-3);
+        font-size: var(--text-sm);
+        color: hsl(var(--foreground-muted));
+        line-height: var(--leading-snug);
+        max-width: 62ch;
+      }
+      .ds-ico-rec .meta {
+        margin-top: var(--space-5);
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-3) var(--space-5);
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: hsl(var(--foreground-subtle));
+      }
+      .ds-ico-rec .meta b { color: hsl(var(--foreground)); font-weight: 600; }
+
+      /* size + stroke specimen */
+      .ds-ico-spec {
+        display: flex;
+        align-items: flex-end;
+        gap: var(--space-8);
+        padding: var(--space-7) var(--space-6);
+        background: hsl(var(--surface));
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius);
+        margin-bottom: var(--space-7);
+        color: hsl(var(--foreground));
+      }
+      .ds-ico-spec .unit { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+      .ds-ico-spec .cap {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: hsl(var(--foreground-subtle));
+      }
+      .ds-ico-spec .rule {
+        margin-left: auto;
+        max-width: 26ch;
+        font-size: var(--text-sm);
+        color: hsl(var(--foreground-muted));
+        line-height: var(--leading-snug);
+      }
+
+      /* the starter-set grid */
+      .ds-ico-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+        gap: var(--space-4);
+      }
+      .ds-ico-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-4);
+        padding: var(--space-6) var(--space-4) var(--space-5);
+        background: hsl(var(--surface));
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius-sm);
+        text-align: center;
+        color: hsl(var(--foreground-muted));
+        transition: border-color 0.12s ease, color 0.12s ease;
+      }
+      .ds-ico-cell:hover { border-color: hsl(var(--border-strong)); color: hsl(var(--foreground)); }
+      .ds-ico-cell svg { width: 22px; height: 22px; }
+      .ds-ico-cell .nm {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: hsl(var(--foreground-subtle));
+        letter-spacing: 0.01em;
+      }
+      .ds-ico-cell .use {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-family: var(--font-mono);
+        color: hsl(var(--foreground-faint));
+      }
+      .ds-ico-grouphdr {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: hsl(var(--foreground-subtle));
+        margin: var(--space-7) 0 var(--space-4);
+      }
+      .ds-ico-grouphdr:first-child { margin-top: 0; }
+    </style>
+
+    <section class="sys" id="icons">
+      <div class="sys-head">
+        <div class="label">04a — Iconography</div>
+        <div>
+          <h2>One line-icon family. Quiet, 1.5-weight, never decorative.</h2>
+          <p>
+            Folio standardises on <strong>Lucide</strong> — a single open-source set so every
+            glyph shares the same grid, stroke and corner language. Icons clarify a label or
+            name an icon-only control; they never carry meaning on their own.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Library</dt><dd>Lucide. The single, standard icon source.</dd>
+          <dt>Grid</dt><dd>24×24 viewBox. Drawn on a 2px stroke.</dd>
+          <dt>Render at</dt><dd>14 · 16 · 20px. 24px only for empty states.</dd>
+          <dt>Colour</dt><dd><code>currentColor</code> — inherits text colour. No fills.</dd>
+        </dl>
+        <div class="stack-7">
+
+          <!-- recommendation -->
+          <div class="ds-ico-rec">
+            <div class="mark">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+            </div>
+            <div>
+              <div class="lib">The standard: <a href="https://lucide.dev" target="_blank" rel="noopener">Lucide</a></div>
+              <p class="why">
+                Lucide is Folio's icon language — not a suggestion. Its drawing carries the same
+                restraint as the rest of the system: an even monoline, gently rounded corners and
+                generous interior space, so a glyph reads as a quiet hairline rather than a mark
+                that wants attention. That's exactly the register the UI keeps — type and spacing
+                lead, ornament recedes — so icons sit beside a label without ever competing with it.
+                It also supersedes the bespoke inline SVGs that were drawn by hand in Nav, Buttons,
+                Overflow menu and Tooltip; those now use the named Lucide equivalents below.
+              </p>
+              <div class="meta">
+                <span>Line · <b>even monoline</b></span>
+                <span>Corners · <b>softly rounded</b></span>
+                <span>Density · <b>open, unhurried</b></span>
+                <span>Voice · <b>quiet, supporting</b></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- size & stroke specimen -->
+          <div class="ds-ico-spec">
+            <div class="unit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+              <span class="cap">14 · inline</span>
+            </div>
+            <div class="unit">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+              <span class="cap">16 · button</span>
+            </div>
+            <div class="unit">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+              <span class="cap">20 · header</span>
+            </div>
+            <div class="unit">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+              <span class="cap">24 · empty state</span>
+            </div>
+            <p class="rule">
+              Keep Lucide's native 2px stroke at every size — don't re-weight it. The 24-grid
+              makes a 16px render read as ~1.3px, exactly the hairline used across Folio.
+            </p>
+          </div>
+
+          <!-- the starter set -->
+          <div class="ds-ico-grouphdr">Navigation</div>
+          <div class="ds-ico-grid">
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+              <span class="nm">layout-dashboard</span>
+              <span class="use">Dashboard</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+              <span class="nm">building-2</span>
+              <span class="use">Properties</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+              <span class="nm">file-text</span>
+              <span class="use">Reports</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>
+              <span class="nm">receipt</span>
+              <span class="use">Statements</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+              <span class="nm">bell</span>
+              <span class="use">Prompts</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+              <span class="nm">inbox</span>
+              <span class="use">Activity</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span class="nm">settings</span>
+              <span class="use">Settings</span>
+            </div>
+          </div>
+
+          <div class="ds-ico-grouphdr">Actions &amp; controls</div>
+          <div class="ds-ico-grid">
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+              <span class="nm">upload</span>
+              <span class="use">Upload statement</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
+              <span class="nm">list-filter</span>
+              <span class="use">Filter</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              <span class="nm">more-horizontal</span>
+              <span class="use">Overflow</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <span class="nm">search</span>
+              <span class="use">Search</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              <span class="nm">plus</span>
+              <span class="use">Add</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+              <span class="nm">refresh-cw</span>
+              <span class="use">Re-sync</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              <span class="nm">chevron-down</span>
+              <span class="use">Expand</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              <span class="nm">x</span>
+              <span class="use">Close · dismiss</span>
+            </div>
+          </div>
+
+          <div class="ds-ico-grouphdr">Menu &amp; status</div>
+          <div class="ds-ico-grid">
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5 9.5 19 4 13.5"/></svg>
+              <span class="nm">check</span>
+              <span class="use">Mark as sold</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+              <span class="nm">archive</span>
+              <span class="use">Archive</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+              <span class="nm">trash-2</span>
+              <span class="use">Delete</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              <span class="nm">pencil</span>
+              <span class="use">Rename</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10"/><path d="M17 7v10H7"/></svg>
+              <span class="nm">arrow-down-right</span>
+              <span class="use">Trend down</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+              <span class="nm">arrow-up-right</span>
+              <span class="use">Trend up</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              <span class="nm">info</span>
+              <span class="use">Help · tooltip</span>
+            </div>
+            <div class="ds-ico-cell">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              <span class="nm">triangle-alert</span>
+              <span class="use">Missing data</span>
+            </div>
+          </div>
+
+          <!-- usage -->
+          <div class="pattern-note">
+            <span class="tag">Markup</span>
+            <div>
+              Drop the raw Lucide SVG inline and let it inherit colour: keep
+              <strong><code style="font-family:var(--font-mono); font-size:0.9em;">fill="none" stroke="currentColor" stroke-width="2"</code></strong>
+              and set the rendered size with <strong><code style="font-family:var(--font-mono); font-size:0.9em;">width/height</code></strong>
+              (14 / 16 / 20). In code, prefer the named import —
+              <strong><code style="font-family:var(--font-mono); font-size:0.9em;">&lt;LayoutDashboard size={16} /&gt;</code></strong> —
+              so the set tree-shakes. Every icon-only control still needs a real
+              <strong><code style="font-family:var(--font-mono); font-size:0.9em;">aria-label</code></strong> and a tooltip (§12a).
+            </div>
+          </div>
+
+          <div class="pattern-note">
+            <span class="tag">Don't</span>
+            <div>
+              No second icon library, no filled/duotone variants, no brand or app
+              logos sitting in the icon slot. Don't shrink an icon below 14px or
+              colour it for decoration — colour follows the text it sits beside.
+              An icon never appears without an adjacent label <em>or</em> an
+              <code style="font-family:var(--font-mono); font-size:0.9em;">aria-label</code>.
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
          05 — PROMPT (THE HERO COMPONENT)
          ================================================================ -->
     <section class="sys" id="prompt">
@@ -1879,33 +2231,33 @@
             <div class="brand">Folio</div>
             <div class="nav-section-label">Overview</div>
             <div class="nav-item is-active">
-              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
               Dashboard
             </div>
             <div class="nav-item">
-              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 13V7l6-4 6 4v6"/><path d="M6 13V9h4v4"/></svg>
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
               Properties <span class="count">4</span>
             </div>
             <div class="nav-item">
-              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 2h7l3 3v9H3z"/><path d="M10 2v3h3"/><path d="M5 9h6M5 11h4"/></svg>
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
               Reports
             </div>
             <div class="nav-item">
-              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 6l6-3 6 3v6l-6 3-6-3z"/><path d="M2 6l6 3 6-3M8 9v6"/></svg>
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>
               Statements <span class="count">3</span>
             </div>
             <div class="nav-section-label">Inbox</div>
             <div class="nav-item">
-              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
               Prompts <span class="count" style="color:hsl(var(--negative))">2</span>
             </div>
             <div class="nav-item">
-              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h12v8H2z"/><path d="M2 4l6 5 6-5"/></svg>
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
               Activity
             </div>
             <div class="nav-section-label">Account</div>
             <div class="nav-item">
-              <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="6" r="3"/><path d="M2 14a6 6 0 0 1 12 0"/></svg>
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
               Settings
             </div>
           </aside>
@@ -1961,15 +2313,15 @@
             <div class="footnote" style="margin-bottom: var(--space-4);">With glyphs</div>
             <div class="row">
               <button class="btn btn--secondary">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 8l5-5 5 5"/><path d="M8 3v10"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
                 Upload statement
               </button>
               <button class="btn btn--secondary">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 3h10v10H3z"/><path d="M3 7h10"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
                 Filter
               </button>
               <button class="btn btn--ghost">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="2"/><circle cx="3" cy="8" r="1"/><circle cx="13" cy="8" r="1"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
                 More
               </button>
             </div>
@@ -2446,14 +2798,14 @@
                     <div class="om-label">Lifecycle</div>
                     <button class="om-item" type="button">
                       <span class="glyph">
-                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 7l3 3 7-7"/></svg>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5 9.5 19 4 13.5"/></svg>
                       </span>
                       <span>Mark as sold…</span>
                       <span class="hint"></span>
                     </button>
                     <button class="om-item" type="button">
                       <span class="glyph">
-                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="3" width="9" height="8" rx="1"/><path d="M2.5 5.5h9"/></svg>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
                       </span>
                       <span>Archive property</span>
                       <span class="hint"></span>
@@ -2461,7 +2813,7 @@
                     <div class="om-sep"></div>
                     <button class="om-item is-destructive" type="button">
                       <span class="glyph">
-                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h8M5.5 4V2.5h3V4M4 4l.7 7.5h4.6L10 4"/></svg>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                       </span>
                       <span>Delete property…</span>
                       <span class="hint"></span>
@@ -2491,14 +2843,14 @@
                 <div class="om-menu" role="menu" style="box-shadow: none;">
                   <button class="om-item" type="button">
                     <span class="glyph">
-                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 7l3 3 7-7"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7.5 9.5 19 4 13.5"/></svg>
                     </span>
                     <span>Mark as sold…</span>
                     <span class="hint"></span>
                   </button>
                   <button class="om-item is-hover" type="button">
                     <span class="glyph">
-                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="3" width="9" height="8" rx="1"/><path d="M2.5 5.5h9"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
                     </span>
                     <span>Archive property</span>
                     <span class="hint"></span>
@@ -2511,14 +2863,14 @@
                 <div class="om-menu" role="menu" style="box-shadow: none;">
                   <button class="om-item is-destructive" type="button">
                     <span class="glyph">
-                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h8M5.5 4V2.5h3V4M4 4l.7 7.5h4.6L10 4"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                     </span>
                     <span>Delete property…</span>
                     <span class="hint"></span>
                   </button>
                   <button class="om-item is-destructive is-hover" type="button">
                     <span class="glyph">
-                      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M11 4L4 11M4 4l7 7"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                     </span>
                     <span>Remove from portfolio…</span>
                     <span class="hint"></span>
@@ -2684,17 +3036,17 @@
           <div class="ds-tip-stage">
             <span class="ds-tip-host" data-tooltip="Rename entity" tabindex="0">
               <span class="ds-tip-icon-btn" aria-label="Rename">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 10L9 3l2 2-7 7H2v-2z"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
               </span>
             </span>
             <span class="ds-tip-host" data-tooltip="Archive" tabindex="0">
               <span class="ds-tip-icon-btn" aria-label="Archive">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="4" width="10" height="8" rx="0.5"/><path d="M2 7h10M5 4V2.5h4V4"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
               </span>
             </span>
             <span class="ds-tip-host is-block" data-tooltip="Delete is disabled while this entity holds 2 properties and 2 loans. Archive instead, or move them to another entity." tabindex="0">
               <span class="ds-tip-disabled-row">
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 4h8l-1 8H4z"/><path d="M5 4V2h4v2"/></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                 Delete
               </span>
             </span>

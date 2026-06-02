@@ -1,0 +1,189 @@
+/* =====================================================================
+   FOLIO — PLAN (command deck)
+   Card grid of scenario questions → drill into a full calculator.
+   Calculator bodies reuse the .calc components from folio.css; this
+   file is just the deck + takeover chrome.
+   ===================================================================== */
+
+/* Narrative lede above the grid */
+.deck-lede {
+  font-family: var(--font-display);
+  font-weight: 350;
+  font-size: var(--text-xl);
+  line-height: var(--leading-snug);
+  color: hsl(var(--foreground));
+  letter-spacing: -0.005em;
+  max-width: 62ch;
+  text-wrap: pretty;
+  margin-bottom: var(--space-7);
+}
+.deck-lede .num {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.deck-lede .num.neg { color: hsl(var(--negative)); }
+
+/* Card grid */
+.deck-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  animation: deck-in 200ms ease both;
+}
+.deck-grid[hidden] { display: none; }
+@keyframes deck-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.scenario-card {
+  position: relative;
+  text-align: left;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  padding: var(--space-6) var(--space-6) var(--space-5);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 196px;
+  overflow: hidden;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+.scenario-card::before {
+  content: "";
+  position: absolute; inset: 0 auto 0 0;
+  width: 3px;
+  background: hsl(var(--accent));
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+.scenario-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop);
+  border-color: hsl(var(--border-strong));
+}
+.scenario-card:hover::before { opacity: 1; }
+.scenario-card:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-color: hsl(var(--accent));
+}
+
+.scenario-card .sc-eyebrow {
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: hsl(var(--foreground-subtle));
+  font-weight: 600;
+}
+.scenario-card .sc-title {
+  font-weight: 600;
+  font-size: var(--text-lg);
+  letter-spacing: -0.01em;
+  color: hsl(var(--foreground));
+}
+.scenario-card .sc-question {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--text-xl);
+  line-height: var(--leading-snug);
+  letter-spacing: -0.005em;
+  color: hsl(var(--foreground));
+  text-wrap: pretty;
+  margin: 0;
+}
+.scenario-card .sc-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid hsl(var(--rule));
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: hsl(var(--accent));
+}
+.scenario-card .sc-foot .open {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.scenario-card .sc-foot .open .arrow { transition: transform 140ms ease; }
+.scenario-card:hover .sc-foot .open .arrow { transform: translateX(3px); }
+.scenario-card .sc-foot .meta {
+  color: hsl(var(--foreground-subtle));
+  font-weight: 400;
+  font-size: var(--text-xs);
+}
+
+/* Drill-in takeover */
+.deck-takeover { animation: takeover-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.deck-takeover[hidden] { display: none; }
+@keyframes takeover-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.takeover-bar {
+  display: flex; align-items: center; gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.back-btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  height: 32px; padding: 0 var(--space-4) 0 var(--space-3);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--surface));
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: hsl(var(--foreground-muted));
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.back-btn:hover { background: hsl(var(--surface-sunken)); color: hsl(var(--foreground)); }
+.takeover-crumb { font-size: var(--text-sm); color: hsl(var(--foreground-subtle)); }
+.takeover-crumb .cur { color: hsl(var(--foreground)); font-weight: 600; }
+.deck-takeover .calc { margin: 0; }
+
+@media (max-width: 760px) {
+  .deck-grid { grid-template-columns: 1fr; }
+}
+
+/* =====================================================================
+   DISABLED CARD STATE (empty-portfolio preview)
+   ===================================================================== */
+.scenario-card.is-disabled {
+  cursor: default;
+  background: hsl(var(--surface-sunken) / 0.4);
+  border-color: hsl(var(--border));
+}
+.scenario-card.is-disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: hsl(var(--border));
+}
+.scenario-card.is-disabled:hover::before { opacity: 0; }
+.scenario-card.is-disabled .sc-eyebrow { color: hsl(var(--foreground-faint)); }
+.scenario-card.is-disabled .sc-title,
+.scenario-card.is-disabled .sc-question { color: hsl(var(--foreground-subtle)); }
+
+/* The active footer is replaced by the disabled note */
+.scenario-card.is-disabled .sc-foot { display: none; }
+
+.sc-foot--disabled {
+  display: none;
+  align-items: center;
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid hsl(var(--rule));
+  font-size: var(--text-sm);
+  color: hsl(var(--foreground-subtle));
+}
+.scenario-card.is-disabled .sc-foot--disabled { display: flex; }
+.sc-foot--disabled .locked {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-weight: 500;
+}
+.sc-foot--disabled .locked svg {
+  width: 13px; height: 13px;
+  color: hsl(var(--foreground-faint));
+  flex-shrink: 0;
+}

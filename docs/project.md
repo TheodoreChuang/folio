@@ -52,62 +52,14 @@ Implement Property Detail, Loan Detail, and the dashboard Prompts strip.
 These are the highest-leverage screens for the core user flow.
 
 ### Track 2 — Household context
-Income sources, living expenses, personal surplus. Backend partially exists;
-UI not started.
+Income sources, living expenses, personal surplus.
 
 ### Track 3 — Plan / Scenario modeling
 Rate sensitivity, extra repayments, projection charts. Backend not started.
-
-## Engineering principles
-- Full-stack TDD on backend (route → service → repository, test-first)
-- No frontend unit tests — Playwright e2e for critical paths
-- Logic lives in backend services; frontend renders computed values
-- Branch + PR per feature; never commit to main
-- See `docs/conventions.md` for coding conventions
-- See `docs/testing-strategy.md` for test requirements
-- See `docs/data-model.md` for schema and API patterns before adding any new tables or routes
 
 ## Task tracking
 
 GitHub Issues + milestones. One milestone per screen/feature (e.g. "Property Detail").
 Issues within the milestone describe individual PRs with acceptance criteria.
 `docs/plans/` holds the active implementation spec — created during `/ce-plan`,
-deleted when the PR merges. To start work on a milestone: create the milestone in
-GitHub, open an issue for the first PR, then run `/ce-brainstorm`.
-
-## Workflow
-
-Uses the compound engineering loop:
-
-1. `/ce-brainstorm` — read the relevant section of `docs/designs/folio.html` +
-   `docs/product-foundation.md` + `docs/data-model.md`; clarify requirements and
-   produce a short written spec
-2. `/ce-plan` — produce a numbered implementation plan approved before any code is written;
-   save the plan to `docs/plans/{feature}.md` so it survives context resets
-3. **Implement** — branch, TDD backend first (tests green before touching frontend),
-   then build frontend; plan file is the session anchor
-4. **PR** — open via `gh pr create`; link to the GitHub issue if one exists;
-   delete the plan file in the same PR
-5. `/ce-code-review` — multi-agent review before merge
-6. `/ce-compound` — capture learnings that belong in CLAUDE.md or docs/
-
-### Plan file format (`docs/plans/{feature}.md`)
-```
-# Plan: {feature name}
-GitHub issue: #{number} (if applicable)
-
-## Scope
-What is and is not in this PR.
-
-## Backend tasks (do first — tests must pass before frontend)
-- [ ] ...
-
-## Frontend tasks
-- [ ] ...
-
-## Done criteria
-- [ ] pnpm test passes
-- [ ] pnpm test:integration passes (if DB touched)
-- [ ] pnpm test:e2e passes for the affected flow
-- [ ] PR open and linked to issue
-```
+deleted when the PR merges.
