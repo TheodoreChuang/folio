@@ -14,7 +14,7 @@
     "seed": "tsx scripts/seed.ts",
     "storage:clear": "tsx scripts/storage-clear.ts",
     "debug:extract": "tsx --env-file=.env.local scripts/debug-extract.ts",
-    "test": "vitest run",
+    "test": "TZ=Australia/Sydney vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run -c vitest.integration.config.ts",
     "test:e2e": "playwright test --grep-invert @screenshot",

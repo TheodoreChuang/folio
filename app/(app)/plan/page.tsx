@@ -181,12 +181,17 @@ function SkeletonCard() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PlanPage() {
+  const router = useRouter()
   const [state, setState] = useState<State>({ status: 'loading' })
 
   useEffect(() => {
     fetch('/api/plan/context')
-      .then(res => res.json())
+      .then(res => {
+        if (res.status === 401) { router.push('/login'); return null }
+        return res.json()
+      })
       .then(body => {
+        if (!body) return
         if (body.context) {
           setState({ status: 'loaded', context: body.context })
         } else {
@@ -194,7 +199,7 @@ export default function PlanPage() {
         }
       })
       .catch(() => setState({ status: 'error' }))
-  }, [])
+  }, [router])
 
   const context = state.status === 'loaded' ? state.context : null
 

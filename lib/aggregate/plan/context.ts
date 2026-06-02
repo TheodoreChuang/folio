@@ -4,7 +4,6 @@ import { listBudgetItems } from '@/lib/household/repositories/budget-items'
 import { computeSummary } from '@/lib/household/compute'
 import { computeReport } from '@/lib/aggregate/services/compute'
 import type { LoanType, RateType } from '@/db/schema'
-import type { ValuationSnapshot, BalanceSnapshot } from '@/lib/aggregate/repositories/portfolio'
 
 export type PlanContextProperty = {
   id: string
@@ -41,13 +40,21 @@ export type PlanContext = {
   } | null
 }
 
+// Uses local time components to avoid UTC-offset date shift on UTC+ servers.
+function formatLocalDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 // Trailing 12 full calendar months: first day 12 months ago → last day of last month
 function trailingTwelveMonthRange(today: Date): { from: string; to: string } {
   const from = new Date(today.getFullYear(), today.getMonth() - 12, 1)
   const to = new Date(today.getFullYear(), today.getMonth(), 0) // last day of prev month
   return {
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10),
+    from: formatLocalDate(from),
+    to: formatLocalDate(to),
   }
 }
 
@@ -62,17 +69,19 @@ function monthSpan(entries: { lineItemDate: string }[]): number {
   return (ly - ey) * 12 + (lm - em) + 1
 }
 
-function latestByKey<T>(rows: T[], keyFn: (r: T) => string): Map<string, T> {
+function latestByKey<T>(rows: T[], keyFn: (r: T) => string, dateFn: (r: T) => string): Map<string, T> {
   const map = new Map<string, T>()
   for (const row of rows) {
-    if (!map.has(keyFn(row))) map.set(keyFn(row), row)
+    const key = keyFn(row)
+    const existing = map.get(key)
+    if (!existing || dateFn(row) > dateFn(existing)) map.set(key, row)
   }
   return map
 }
 
 export async function fetchPlanContext(userId: string): Promise<PlanContext> {
   const today = new Date()
-  const todayStr = today.toISOString().slice(0, 10)
+  const todayStr = formatLocalDate(today)
   const { from, to } = trailingTwelveMonthRange(today)
 
   const [{ properties, valuations, balances, loans }, budgetItems, ledgerEntries] =
@@ -82,11 +91,11 @@ export async function fetchPlanContext(userId: string): Promise<PlanContext> {
       fetchLedgerEntriesInRange(userId, from, to),
     ])
 
-  const activeProperties = properties.filter(p => !p.endDate || p.endDate > todayStr)
-  const activeLoans = loans.filter(l => !l.endDate || l.endDate > todayStr)
+  const activeProperties = properties.filter(p => !p.endDate || p.endDate >= todayStr)
+  const activeLoans = loans.filter(l => !l.endDate || l.endDate >= todayStr)
 
-  const latestValuationMap = latestByKey(valuations, (v: ValuationSnapshot) => v.propertyId)
-  const latestBalanceMap = latestByKey(balances, (b: BalanceSnapshot) => b.installmentLoanId)
+  const latestValuationMap = latestByKey(valuations, v => v.propertyId, v => v.valuedAt)
+  const latestBalanceMap = latestByKey(balances, b => b.installmentLoanId, b => b.recordedAt)
 
   const variableLoans = activeLoans.filter(
     l => l.rateType === 'variable' || l.loanType === 'line_of_credit',
@@ -127,10 +136,13 @@ export async function fetchPlanContext(userId: string): Promise<PlanContext> {
   const householdSurplusMonthlyCents =
     budgetItems.length === 0 ? null : computeSummary(budgetItems).surplusMonthlyCents
 
+  const activePropertyIds = new Set(activeProperties.map(p => p.id))
+  const activeEntries = ledgerEntries.filter(e => activePropertyIds.has(e.propertyId))
+
   let portfolioBaseline: PlanContext['portfolioBaseline'] = null
-  if (ledgerEntries.length > 0) {
-    const { totals } = computeReport(ledgerEntries, activeProperties, activeLoans)
-    const months = Math.min(monthSpan(ledgerEntries), 12)
+  if (activeEntries.length > 0) {
+    const { totals } = computeReport(activeEntries, activeProperties, activeLoans)
+    const months = Math.min(monthSpan(activeEntries), 12)
     portfolioBaseline = {
       rentMonthlyCents: Math.round(totals.totalRent / months),
       expensesMonthlyCents: Math.round(totals.totalExpenses / months),

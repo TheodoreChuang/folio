@@ -288,15 +288,19 @@ describe('GET /api/plan/context', () => {
   })
 
   it('fetches ledger entries over a trailing 12-month window', async () => {
-    const res = await GET()
-    expect(res.status).toBe(200)
-    const [[, from, to]] = mocks.mockFetchLedgerEntriesInRange.mock.calls
-    const fromDate = new Date(from)
-    const toDate = new Date(to)
-    const monthsDiff =
-      (toDate.getFullYear() - fromDate.getFullYear()) * 12 +
-      (toDate.getMonth() - fromDate.getMonth())
-    expect(monthsDiff).toBe(12)
+    // Pin to a known date so from/to are deterministic regardless of when the test runs.
+    // 2026-06-03T12:00:00Z = June 3 AEST (UTC+10 in winter) — same calendar date in both UTC and AEST.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-06-03T12:00:00.000Z'))
+    try {
+      const res = await GET()
+      expect(res.status).toBe(200)
+      const [[, from, to]] = mocks.mockFetchLedgerEntriesInRange.mock.calls
+      expect(from).toBe('2025-06-01') // first day of month 12 months before June 2026
+      expect(to).toBe('2026-05-31')   // last day of the month before current
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('returns portfolioBaseline when ledger data spans less than 12 months (divides by actual span)', async () => {
@@ -415,5 +419,121 @@ describe('GET /api/plan/context', () => {
     expect(context.loans[0].id).toBe('loan-active')
     // ended loan should not count toward variableLoans
     expect(context.counts.variableLoans).toBe(1)
+  })
+
+  it('includes a property whose endDate is exactly today', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-06-03T12:00:00.000Z')) // June 3 in both UTC and AEST
+    try {
+      mocks.mockFetchPortfolioData.mockResolvedValue({
+        properties: [makeProperty({ endDate: '2026-06-03' })],
+        valuations: [],
+        balances: [],
+        loans: [],
+      })
+      const res = await GET()
+      const { context } = await res.json()
+      expect(context.properties).toHaveLength(1)
+      expect(context.counts.properties).toBe(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('includes a loan whose endDate is exactly today', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-06-03T12:00:00.000Z'))
+    try {
+      mocks.mockFetchPortfolioData.mockResolvedValue({
+        properties: [makeProperty()],
+        valuations: [],
+        balances: [],
+        loans: [makeLoan({ endDate: '2026-06-03', rateType: 'variable' })],
+      })
+      const res = await GET()
+      const { context } = await res.json()
+      expect(context.loans).toHaveLength(1)
+      expect(context.counts.variableLoans).toBe(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('returns the most recent valuation even when valuations arrive in ascending date order', async () => {
+    mocks.mockFetchPortfolioData.mockResolvedValue({
+      properties: [makeProperty()],
+      valuations: [
+        { propertyId: 'prop-0001', valueCents: 75000000, valuedAt: '2025-01-01' }, // older, first
+        { propertyId: 'prop-0001', valueCents: 80000000, valuedAt: '2026-01-01' }, // newer, second
+      ],
+      balances: [],
+      loans: [],
+    })
+    const res = await GET()
+    const { context } = await res.json()
+    expect(context.properties[0].latestValuation).toEqual({
+      valueCents: 80000000,
+      valuedAt: '2026-01-01',
+    })
+  })
+
+  it('returns the most recent loan balance even when balances arrive in ascending date order', async () => {
+    mocks.mockFetchPortfolioData.mockResolvedValue({
+      properties: [makeProperty()],
+      valuations: [],
+      balances: [
+        { installmentLoanId: 'loan-0001', balanceCents: 46000000, recordedAt: '2025-01-01' }, // older, first
+        { installmentLoanId: 'loan-0001', balanceCents: 45000000, recordedAt: '2026-01-01' }, // newer, second
+      ],
+      loans: [makeLoan()],
+    })
+    const res = await GET()
+    const { context } = await res.json()
+    expect(context.loans[0].latestBalance).toEqual({
+      balanceCents: 45000000,
+      recordedAt: '2026-01-01',
+    })
+  })
+
+  it('uses local calendar date (not UTC) for the ledger date range', async () => {
+    // 2026-06-03T14:30:00Z = 2026-06-04T00:30:00+10:00 AEST
+    // Local date is June 4; UTC date is June 3.
+    // Buggy toISOString produces 2025-05-31 (from) and 2026-05-30 (to).
+    // Fixed formatLocalDate produces 2025-06-01 (from) and 2026-05-31 (to).
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-06-03T14:30:00.000Z'))
+    try {
+      await GET()
+      const [[, from, to]] = mocks.mockFetchLedgerEntriesInRange.mock.calls
+      expect(from).toBe('2025-06-01')
+      expect(to).toBe('2026-05-31')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('excludes inactive-property entries from monthSpan and portfolioBaseline totals', async () => {
+    // Active property: 3 entries in Jan–Mar 2026 (span = 3 months), $600k total rent
+    // Inactive property: 1 entry in Jan 2025 (would extend span to 15 months if included)
+    // Expected: rentMonthlyCents = 600000 / 3 = 200000 (not 600000 / 15 = 40000)
+    mocks.mockFetchPortfolioData.mockResolvedValue({
+      properties: [
+        makeProperty({ id: 'prop-active', endDate: null }),
+        makeProperty({ id: 'prop-inactive', endDate: '2020-01-01' }),
+      ],
+      valuations: [],
+      balances: [],
+      loans: [],
+    })
+    mocks.mockFetchLedgerEntriesInRange.mockResolvedValue([
+      makeLedgerEntry({ id: 'e1', propertyId: 'prop-active', lineItemDate: '2026-01-15', amountCents: 200000, category: 'rent' }),
+      makeLedgerEntry({ id: 'e2', propertyId: 'prop-active', lineItemDate: '2026-02-15', amountCents: 200000, category: 'rent' }),
+      makeLedgerEntry({ id: 'e3', propertyId: 'prop-active', lineItemDate: '2026-03-15', amountCents: 200000, category: 'rent' }),
+      makeLedgerEntry({ id: 'e4', propertyId: 'prop-inactive', lineItemDate: '2025-01-15', amountCents: 999999, category: 'rent' }),
+    ])
+    const res = await GET()
+    const { context } = await res.json()
+    expect(context.portfolioBaseline).not.toBeNull()
+    expect(context.portfolioBaseline.rentMonthlyCents).toBe(200000) // 600000 / 3, not / 15
   })
 })
