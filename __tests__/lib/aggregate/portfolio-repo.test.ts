@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchPortfolioData } from '@/lib/reporting/repositories/portfolio'
+import { fetchPortfolioData } from '@/lib/aggregate/repositories/portfolio'
 
 const PROP_ID = 'aaaa0001-0000-4000-a000-000000000001'
 const LOAN_ID = 'bbbb0001-0000-4000-b000-000000000001'

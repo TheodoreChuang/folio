@@ -16,7 +16,7 @@ import { LvrMeter } from '@/components/ui/lvr-meter'
 import { Prompt } from '@/components/ui/prompt'
 import { SectionLabel } from '@/components/ui/section-label'
 import { lastDayOfMonth } from '@/lib/format'
-import type { ReportTotals } from '@/lib/reporting'
+import type { ReportTotals } from '@/lib/aggregate'
 import type { TrendPoint } from '@/app/api/reports/trends/route'
 import type { PortfolioLVR } from '@/app/api/portfolio/summary/route'
 
