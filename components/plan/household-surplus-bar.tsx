@@ -24,16 +24,21 @@ export function HouseholdSurplusBar({ surplusCents, consumedCents, label }: Prop
     )
   }
 
-  const pct = surplusCents > 0 ? Math.min(consumedCents / surplusCents, 1) : 1
-  const isOver = consumedCents > surplusCents
-  const remainingCents = surplusCents - consumedCents
+  // negative consumedCents = rate decrease freed up cashflow
+  const isCovered = consumedCents < 0
+  const freedCents = isCovered ? Math.abs(consumedCents) : 0
+  const displayConsumed = Math.max(0, consumedCents)
+
+  const pct = surplusCents > 0 ? Math.min(displayConsumed / surplusCents, 1) : 1
+  const isOver = displayConsumed > surplusCents
+  const remainingCents = surplusCents - displayConsumed
 
   return (
     <div className="mt-7">
       <div className="flex justify-between items-baseline text-xs text-foreground-muted mb-3">
         <span>{label}</span>
         <span className="tabular-nums">
-          <strong className="text-ink font-semibold">{formatCents(consumedCents)}</strong>
+          <strong className="text-ink font-semibold">{formatCents(displayConsumed)}</strong>
           {' '}of{' '}
           <strong className="text-ink font-semibold">{formatCents(surplusCents)}</strong>
           {' '}monthly surplus
@@ -41,8 +46,12 @@ export function HouseholdSurplusBar({ surplusCents, consumedCents, label }: Prop
       </div>
       <div className="h-[9px] rounded-[5px] bg-surface-sunken border border-border overflow-hidden">
         <div
-          className={`h-full rounded-[5px] transition-[width] duration-200 ${isOver ? 'bg-gradient-to-r from-warning to-negative' : 'bg-gradient-to-r from-positive to-warning'}`}
-          style={{ width: `${Math.round(pct * 100)}%` }}
+          className={`h-full rounded-[5px] transition-[width] duration-200 ${
+            isCovered ? 'bg-positive' :
+            isOver ? 'bg-gradient-to-r from-warning to-negative' :
+            'bg-gradient-to-r from-positive to-warning'
+          }`}
+          style={{ width: isCovered ? '100%' : `${Math.round(pct * 100)}%` }}
         />
       </div>
       <p className="mt-3 text-xs text-foreground-muted leading-snug">
@@ -51,6 +60,14 @@ export function HouseholdSurplusBar({ surplusCents, consumedCents, label }: Prop
             This move exceeds your surplus by{' '}
             <strong className="text-negative font-semibold tabular-nums">{formatCents(Math.abs(remainingCents))}</strong>
             {' '}per month.
+          </>
+        ) : isCovered ? (
+          <>
+            This move frees up{' '}
+            <strong className="text-ink font-semibold tabular-nums">{formatCents(freedCents)}</strong>
+            {' '}per month of cashflow versus today — the servicing no longer draws on your{' '}
+            <strong className="text-ink font-semibold tabular-nums">{formatCents(surplusCents)}</strong>
+            {' '}personal surplus.
           </>
         ) : (
           <>

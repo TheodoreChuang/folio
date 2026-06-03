@@ -382,7 +382,7 @@ export default function RateSensitivityPage() {
         {/* Household surplus bar */}
         <HouseholdSurplusBar
           surplusCents={result.householdSurplusMonthlyCents}
-          consumedCents={Math.max(0, result.totalChangeCents)}
+          consumedCents={result.totalChangeCents}
           label="Rate move would consume"
         />
       </div>
