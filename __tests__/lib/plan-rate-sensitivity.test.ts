@@ -19,6 +19,7 @@ function makeLoan(overrides: Partial<PlanContextLoan> = {}): PlanContextLoan {
     rateType: 'variable',
     interestRate: '6.00',
     ioEndDate: '2027-01-01',
+    startDate: '2022-01-01',
     loanTermYears: 30,
     originalAmountCents: 50000000,
     latestBalance: { balanceCents: 50000000, recordedAt: '2026-01-01' },

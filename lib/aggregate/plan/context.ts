@@ -23,6 +23,7 @@ export type PlanContextLoan = {
   rateType: RateType | null
   interestRate: string | null
   ioEndDate: string | null
+  startDate: string | null
   loanTermYears: number | null
   originalAmountCents: number | null
   latestBalance: { balanceCents: number; recordedAt: string } | null
@@ -127,6 +128,7 @@ export async function fetchPlanContext(userId: string): Promise<PlanContext> {
       rateType: l.rateType ?? null,
       interestRate: l.interestRate ?? null,
       ioEndDate: l.ioEndDate ?? null,
+      startDate: l.startDate ?? null,
       loanTermYears: l.loanTermYears ?? null,
       originalAmountCents: l.originalAmountCents ?? null,
       latestBalance: b ? { balanceCents: b.balanceCents, recordedAt: b.recordedAt } : null,
