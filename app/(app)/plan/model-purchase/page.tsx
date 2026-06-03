@@ -926,14 +926,48 @@ function OutputsPanel({
         </div>
       </div>
 
-      {/* Household bar */}
-      <HouseholdSurplusBar
-        surplusCents={result.householdSurplusMonthlyCents}
-        consumedCents={result.portfolioCashflowAfterMonthlyCents !== null && result.portfolioCashflowAfterMonthlyCents < 0
-          ? Math.abs(result.portfolioCashflowAfterMonthlyCents)
-          : 0}
-        label="Portfolio shortfall after purchase"
-      />
+      {/* Household section */}
+      {result.portfolioCashflowAfterMonthlyCents !== null && result.portfolioCashflowAfterMonthlyCents > 0 ? (
+        <div className="mt-7">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle mb-3">
+            Household cashflow after this purchase
+          </p>
+          <p className="text-sm text-foreground-muted leading-snug">
+            {result.householdSurplusMonthlyCents !== null ? (
+              <>
+                The portfolio is cashflow-positive after this purchase — it adds{' '}
+                <strong className="font-semibold text-positive tabular-nums">
+                  {fmtMo(result.portfolioCashflowAfterMonthlyCents)}/mo
+                </strong>
+                {' '}on top of your{' '}
+                <strong className="font-semibold text-ink tabular-nums">
+                  {fmtMo(result.householdSurplusMonthlyCents)}/mo
+                </strong>
+                {' '}personal surplus, lifting household cashflow to{' '}
+                <strong className="font-semibold text-positive tabular-nums">
+                  {fmtMo(result.portfolioCashflowAfterMonthlyCents + result.householdSurplusMonthlyCents)}/mo
+                </strong>.
+              </>
+            ) : (
+              <>
+                The portfolio is cashflow-positive after this purchase, generating{' '}
+                <strong className="font-semibold text-positive tabular-nums">
+                  {fmtMo(result.portfolioCashflowAfterMonthlyCents)}/mo
+                </strong>
+                {' '}in net portfolio income.
+              </>
+            )}
+          </p>
+        </div>
+      ) : (
+        <HouseholdSurplusBar
+          surplusCents={result.householdSurplusMonthlyCents}
+          consumedCents={result.portfolioCashflowAfterMonthlyCents !== null && result.portfolioCashflowAfterMonthlyCents < 0
+            ? Math.abs(result.portfolioCashflowAfterMonthlyCents)
+            : 0}
+          label="Portfolio shortfall after purchase"
+        />
+      )}
     </div>
   )
 }
