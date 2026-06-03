@@ -42,6 +42,7 @@
   /* New semantic tokens for new components */
   --color-sidebar:          hsl(38 28% 95%);
   --color-surface:          hsl(40 35% 99%);
+  --color-surface-raised:   hsl(0 0% 100%);   /* pure white — lifts off surface */
   --color-surface-sunken:   hsl(38 22% 94%);
   --color-foreground-subtle: hsl(34 5% 56%);
   --color-foreground-muted:  hsl(32 6% 38%);

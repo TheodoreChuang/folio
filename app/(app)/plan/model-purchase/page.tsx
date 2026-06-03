@@ -731,9 +731,13 @@ function InputsPanel({
 function OutputsPanel({
   result,
   priceAud,
+  depositPct,
+  purchaseCostItems,
 }: {
   result: ModelPurchaseResult
   priceAud: number
+  depositPct: number
+  purchaseCostItems: { label: string; aud: number }[]
 }) {
   const gearingColor =
     result.gearing === 'positive'
@@ -808,15 +812,18 @@ function OutputsPanel({
         <SectionLabel>Funding required</SectionLabel>
         <div className="border border-border rounded-xl bg-surface-raised overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-rule text-sm">
-            <span className="text-foreground-muted">Deposit</span>
+            <div>
+              <span className="text-foreground-muted">Deposit</span>
+              <span className="block text-[11px] text-foreground-subtle">{depositPct}% of price</span>
+            </div>
             <span className="tabular-nums text-ink">{fmtMo(result.depositCents)}</span>
           </div>
-          {result.purchaseCostsTotalCents > 0 && (
-            <div className="flex items-center justify-between px-4 py-3 border-b border-rule text-sm">
-              <span className="text-foreground-muted">Purchase costs</span>
-              <span className="tabular-nums text-ink">{fmtMo(result.purchaseCostsTotalCents)}</span>
+          {purchaseCostItems.map(item => (
+            <div key={item.label} className="flex items-center justify-between px-4 py-3 border-b border-rule text-sm">
+              <span className="text-foreground-muted">{item.label}</span>
+              <span className="tabular-nums text-ink">{fmtMo(item.aud * 100)}</span>
             </div>
-          )}
+          ))}
           <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold">
             <span className="text-ink">Cash required</span>
             <span className="tabular-nums text-ink">{fmtMo(result.fundsRequiredCents)}</span>
@@ -1009,32 +1016,54 @@ export default function ModelPurchasePage() {
     householdSurplusMonthlyCents: context.householdSurplusMonthlyCents,
   })
 
+  const purchaseCostItems: { label: string; aud: number }[] = [
+    { label: 'Stamp duty', aud: inputs.stampDutyAud },
+    { label: 'Legal & conveyancing', aud: inputs.legalAud },
+    { label: 'Building & pest', aud: inputs.buildingPestAud },
+    { label: 'Depreciation schedule', aud: inputs.depreciationAud },
+    { label: 'Registration & transfer', aud: inputs.registrationAud },
+    { label: "Buyer's agent fee", aud: inputs.buyerAgentAud },
+    { label: 'Upfront maintenance', aud: inputs.renovationAud },
+  ].filter(item => item.aud > 0)
+
   return (
     <div className="max-w-[1100px]">
       <BackToScenarios />
 
-      <div className="mb-6">
-        <h1 className="font-display text-2xl text-ink">Model a purchase</h1>
-        <p className="text-sm text-muted mt-0.5">
-          Estimate how a property acquisition would affect your portfolio cashflow and LVR.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-[420px_1fr] gap-8 items-start">
-        {/* Left: inputs */}
-        <InputsPanel
-          inputs={inputs}
-          result={result}
-          onChange={patch => setInputs(prev => ({ ...prev, ...patch }))}
-        />
-
-        {/* Right: outputs */}
-        <div className="sticky top-6">
-          <OutputsPanel result={result} priceAud={inputs.priceAud} />
+      {/* Outer calculator card */}
+      <div className="border border-border rounded-xl bg-surface overflow-clip">
+        {/* Card header */}
+        <div className="px-6 py-5 border-b border-rule">
+          <h1 className="font-display text-xl text-ink">Model a purchase</h1>
+          <p className="text-sm text-foreground-muted mt-0.5">
+            Estimate how a property acquisition would affect your portfolio cashflow and LVR.
+          </p>
+        </div>
+        {/* Card body: two columns */}
+        <div className="grid grid-cols-[420px_1fr] items-start">
+          {/* Left: inputs */}
+          <div className="border-r border-rule p-6">
+            <InputsPanel
+              inputs={inputs}
+              result={result}
+              onChange={patch => setInputs(prev => ({ ...prev, ...patch }))}
+            />
+          </div>
+          {/* Right: outputs */}
+          <div className="bg-surface-sunken/40 p-6">
+            <div className="sticky top-6">
+              <OutputsPanel
+                result={result}
+                priceAud={inputs.priceAud}
+                depositPct={inputs.depositPct}
+                purchaseCostItems={purchaseCostItems}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      <p className="mt-8 text-xs text-foreground-subtle">
+      <p className="mt-4 text-xs text-foreground-subtle">
         Cashflow assumes current rents · trailing 12-month expense average · tax implications not considered
       </p>
     </div>
