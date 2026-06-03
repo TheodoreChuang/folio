@@ -19,12 +19,14 @@
   // ----- The user's existing portfolio (consistent Folio figures) ---
   //   Each property carries its installment loan(s). Selling pays them
   //   all out at settlement. Latest valuation = `value`.
+  //   `purchasePrice` is the original acquisition price held on file — used
+  //   to seed the CGT cost base. Editable in the UI.
   const PROPERTIES = [
-    { id: 'elm',        name: '14 Elm St',     suburb: 'Randwick',     value: 920000,
+    { id: 'elm',        name: '14 Elm St',     suburb: 'Randwick',     value: 920000, purchasePrice: 560000,
       loans: [{ lender: 'CBA', name: 'Elm St investment', balance: 615000 }] },
-    { id: 'daley',      name: '8 Daley St',    suburb: 'Marrickville', value: 640000,
+    { id: 'daley',      name: '8 Daley St',    suburb: 'Marrickville', value: 640000, purchasePrice: 430000,
       loans: [{ lender: 'CBA', name: 'Daley St investment', balance: 480000 }] },
-    { id: 'sutherland', name: 'Sutherland Ct', suburb: 'Kingsford',    value: 510000,
+    { id: 'sutherland', name: 'Sutherland Ct', suburb: 'Kingsford',    value: 510000, purchasePrice: 365000,
       loans: [{ lender: 'Westpac', name: 'Equity line', balance: 45000 }] }
   ];
 
@@ -36,6 +38,17 @@
     { key: 'marketing', label: 'Marketing' },
     { key: 'legal',     label: 'Legal fees (selling)' },
     { key: 'other',     label: 'Other selling costs' }
+  ];
+
+  // CGT cost-base line items — acquisition costs + capital improvements for
+  // the property being SOLD (distinct from the reinvestment buying costs).
+  // All $, all optional, fed into the cost base.
+  const CGT_COST_FIELDS = [
+    { key: 'stampDuty',    label: 'Stamp duty (on purchase)' },
+    { key: 'legal',        label: 'Legal & conveyancing' },
+    { key: 'buildingPest', label: 'Building & pest' },
+    { key: 'buyerAgent',   label: "Buyer's agent fee" },
+    { key: 'improvements', label: 'Capital improvements' }
   ];
 
   // Buying cost line items (all $, all optional, default 0).
@@ -53,15 +66,22 @@
 
   // ----- Demo defaults ----------------------------------------------
   // Seeded with realistic figures so the comparison tells a complete
-  // story on load (Folio can't compute stamp duty / CGT — these are the
-  // kind of estimates a user would enter). CGT is intentionally left
-  // blank to surface the "CGT excluded" note. All fields stay editable.
+  // story on load. Stamp duty etc. are the kind of estimates a user would
+  // enter. CGT now ESTIMATES from a cost base (purchase price + costs +
+  // selling costs) × discount × marginal rate. All fields stay editable.
   const DEFAULTS = {
     propertyId: 'daley',
     salePrice: 640000,                 // = latest valuation
     agentPct: 2.2,
     sellingCosts: { marketing: 6500, legal: 1500, other: 0 },
-    cgt: '',                           // blank → comparison excludes CGT
+    // --- CGT ---
+    cgtMode: 'estimate',               // 'estimate' (computed) | 'manual' (typed)
+    cgt: '',                           // manual override; blank in manual mode → CGT excluded
+    cgtPurchasePrice: 430000,          // = daley purchase price (prefilled, editable)
+    cgtCosts: { stampDuty: 14800, legal: 1600, buildingPest: 500, buyerAgent: 0, improvements: 28000 },
+    cgtDepreciation: 12000,            // Div 40 plant & equipment claimed → added back
+    cgtDiscount: 50,                   // % — 50% for individuals holding > 12 months
+    cgtRate: 37,                       // % — marginal tax rate applied to the net gain
     buyingCosts: { stampDuty: 24500, legal: 1800, buildingPest: 600, registration: 350, buyerAgent: 0, depreciation: 0, upfrontMaint: 0 },
     lmi: '',                           // surfaced only when LVR > 80%
     gHold: 3.0,
@@ -104,8 +124,37 @@
     const outstandingLoans = loanPayoutTotal;          // loans on the held property
     const netCashAfterLoans = grossProceeds - loanPayoutTotal;
 
-    const cgtEntered = has(i.cgt);
-    const cgt = cgtEntered ? num(i.cgt) : 0;
+    // --- CGT: estimate from a cost base, or a manual override ---
+    const cgtMode = i.cgtMode === 'manual' ? 'manual' : 'estimate';
+    const cgtPurchasePrice = num(i.cgtPurchasePrice);
+    const cgc = i.cgtCosts || {};
+    const cgtCosts = {};
+    CGT_COST_FIELDS.forEach(f => { cgtCosts[f.key] = num(cgc[f.key]); });
+    cgtCosts.total = sum(cgc);
+    const cgtDepreciation = num(i.cgtDepreciation);
+    const cgtDiscountPct = has(i.cgtDiscount) ? num(i.cgtDiscount) : 50;
+    const cgtRate = num(i.cgtRate);
+
+    // Cost base = original price + acquisition/improvement costs + the
+    // selling costs already entered above. Div 40 depreciation is added
+    // back to the gain (it reduced the cost base over the hold).
+    const costBase = cgtPurchasePrice + cgtCosts.total + sellingCosts.total;
+    const rawGain = salePrice - costBase;
+    const grossGain = rawGain + cgtDepreciation;
+    const isCapitalLoss = grossGain < 0;
+    const assessableGain = Math.max(0, grossGain);
+    const cgtDiscountAmount = assessableGain * (cgtDiscountPct / 100);
+    const netCapitalGain = assessableGain - cgtDiscountAmount;
+    const estimatedCgt = netCapitalGain * (cgtRate / 100);
+
+    let cgtEntered, cgt;
+    if (cgtMode === 'manual') {
+      cgtEntered = has(i.cgt);                 // blank → CGT excluded
+      cgt = cgtEntered ? num(i.cgt) : 0;
+    } else {
+      cgtEntered = true;                       // estimate is always shown (may be $0)
+      cgt = estimatedCgt;
+    }
     const netCashAfterCGT = netCashAfterLoans - cgt;
 
     // --- Reinvestment ---
@@ -167,6 +216,8 @@
       agentPct, sellingCosts, grossProceeds,
       loanRows, loanPayoutTotal, outstandingLoans, netCashAfterLoans,
       cgtEntered, cgt, netCashAfterCGT,
+      cgtMode, cgtPurchasePrice, cgtCosts, cgtDepreciation, cgtDiscountPct, cgtRate,
+      costBase, rawGain, grossGain, isCapitalLoss, assessableGain, cgtDiscountAmount, netCapitalGain, estimatedCgt,
       purchasePrice, buyingCosts, netDeposit,
       newLoan, lvr, lmiRequired, lmi, effectiveNewLoan,
       friction, frictionPct,
@@ -200,7 +251,7 @@
   function fmtPct(n, dp) { return (n * 100).toFixed(dp == null ? 0 : dp) + '%'; }
 
   window.HR = {
-    PROPERTIES, SELLING_COST_FIELDS, BUYING_COST_FIELDS, HORIZONS, DEFAULTS,
+    PROPERTIES, SELLING_COST_FIELDS, CGT_COST_FIELDS, BUYING_COST_FIELDS, HORIZONS, DEFAULTS,
     propById, loanTotal, calc, num, has, sum,
     fmtMoney, fmtMoneyShort, fmtSignedShort, fmtPct
   };

@@ -59,14 +59,16 @@
           )}
           <Row k="Net cash after loans" v={money(d.netCashAfterLoans)} total strong
           pos={d.netCashAfterLoans > 0} />
-          {d.cgtEntered && <Row k="Estimated CGT" v={'−' + money(d.cgt)} />}
+          {d.cgtEntered && <Row k={d.cgtMode === 'manual' ? 'CGT — your figure' : 'Estimated CGT'}
+          sub={d.cgtMode === 'manual' ? null : d.cgtDiscountPct + '% discount · ' + d.cgtRate + '% rate'}
+          v={'−' + money(d.cgt)} />}
           {d.cgtEntered && <Row k="Net cash after CGT" v={money(d.netCashAfterCGT)} total strong
           pos={d.netCashAfterCGT > 0} />}
         </div>
         {!d.cgtEntered &&
         <div className="hr-note hr-note--cgt">
             <span className="ic">i</span>
-            CGT excluded — enter an estimate in Step 1 for a more accurate comparison.
+            CGT excluded — switch to <strong>Estimate</strong> in Step 1, or enter your own figure.
           </div>
         }
 

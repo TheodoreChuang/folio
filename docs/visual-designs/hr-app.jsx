@@ -18,6 +18,7 @@
     return {
       ...d,
       sellingCosts: { ...d.sellingCosts },
+      cgtCosts: { ...d.cgtCosts },
       buyingCosts: { ...d.buyingCosts }
     };
   }
@@ -48,7 +49,7 @@
     });
     const [tweaks, setTweaks] = useState(() => {
       try { const s = localStorage.getItem(LS_T); if (s) return JSON.parse(s); } catch (e) {}
-      return { scenario: 'strong', cgt: 'excluded' };
+      return { scenario: 'strong', cgt: 'estimate' };
     });
 
     useEffect(() => { try { localStorage.setItem(LS, JSON.stringify(input)); } catch (e) {} }, [input]);
@@ -58,7 +59,7 @@
     const setField = (path, value) => {
       if (path === '__property') {
         const p = F.propById(value);
-        setInput((prev) => ({ ...prev, propertyId: value, salePrice: p.value }));
+        setInput((prev) => ({ ...prev, propertyId: value, salePrice: p.value, cgtPurchasePrice: p.purchasePrice }));
         return;
       }
       setInput((prev) => setPath(prev, path, value));
@@ -72,7 +73,7 @@
     }
     function applyCgt(mode) {
       setTweak('cgt', mode);
-      setInput((prev) => ({ ...prev, cgt: mode === 'estimate' ? 45000 : '' }));
+      setInput((prev) => ({ ...prev, cgtMode: mode }));
     }
 
     const d = F.calc(input);
@@ -104,7 +105,7 @@
           </div>
         </section>
 
-        <Tweaks tweaks={tweaks} setTweak={setTweak} applyScenario={applyScenario} applyCgt={applyCgt} scenarios={SCENARIOS} />
+        <Tweaks tweaks={tweaks} cgtMode={input.cgtMode} setTweak={setTweak} applyScenario={applyScenario} applyCgt={applyCgt} scenarios={SCENARIOS} />
       </>
     );
   }

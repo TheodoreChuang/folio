@@ -111,6 +111,31 @@
 
 .hr-cgt-help { max-width: 46ch; line-height: var(--leading-snug); }
 
+/* CGT estimate block — always-visible total + collapsible inputs */
+.hr-cgt {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--surface));
+  overflow: hidden;
+}
+.hr-cgt-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-4); padding: var(--space-4) var(--space-5) var(--space-2);
+}
+.hr-cgt-lab { font-size: var(--text-sm); font-weight: 600; color: hsl(var(--foreground)); white-space: nowrap; }
+.hr-cgt-val {
+  font-size: var(--text-md); font-weight: 700; color: hsl(var(--foreground));
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.hr-cgt-break {
+  padding: 0 var(--space-5) var(--space-4);
+  font-size: var(--text-2xs); color: hsl(var(--foreground-muted));
+  line-height: var(--leading-snug);
+}
+.hr-cgt-break b { font-weight: 600; color: hsl(var(--foreground)); font-variant-numeric: tabular-nums; }
+.hr-cgt .mp-collapse { border: none; border-top: 1px solid hsl(var(--rule)); border-radius: 0; }
+.hr-cgt-seg { margin-bottom: 0; }
+
 /* hint text under a label */
 .calc-input-row > label .hint {
   font-weight: 400; color: hsl(var(--foreground-subtle));
