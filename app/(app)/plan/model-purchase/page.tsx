@@ -574,7 +574,7 @@ function InputsPanel({
                   key={val}
                   type="button"
                   className={`flex-1 py-2 text-center text-xs transition-colors ${
-                    inputs.source === val ? 'bg-ink text-white font-semibold' : 'bg-surface text-foreground-muted hover:bg-surface-sunken'
+                    inputs.source === val ? 'bg-foreground-muted text-white font-medium' : 'bg-surface text-foreground-muted hover:bg-surface-sunken'
                   } ${i > 0 ? 'border-l border-border' : ''}`}
                   onClick={() => {
                     if (val === 'cash') {
@@ -612,20 +612,30 @@ function InputsPanel({
           )}
 
           {/* Allocation status */}
-          {inputs.priceAud > 0 && (
-            <div className={`flex items-center justify-between text-xs px-3 py-2 rounded ${
-              result.shortfallCents <= 0
-                ? 'bg-positive/10 text-positive'
-                : 'bg-surface-sunken text-foreground-muted'
-            }`}>
-              <span>{result.shortfallCents <= 0 ? 'Funds fully allocated' : 'Still to fund'}</span>
-              <span className="tabular-nums font-medium">
-                {result.shortfallCents <= 0
-                  ? fmtMo(result.fundsRequiredCents)
-                  : fmtMo(result.shortfallCents)}
-              </span>
-            </div>
-          )}
+          {inputs.priceAud > 0 && (() => {
+            const overCents = result.equityDrawnCents - result.fundsRequiredCents
+            const isOver = overCents > 0
+            const stillToFundCents = inputs.source === 'equity'
+              ? Math.max(0, result.fundsRequiredCents - result.equityDrawnCents)
+              : 0
+            const isShort = stillToFundCents > 0
+            return (
+              <div className={`flex items-center justify-between text-xs px-3 py-2 rounded ${
+                isOver
+                  ? 'bg-negative/10 text-negative'
+                  : isShort
+                    ? 'bg-surface-sunken text-foreground-muted'
+                    : 'bg-positive/10 text-positive'
+              }`}>
+                <span>
+                  {isOver ? 'Over-allocated' : isShort ? 'Still to fund' : 'Funds fully allocated'}
+                </span>
+                <span className="tabular-nums font-medium">
+                  {isOver ? fmtMo(overCents) : isShort ? fmtMo(stillToFundCents) : fmtMo(result.fundsRequiredCents)}
+                </span>
+              </div>
+            )
+          })()}
         </div>
       </div>
 
@@ -643,14 +653,14 @@ function InputsPanel({
               <div className="flex border border-border rounded overflow-hidden text-sm">
                 <button
                   type="button"
-                  className={`flex-1 py-2 text-center text-xs transition-colors ${inputs.loanType === 'interest_only' ? 'bg-ink text-white font-semibold' : 'bg-surface text-foreground-muted hover:bg-surface-sunken'}`}
+                  className={`flex-1 py-2 text-center text-xs transition-colors ${inputs.loanType === 'interest_only' ? 'bg-foreground-muted text-white font-medium' : 'bg-surface text-foreground-muted hover:bg-surface-sunken'}`}
                   onClick={() => onChange({ loanType: 'interest_only' })}
                 >
                   IO
                 </button>
                 <button
                   type="button"
-                  className={`flex-1 py-2 text-center text-xs transition-colors ${inputs.loanType === 'principal_and_interest' ? 'bg-ink text-white font-semibold' : 'bg-surface text-foreground-muted hover:bg-surface-sunken'}`}
+                  className={`flex-1 py-2 text-center text-xs transition-colors ${inputs.loanType === 'principal_and_interest' ? 'bg-foreground-muted text-white font-medium' : 'bg-surface text-foreground-muted hover:bg-surface-sunken'}`}
                   onClick={() => onChange({ loanType: 'principal_and_interest' })}
                 >
                   P&amp;I
