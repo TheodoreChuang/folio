@@ -42,12 +42,15 @@ export type IoRolloverResult = {
 export function computeIoRollover(
   loans: PlanContextLoan[],
   editableRates: Record<string, number>,
+  today: Date = new Date(),
 ): IoRolloverResult {
   const rows: IoRolloverRow[] = []
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
 
   for (const loan of loans) {
     if (loan.loanType !== 'interest_only') continue
     if (!loan.ioEndDate) continue
+    if (parseLocalDate(loan.ioEndDate) < todayMidnight) continue
     if (!loan.interestRate) continue
 
     const balanceCents = loan.latestBalance?.balanceCents ?? null
