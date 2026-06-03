@@ -625,6 +625,7 @@ export default function InterestOnlyPage() {
           surplusCents={context.householdSurplusMonthlyCents}
           consumedCents={result.totalAdditionalMonthlyCents}
           label="IO rollovers would consume"
+          action="IO rollover"
         />
 
       </div>

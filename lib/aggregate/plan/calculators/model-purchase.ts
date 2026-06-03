@@ -76,7 +76,6 @@ export type ModelPurchaseResult = {
   fundsRequiredCents: number
   equityDrawnCents: number
   cashContributionCents: number
-  shortfallCents: number
 
   // Equity per existing property (only those with a valuation)
   equityAvailable: EquityAvailable[]
@@ -176,8 +175,6 @@ export function computeModelPurchase(input: ModelPurchaseInput): ModelPurchaseRe
 
   const equityDrawnCents = equitySources.reduce((sum, s) => sum + s.drawCents, 0)
   const cashContributionCents = Math.max(0, fundsRequiredCents - equityDrawnCents)
-  const allocated = equityDrawnCents + cashContributionCents
-  const shortfallCents = Math.max(0, fundsRequiredCents - allocated)
 
   // ── Equity available per property ────────────────────────────────────────────
   // Sum loan balances per property
@@ -258,7 +255,6 @@ export function computeModelPurchase(input: ModelPurchaseInput): ModelPurchaseRe
     fundsRequiredCents,
     equityDrawnCents,
     cashContributionCents,
-    shortfallCents,
     equityAvailable,
     portfolioValueBefore,
     portfolioValueAfter,

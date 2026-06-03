@@ -384,6 +384,7 @@ export default function RateSensitivityPage() {
           surplusCents={result.householdSurplusMonthlyCents}
           consumedCents={result.totalChangeCents}
           label="Rate move would consume"
+          action="rate move"
         />
       </div>
     </div>

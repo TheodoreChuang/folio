@@ -87,7 +87,7 @@ function fmtShort(cents: number): string {
   let s: string
   if (abs >= 100_000_000) {
     s = '$' + (abs / 100_000_000).toFixed(2).replace(/\.?0+$/, '') + 'M'
-  } else if (abs >= 100_000) {
+  } else if (abs >= 1_000_000) {
     s = '$' + Math.round(abs / 100_000) + 'k'
   } else {
     s = '$' + Math.round(abs / 100).toLocaleString('en-AU')
@@ -177,7 +177,7 @@ function PctInput({
         placeholder="0"
         onChange={e => {
           const raw = e.target.value
-          if (/^-?\d*\.?\d*$/.test(raw)) {
+          if (/^\d*\.?\d*$/.test(raw)) {
             setDraft(raw)
             onChange(parseNum(raw))
           }
@@ -490,9 +490,6 @@ function InputsPanel({
   const [costsOpen, setCostsOpen] = useState(false)
   const [runningOpen, setRunningOpen] = useState(false)
 
-  const depositAud = Math.round(inputs.priceAud * inputs.depositPct / 100)
-  const baseLoanAud = Math.max(0, inputs.priceAud - depositAud)
-
   const purchaseCostTotal =
     inputs.stampDutyAud + inputs.legalAud + inputs.buildingPestAud +
     inputs.depreciationAud + inputs.registrationAud + inputs.buyerAgentAud + inputs.renovationAud
@@ -537,7 +534,7 @@ function InputsPanel({
             <div>
               <p className="text-xs text-foreground-muted mb-1.5">Amount</p>
               <MoneyInput
-                valueAud={depositAud}
+                valueAud={result.depositCents / 100}
                 onChange={v => onChange({ depositPct: inputs.priceAud > 0 ? (v / inputs.priceAud) * 100 : 0 })}
                 placeholder="156,000"
               />
@@ -550,11 +547,11 @@ function InputsPanel({
 
           <div className="flex items-center justify-between text-xs text-foreground-muted">
             <span>
-              New loan {fmtMo(baseLoanAud * 100)}
+              New loan {fmtMo(result.baseLoanCents)}
               {result.lmiRequired && inputs.lmiAud > 0 && ` + ${fmtMo(inputs.lmiAud * 100)} LMI`}
             </span>
             <span className={result.lmiRequired ? 'text-negative font-medium' : ''}>
-              LVR {fmtPct(result.lmiRequired ? (baseLoanAud / inputs.priceAud) : (baseLoanAud / Math.max(1, inputs.priceAud)), 0)}
+              LVR {fmtPct(result.baseLoanCents / Math.max(1, result.baseLoanCents + result.depositCents), 0)}
               {result.lmiRequired && ' · LMI territory'}
             </span>
           </div>
@@ -917,7 +914,7 @@ function OutputsPanel({
           />
           <ImpactTile
             label="New property LVR"
-            after={result.newLoanCents / Math.max(1, result.newLoanCents + result.depositCents)}
+            after={result.baseLoanCents / Math.max(1, result.baseLoanCents + result.depositCents)}
             fmt={r => fmtPct(r, 1)}
             delta={result.lmiRequired ? 'LMI territory' : 'within 80%'}
             deltaDir={result.lmiRequired ? 'up' : 'neutral'}
@@ -927,13 +924,13 @@ function OutputsPanel({
       </div>
 
       {/* Household section */}
-      {result.portfolioCashflowAfterMonthlyCents !== null && result.portfolioCashflowAfterMonthlyCents > 0 ? (
+      {result.portfolioCashflowAfterMonthlyCents !== null && result.portfolioCashflowAfterMonthlyCents > 50 ? (
         <div className="mt-7">
           <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle mb-3">
             Household cashflow after this purchase
           </p>
           <p className="text-sm text-foreground-muted leading-snug">
-            {result.householdSurplusMonthlyCents !== null ? (
+            {result.householdSurplusMonthlyCents !== null && result.householdSurplusMonthlyCents > 0 ? (
               <>
                 The portfolio is cashflow-positive after this purchase — it adds{' '}
                 <strong className="font-semibold text-positive tabular-nums">
@@ -962,10 +959,11 @@ function OutputsPanel({
       ) : (
         <HouseholdSurplusBar
           surplusCents={result.householdSurplusMonthlyCents}
-          consumedCents={result.portfolioCashflowAfterMonthlyCents !== null && result.portfolioCashflowAfterMonthlyCents < 0
-            ? Math.abs(result.portfolioCashflowAfterMonthlyCents)
-            : 0}
+          consumedCents={result.portfolioCashflowAfterMonthlyCents !== null
+            ? Math.max(0, -result.portfolioCashflowAfterMonthlyCents)
+            : Math.max(0, -result.propertyCashflowMonthlyCents)}
           label="Portfolio shortfall after purchase"
+          action="purchase"
         />
       )}
     </div>
@@ -980,20 +978,25 @@ export default function ModelPurchasePage() {
   const [inputs, setInputs] = useState<Inputs>(DEFAULT_INPUTS)
 
   useEffect(() => {
-    fetch('/api/plan/context')
-      .then(res => {
-        if (res.status === 401) { router.push('/login'); return null }
-        return res.json()
-      })
-      .then(body => {
-        if (!body) return
-        if (body.context) {
-          setPageState({ status: 'loaded', context: body.context })
-        } else {
-          setPageState({ status: 'error' })
-        }
-      })
-      .catch(() => setPageState({ status: 'error' }))
+    const load = () => {
+      fetch('/api/plan/context')
+        .then(res => {
+          if (res.status === 401) { router.push('/login'); return null }
+          return res.json()
+        })
+        .then(body => {
+          if (!body) return
+          if (body.context) {
+            setPageState({ status: 'loaded', context: body.context })
+          } else {
+            setPageState({ status: 'error' })
+          }
+        })
+        .catch(() => setPageState({ status: 'error' }))
+    }
+    load()
+    window.addEventListener('focus', load)
+    return () => window.removeEventListener('focus', load)
   }, [router])
 
   if (pageState.status === 'loading') {

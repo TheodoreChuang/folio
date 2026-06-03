@@ -5,9 +5,10 @@ type Props = {
   surplusCents: number | null
   consumedCents: number
   label: string
+  action: string
 }
 
-export function HouseholdSurplusBar({ surplusCents, consumedCents, label }: Props) {
+export function HouseholdSurplusBar({ surplusCents, consumedCents, label, action }: Props) {
   if (surplusCents === null) {
     return (
       <div className="mt-7 flex items-center gap-4 px-5 py-4 border border-dashed border-border-strong rounded bg-surface/50">
@@ -17,7 +18,7 @@ export function HouseholdSurplusBar({ surplusCents, consumedCents, label }: Prop
           </svg>
         </div>
         <p className="text-sm text-foreground-muted leading-snug">
-          <strong className="font-semibold text-ink">Set up your Household</strong> to see how much of your monthly surplus this rate move would use.{' '}
+          <strong className="font-semibold text-ink">Set up your Household</strong> to see how much of your monthly surplus this {action} would use.{' '}
           <Link href="/household" className="text-accent font-semibold">Go to Household →</Link>
         </p>
       </div>
