@@ -160,14 +160,20 @@
         };
       });
 
-    // Household
+    // Household — the portfolio's net cashflow after the purchase is fully
+    // modelled here (portfolioCashflowAfter), so we can show both directions:
+    // negative draws on the personal surplus; positive ADDS to it.
     const consumed = Math.max(0, -portfolioCashflowAfter);
+    const contribution = Math.max(0, portfolioCashflowAfter);
     const surplus = HOUSEHOLD.surplusMo;
     const household = {
       surplus,
       consumed,
+      contribution,
+      contributing: contribution > 0.5,
       pct: surplus > 0 ? Math.min(1.5, consumed / surplus) : 0,
-      remaining: surplus - consumed
+      remaining: surplus - consumed,
+      total: surplus + contribution     // total household cashflow / mo
     };
 
     return {
