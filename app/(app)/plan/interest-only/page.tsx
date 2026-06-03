@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { formatCents } from '@/lib/format'
 import { BackToScenarios } from '@/components/plan/back-to-scenarios'
 import { HouseholdSurplusBar } from '@/components/plan/household-surplus-bar'
-import { computeIoRollover } from '@/lib/aggregate/plan/calculators/io-rollover'
+import { computeIoRollover, DEFAULT_DISCOUNT } from '@/lib/aggregate/plan/calculators/io-rollover'
 import type { PlanContext } from '@/lib/aggregate/plan/context'
 import type { IoRolloverRow, IoRolloverResult } from '@/lib/aggregate/plan/calculators/io-rollover'
 
@@ -42,7 +42,7 @@ function dayLabel(date: Date): string {
 function fmtMoney(cents: number): string {
   const neg = cents < -0.5
   const abs = Math.round(Math.abs(cents))
-  if (abs >= 100_00000) return `${neg ? '−' : ''}$${(abs / 100_00000).toFixed(1)}m`
+  if (abs >= 100_000_000) return `${neg ? '−' : ''}$${(abs / 100_000_000).toFixed(1)}m`
   if (abs >= 100_000) return `${neg ? '−' : ''}$${Math.round(abs / 100_000)}k`
   return `${neg ? '−' : ''}$${Math.round(abs / 100).toLocaleString('en-AU')}`
 }
@@ -225,7 +225,8 @@ function CashflowChart({
 
   const rolls = rows.filter(r => r.deltaCents !== null)
   const showDotLabels = rolls.length <= 4
-  const surplusY = surplusCents !== null ? y(-surplusCents) : null
+  // Only show surplus limit when surplus is positive — a zero or negative surplus has no meaningful limit line
+  const surplusY = surplusCents !== null && surplusCents > 0 ? y(-surplusCents) : null
   const zeroY = y(0)
 
   return (
@@ -428,7 +429,7 @@ export default function InterestOnlyPage() {
   }
 
   const { context } = pageState
-  const result = computeIoRollover(context.loans, piRates, context.householdSurplusMonthlyCents)
+  const result = computeIoRollover(context.loans, piRates)
   const { rows } = result
 
   if (rows.length === 0) {
@@ -457,7 +458,6 @@ export default function InterestOnlyPage() {
     return Math.max(1, Math.round((axisEnd.getTime() - axisStart.getTime()) / MS_YEAR) - 1)
   })()
 
-  const defaultDiscount = 0.30
   const isSurplusBreached =
     context.householdSurplusMonthlyCents !== null &&
     result.totalAdditionalMonthlyCents > context.householdSurplusMonthlyCents
@@ -491,7 +491,7 @@ export default function InterestOnlyPage() {
               </div>
               <p className="text-sm text-foreground-muted leading-snug max-w-[44ch]">
                 That&apos;s <strong className="font-semibold text-ink">{fmtMoney(result.totalAdditionalAnnualCents)}/yr</strong> of extra servicing once{' '}
-                {n === 1 ? 'the interest-only period expires' : 'every interest-only period expires'} — estimated at each loan&apos;s P&amp;I rate, its IO rate less {defaultDiscount.toFixed(2)}% by default.
+                {n === 1 ? 'the interest-only period expires' : 'every interest-only period expires'} — estimated at each loan&apos;s P&amp;I rate, its IO rate less {DEFAULT_DISCOUNT.toFixed(2)}% by default.
               </p>
             </div>
 
@@ -511,7 +511,7 @@ export default function InterestOnlyPage() {
                   <div className="h-2.5 rounded bg-surface-sunken border border-border overflow-hidden mb-2">
                     <div
                       className={`h-full rounded transition-[width] duration-200 ${isSurplusBreached ? 'bg-negative' : 'bg-gradient-to-r from-positive to-warning'}`}
-                      style={{ width: `${Math.min(100, Math.round(result.totalAdditionalMonthlyCents / context.householdSurplusMonthlyCents * 100))}%` }}
+                      style={{ width: context.householdSurplusMonthlyCents > 0 ? `${Math.min(100, Math.round(result.totalAdditionalMonthlyCents / context.householdSurplusMonthlyCents * 100))}%` : '100%' }}
                     />
                   </div>
                   <p className="text-xs text-foreground-muted leading-snug">
@@ -549,7 +549,7 @@ export default function InterestOnlyPage() {
               </p>
             </div>
             <p className="text-[10px] text-foreground-subtle text-right max-w-[28ch] leading-snug shrink-0">
-              P&amp;I rate is estimated at IO rate −{defaultDiscount.toFixed(2)}%.<br />
+              P&amp;I rate is estimated at IO rate −{DEFAULT_DISCOUNT.toFixed(2)}%.<br />
               Edit below to override per loan.
             </p>
           </div>

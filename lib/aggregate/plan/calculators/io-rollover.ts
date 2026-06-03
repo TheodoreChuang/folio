@@ -1,7 +1,7 @@
 import type { PlanContextLoan } from '@/lib/aggregate/plan/context'
 import { pmt, interestOnlyPayment } from './rate-sensitivity'
 
-const DEFAULT_DISCOUNT = 0.30
+export const DEFAULT_DISCOUNT = 0.30
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
@@ -37,13 +37,11 @@ export type IoRolloverResult = {
   rows: IoRolloverRow[]
   totalAdditionalMonthlyCents: number
   totalAdditionalAnnualCents: number
-  fullyRolledPortfolioImpact: number
 }
 
 export function computeIoRollover(
   loans: PlanContextLoan[],
   editableRates: Record<string, number>,
-  _householdSurplusMonthlyCents: number | null,
 ): IoRolloverResult {
   const rows: IoRolloverRow[] = []
 
@@ -73,8 +71,12 @@ export function computeIoRollover(
     } else {
       const ioYears = yearsBetween(loan.startDate, loan.ioEndDate)
       const remaining = loan.loanTermYears - ioYears
-      // At least 1 month remaining P&I
-      remainingPandIYears = Math.max(1 / 12, remaining)
+      // If ioYears > loanTermYears the data is inconsistent — flag as unknown rather than clamping to 1 month
+      if (remaining <= 0) {
+        termUnknown = true
+      } else {
+        remainingPandIYears = remaining
+      }
     }
 
     const pAndIMonthlyRepaymentCents =
@@ -113,6 +115,5 @@ export function computeIoRollover(
     rows,
     totalAdditionalMonthlyCents,
     totalAdditionalAnnualCents,
-    fullyRolledPortfolioImpact: totalAdditionalMonthlyCents,
   }
 }

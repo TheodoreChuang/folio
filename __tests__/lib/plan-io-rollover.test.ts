@@ -28,26 +28,26 @@ function makeLoan(overrides: Partial<PlanContextLoan> = {}): PlanContextLoan {
 describe('computeIoRollover', () => {
   it('returns rows: [] when no IO loans have an ioEndDate', () => {
     const loans = [makeLoan({ ioEndDate: null })]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     expect(result.rows).toHaveLength(0)
     expect(result.totalAdditionalMonthlyCents).toBe(0)
   })
 
   it('returns rows: [] when loan is not interest_only type', () => {
     const loans = [makeLoan({ loanType: null })]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     expect(result.rows).toHaveLength(0)
   })
 
   it('excludes loan with no balance recorded', () => {
     const loans = [makeLoan({ latestBalance: null })]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     expect(result.rows).toHaveLength(0)
   })
 
   it('excludes loan with no interestRate', () => {
     const loans = [makeLoan({ interestRate: null })]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     expect(result.rows).toHaveLength(0)
   })
 
@@ -56,7 +56,7 @@ describe('computeIoRollover', () => {
       interestRate: '5.50',
       latestBalance: { balanceCents: 40000000, recordedAt: '2026-01-01' },
     })]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     expect(result.rows).toHaveLength(1)
     const expected = Math.round(0.055 / 12 * 40000000)
     expect(result.rows[0].ioMonthlyRepaymentCents).toBe(expected)
@@ -66,11 +66,11 @@ describe('computeIoRollover', () => {
 
   it('P&I rate defaults to ioRate − 0.30%', () => {
     const loans = [makeLoan({ interestRate: '5.50' })]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     expect(result.rows[0].pAndIRate).toBeCloseTo(5.20, 2)
   })
 
-  it('PMT at default P&I rate is correct: PMT(5.20%, 240mo, $400k)', () => {
+  it('PMT at default P&I rate is correct: PMT(5.20%, 300mo/25yr, $400k)', () => {
     const loans = [makeLoan({
       interestRate: '5.50',
       loanTermYears: 30,
@@ -78,7 +78,7 @@ describe('computeIoRollover', () => {
       ioEndDate: '2027-06-30',
       latestBalance: { balanceCents: 40000000, recordedAt: '2026-01-01' },
     })]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     const row = result.rows[0]
     // 25 yr remaining = 300 months
     const expected = pmt(5.20, 300, 40000000)
@@ -87,7 +87,7 @@ describe('computeIoRollover', () => {
 
   it('editable rate override applies per loan', () => {
     const loans = [makeLoan({ interestRate: '6.35', id: 'loan-x' })]
-    const result = computeIoRollover(loans, { 'loan-x': 5.50 }, null)
+    const result = computeIoRollover(loans, { 'loan-x': 5.50 })
     expect(result.rows[0].pAndIRate).toBe(5.50)
     const expected = pmt(5.50, Math.round(25 * 12), 61500000)
     expect(result.rows[0].pAndIMonthlyRepaymentCents).toBe(expected)
@@ -95,7 +95,7 @@ describe('computeIoRollover', () => {
 
   it('termUnknown = true when loanTermYears is null', () => {
     const loans = [makeLoan({ loanTermYears: null })]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     expect(result.rows[0].termUnknown).toBe(true)
     expect(result.rows[0].pAndIMonthlyRepaymentCents).toBeNull()
     expect(result.rows[0].deltaCents).toBeNull()
@@ -103,7 +103,7 @@ describe('computeIoRollover', () => {
 
   it('termUnknown = true when startDate is null', () => {
     const loans = [makeLoan({ startDate: null })]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     expect(result.rows[0].termUnknown).toBe(true)
     expect(result.rows[0].deltaCents).toBeNull()
   })
@@ -113,7 +113,7 @@ describe('computeIoRollover', () => {
       makeLoan({ id: 'a', ioEndDate: '2027-06-30' }),
       makeLoan({ id: 'b', ioEndDate: null }),
     ]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     expect(result.rows).toHaveLength(1)
     expect(result.rows[0].loanId).toBe('a')
   })
@@ -123,14 +123,14 @@ describe('computeIoRollover', () => {
       makeLoan({ id: 'a', interestRate: '6.35', latestBalance: { balanceCents: 61500000, recordedAt: '2026-01-01' } }),
       makeLoan({ id: 'b', interestRate: '6.10', latestBalance: { balanceCents: 48000000, recordedAt: '2026-01-01' }, ioEndDate: '2028-03-14' }),
     ]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     const expectedTotal = result.rows.reduce((s, r) => s + (r.deltaCents ?? 0), 0)
     expect(result.totalAdditionalMonthlyCents).toBe(expectedTotal)
   })
 
   it('totalAdditionalAnnualCents = totalAdditionalMonthlyCents * 12', () => {
     const loans = [makeLoan()]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     expect(result.totalAdditionalAnnualCents).toBe(result.totalAdditionalMonthlyCents * 12)
   })
 
@@ -139,14 +139,14 @@ describe('computeIoRollover', () => {
       makeLoan({ id: 'later', ioEndDate: '2028-03-14' }),
       makeLoan({ id: 'earlier', ioEndDate: '2027-06-30' }),
     ]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     expect(result.rows[0].loanId).toBe('earlier')
     expect(result.rows[1].loanId).toBe('later')
   })
 
   it('deltaCents = pAndIMonthly - ioMonthly (positive = more expensive)', () => {
     const loans = [makeLoan({ interestRate: '6.35', latestBalance: { balanceCents: 61500000, recordedAt: '2026-01-01' } })]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     const row = result.rows[0]
     expect(row.deltaCents).toBe((row.pAndIMonthlyRepaymentCents ?? 0) - row.ioMonthlyRepaymentCents)
     expect(row.deltaCents).toBeGreaterThan(0)
@@ -157,7 +157,7 @@ describe('computeIoRollover', () => {
       makeLoan({ id: 'known', loanTermYears: 30 }),
       makeLoan({ id: 'unknown', loanTermYears: null }),
     ]
-    const result = computeIoRollover(loans, {}, null)
+    const result = computeIoRollover(loans, {})
     const knownRow = result.rows.find(r => r.loanId === 'known')!
     expect(result.totalAdditionalMonthlyCents).toBe(knownRow.deltaCents)
   })
