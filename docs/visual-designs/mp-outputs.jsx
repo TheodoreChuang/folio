@@ -177,15 +177,21 @@
         {household === 'populated' ?
         <div className="mp-household">
             <div className="lab-row">
-              <span>Household cashflow after this purchase</span>
-              <span className="num"><strong>{money(d.household.consumed)}</strong> / {money(d.household.surplus)} mo</span>
+              <span>{d.household.contributing ? 'Household cashflow after this purchase' : 'Personal surplus used after this purchase'}</span>
+              <span className="num">
+                {d.household.contributing
+                  ? <><strong>{money(d.household.total)}</strong> / mo</>
+                  : <><strong>{money(d.household.consumed)}</strong> / {money(d.household.surplus)} mo</>}
+              </span>
             </div>
             <div className="bar">
-              <div className={'fill' + (d.household.pct > 1 ? ' is-over' : '')}
-            style={{ width: Math.min(100, d.household.pct * 100) + '%' }} />
+              <div className={'fill' + (d.household.pct > 1 ? ' is-over' : '') + (d.household.contributing ? ' is-positive' : '')}
+            style={{ width: d.household.contributing ? '100%' : Math.min(100, d.household.pct * 100) + '%' }} />
             </div>
             <div className="legend">
-              {d.household.remaining >= 0 ?
+              {d.household.contributing ?
+            <>The portfolio is cashflow-positive after this purchase — it adds <strong>{money(d.household.contribution)}/mo</strong> on top of your <strong>{money(d.household.surplus)}/mo</strong> personal surplus, lifting household cashflow to <strong>{money(d.household.total)}/mo</strong>.</> :
+            d.household.remaining >= 0 ?
             <>About <strong>{pct(d.household.pct)}</strong> of your <strong>{money(d.household.surplus)}/mo</strong> surplus covers portfolio servicing — leaves <strong>{money(d.household.remaining)}/mo</strong>.</> :
             <>This purchase needs <strong>{money(-d.household.remaining)}/mo</strong> more than your <strong>{money(d.household.surplus)}/mo</strong> surplus — the portfolio would run at a shortfall.</>}
             </div>

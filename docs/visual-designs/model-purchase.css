@@ -342,6 +342,7 @@
   transition: width 200ms ease;
 }
 .mp-household .bar .fill.is-over { background: linear-gradient(to right, hsl(var(--warning)), hsl(var(--negative))); }
+.mp-household .bar .fill.is-positive { background: hsl(var(--positive)); }
 .mp-household .legend { margin-top: var(--space-3); font-size: var(--text-xs); color: hsl(var(--foreground-muted)); }
 .mp-household .legend strong { color: hsl(var(--foreground)); font-weight: 600; font-variant-numeric: tabular-nums; }
 
