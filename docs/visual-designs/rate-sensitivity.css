@@ -156,11 +156,22 @@
 .rs-headline .delta.down { color: hsl(var(--negative)); background: hsl(var(--negative-soft)); }
 .rs-headline .delta.neutral { color: hsl(var(--foreground-muted)); background: hsl(var(--surface-sunken)); }
 
+/* "per month more / less" pill beside the repayment-change figure */
+.rs-headline .rs-change-pill {
+  align-self: center;
+  font-size: var(--text-sm); font-weight: 600;
+  padding: 2px var(--space-3); border-radius: var(--radius-pill);
+}
+.rs-headline .rs-change-pill.more { color: hsl(var(--negative)); background: hsl(var(--negative-soft)); }
+.rs-headline .rs-change-pill.less { color: hsl(var(--positive)); background: hsl(var(--positive-soft)); }
+
 .rs-context {
   font-size: var(--text-sm); color: hsl(var(--foreground-muted));
   line-height: var(--leading-snug); max-width: 62ch;
 }
 .rs-context strong { color: hsl(var(--foreground)); font-weight: 600; font-variant-numeric: tabular-nums; }
+.rs-context strong.cf-neg { color: hsl(var(--negative)); }
+.rs-context strong.cf-pos { color: hsl(var(--positive)); }
 
 /* ----- combined per-loan table ----- */
 .rs-loan-table {
@@ -233,6 +244,7 @@
   transition: width 180ms ease;
 }
 .rs-household .bar .fill.is-over { background: linear-gradient(to right, hsl(var(--warning)), hsl(var(--negative))); }
+.rs-household .bar .fill.is-positive { background: hsl(var(--positive)); }
 .rs-household .legend { margin-top: var(--space-3); font-size: var(--text-xs); color: hsl(var(--foreground-muted)); line-height: var(--leading-snug); }
 .rs-household .legend strong { color: hsl(var(--foreground)); font-weight: 600; font-variant-numeric: tabular-nums; }
 

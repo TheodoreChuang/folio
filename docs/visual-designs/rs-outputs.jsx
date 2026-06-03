@@ -16,39 +16,34 @@
     const atToday = Math.abs(d.delta) < 0.001;
 
     const cfScenario = d.cashflowScenario;
-    const cfClass = cfScenario < -0.5 ? 'is-negative' : cfScenario > 0.5 ? 'is-positive' : 'is-neutral';
-    // paying more (cashflow falls) is the "bad" direction → red
-    const cfDeltaClass = d.cashflowDelta < -0.5 ? 'down' : d.cashflowDelta > 0.5 ? 'up' : 'neutral';
+    // Repayment change is the hero: + = paying more (worse → red), − = less (better → green).
+    const repayUp = d.repayDelta > 0.5;     // paying more
+    const repayDown = d.repayDelta < -0.5;  // paying less
+    const repayClass = repayUp ? 'is-negative' : repayDown ? 'is-positive' : 'is-neutral';
+    const cfStr = (cfScenario < 0 ? '−' : '') + '$' + Math.abs(Math.round(cfScenario)).toLocaleString('en-AU');
 
     return (
       <div className="rs-outputs">
-        {/* ===== Headline ===== */}
-        <div className="calc-section-label">
-          Monthly cashflow {atToday ? 'today' : 'at ' + move}
-        </div>
+        {/* ===== Headline — total repayment change ===== */}
+        <div className="calc-section-label">Total repayment change</div>
         <div className="headline-result rs-headline">
-          <span className={'value ' + cfClass}>
-            {cfScenario < 0 ? '−' : ''}<span className="unit">$</span>{Math.abs(Math.round(cfScenario)).toLocaleString('en-AU')}
-            <span className="unit"> / mo</span>
-          </span>
-          {!atToday && (
-            <span className={'delta ' + cfDeltaClass}>
-              {F.fmtDelta(d.cashflowDelta)} / mo vs today
-            </span>
+          {atToday ? (
+            <span className="value is-neutral">No change</span>
+          ) : (
+            <>
+              <span className={'value ' + repayClass}>
+                {repayUp ? '+' : '−'}<span className="unit">$</span>{Math.abs(Math.round(d.repayDelta)).toLocaleString('en-AU')}
+              </span>
+              <span className={'rs-change-pill ' + (repayUp ? 'more' : 'less')}>
+                per month {repayUp ? 'more' : 'less'}
+              </span>
+            </>
           )}
         </div>
         <div className="rs-context">
-          {atToday ? (
-            <>Drag the rate to model a rise or fall across <strong>all {F.LOANS.length} variable loans</strong>. Repayments today total <strong>{F.fmtMoney(d.todayTotal)} / mo</strong>.</>
-          ) : household === 'populated' ? (
-            d.household.breached ? (
-              <>This move needs <strong>{F.fmtMoney(-d.household.remaining)} / mo</strong> more than your <strong>{F.fmtMoney(d.household.surplus)} / mo</strong> personal surplus — the portfolio would run at a shortfall.</>
-            ) : (
-              <>Still inside your <strong>{F.fmtMoney(d.household.surplus)} / mo</strong> personal surplus — buffer drops to <strong>{F.fmtMoney(d.household.remaining)} / mo</strong>.</>
-            )
-          ) : (
-            <>Total repayments move <strong>{F.fmtDelta(d.repayDelta)} / mo</strong> — from {F.fmtMoney(d.todayTotal)} to <strong>{F.fmtMoney(d.scenarioTotal)} / mo</strong>.</>
-          )}
+          Portfolio cashflow would be{' '}
+          <strong className={cfScenario < -0.5 ? 'cf-neg' : cfScenario > 0.5 ? 'cf-pos' : ''}>{cfStr}</strong>{' '}
+          per month{atToday ? '' : ' (' + F.fmtDelta(d.cashflowDelta) + ' vs today)'}.
         </div>
 
         {/* ===== Per-loan impact (combined identity + outcome) ===== */}
@@ -97,14 +92,16 @@
               <span className="num"><strong>{F.fmtMoney(d.household.consumed)}</strong> / {F.fmtMoney(d.household.surplus)} mo</span>
             </div>
             <div className="bar">
-              <div className={'fill' + (d.household.pct > 1 ? ' is-over' : '')}
-                style={{ width: Math.min(100, d.household.pct * 100) + '%' }} />
+              <div className={'fill' + (d.household.pct > 1 ? ' is-over' : '') + (d.household.covered ? ' is-positive' : '')}
+                style={{ width: d.household.covered ? '100%' : Math.min(100, d.household.pct * 100) + '%' }} />
             </div>
             <div className="legend">
-              {d.household.remaining >= 0 ? (
-                <>About <strong>{Math.round(d.household.pct * 100)}%</strong> of your <strong>{F.fmtMoney(d.household.surplus)}/mo</strong> surplus would cover the servicing — leaves <strong>{F.fmtMoney(d.household.remaining)}/mo</strong>.</>
-              ) : (
+              {d.household.breached ? (
                 <>The servicing exceeds your <strong>{F.fmtMoney(d.household.surplus)}/mo</strong> surplus by <strong>{F.fmtMoney(-d.household.remaining)}/mo</strong> at this move.</>
+              ) : d.household.covered ? (
+                <>This move frees up <strong>{F.fmtMoney(d.cashflowDelta)}/mo</strong> of cashflow versus today — the servicing no longer draws on your <strong>{F.fmtMoney(d.household.surplus)}/mo</strong> personal surplus.</>
+              ) : (
+                <>About <strong>{Math.round(d.household.pct * 100)}%</strong> of your <strong>{F.fmtMoney(d.household.surplus)}/mo</strong> surplus would cover the servicing — leaves <strong>{F.fmtMoney(d.household.remaining)}/mo</strong>.</>
               )}
             </div>
           </div>
