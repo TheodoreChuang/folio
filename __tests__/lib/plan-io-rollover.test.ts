@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeIoRollover, type IoRolloverResult } from '@/lib/aggregate/plan/calculators/io-rollover'
+import { computeIoRollover } from '@/lib/aggregate/plan/calculators/io-rollover'
 import { pmt, interestOnlyPayment } from '@/lib/aggregate/plan/calculators/rate-sensitivity'
 import type { PlanContextLoan } from '@/lib/aggregate/plan/context'
 
