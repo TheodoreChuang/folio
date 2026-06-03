@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { ComposedChart, Line, XAxis, YAxis, ReferenceLine, Tooltip } from 'recharts'
 import { ChartContainer } from '@/components/ui/chart'
 import { BackToScenarios } from '@/components/plan/back-to-scenarios'
-import { HouseholdSurplusBar } from '@/components/plan/household-surplus-bar'
 import {
   computeHoldReinvest,
   type HoldReinvestResult,
@@ -612,16 +611,14 @@ const ASSUMPTIONS = [
   ['CGT and stamp duty are your estimates', 'Speak to your accountant. Accuracy depends on ownership history, depreciation and marginal rate.'],
 ] as const
 
-// ── Outputs panel ─────────────────────────────────────────────────────────────
+// ── Summaries panel (top-right column) ───────────────────────────────────────
 
-function OutputsPanel({
+function SummariesPanel({
   inputs,
   result,
-  context,
 }: {
   inputs: Inputs
   result: HoldReinvestResult | null
-  context: PlanContext
 }) {
   if (!result || inputs.salePriceAud === 0) {
     return (
@@ -635,13 +632,6 @@ function OutputsPanel({
   }
 
   const { saleSummary, reinvestSummary } = result
-  const horizon = inputs.horizonYears
-  const holdAtN = result.trajectories.holdEquityByYear[horizon]
-  const reinvestAtN = result.trajectories.reinvestEquityByYear[horizon]
-  const holdGain = holdAtN - result.trajectories.holdEquityByYear[0]
-  const reinvestGain = reinvestAtN - result.trajectories.reinvestEquityByYear[0]
-  const holdValueAtN = Math.round(Math.round(inputs.salePriceAud * 100) * Math.pow(1 + inputs.holdGrowthRatePct / 100, horizon))
-  const reinvestValueAtN = Math.round(Math.round(inputs.salePriceAud * 100) * Math.pow(1 + inputs.reinvestGrowthRatePct / 100, horizon))
   const commissionCents = Math.round(inputs.salePriceAud * 100 * inputs.commissionPct / 100)
 
   return (
@@ -718,133 +708,146 @@ function OutputsPanel({
           </div>
         )}
       </div>
+    </div>
+  )
+}
 
-      {/* Analysis — only when not blocked */}
-      {!result.blocked && (
-        <>
-          {/* Friction banner */}
-          <div className="border border-border rounded-xl bg-surface-raised px-5 py-4">
-            <div className="flex items-start gap-4">
-              <div className="flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle mb-1">Switching cost</p>
-                <p className="text-2xl font-display tabular-nums text-ink">{fmtMo(result.frictionCents)}</p>
-                <p className="text-xs text-foreground-muted mt-0.5">{fmtPct(result.frictionPct)} of property value — equity gap reinvesting must recover to outperform holding</p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle mb-1">Break-even</p>
-                {result.breakEvenYear !== null ? (
-                  <>
-                    <p className="text-2xl font-display text-ink">Yr {result.breakEvenYear}</p>
-                    <p className="text-xs text-foreground-muted mt-0.5">reinvest overtakes hold</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-2xl font-display text-foreground-muted">Never</p>
-                    <p className="text-xs text-foreground-subtle mt-0.5">within {inputs.horizonYears} yrs</p>
-                  </>
-                )}
-              </div>
-            </div>
+// ── Analysis section (full-width bottom) ──────────────────────────────────────
+
+function AnalysisSection({
+  inputs,
+  result,
+}: {
+  inputs: Inputs
+  result: HoldReinvestResult | null
+}) {
+  if (!result || inputs.salePriceAud === 0 || result.blocked) {
+    return null
+  }
+
+  const horizon = inputs.horizonYears
+  const holdAtN = result.trajectories.holdEquityByYear[horizon]
+  const reinvestAtN = result.trajectories.reinvestEquityByYear[horizon]
+  const holdGain = holdAtN - result.trajectories.holdEquityByYear[0]
+  const reinvestGain = reinvestAtN - result.trajectories.reinvestEquityByYear[0]
+  const holdValueAtN = Math.round(Math.round(inputs.salePriceAud * 100) * Math.pow(1 + inputs.holdGrowthRatePct / 100, horizon))
+  const reinvestValueAtN = Math.round(Math.round(inputs.salePriceAud * 100) * Math.pow(1 + inputs.reinvestGrowthRatePct / 100, horizon))
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Friction banner */}
+      <div className="border border-border rounded-xl bg-surface-raised px-5 py-4">
+        <div className="flex items-start gap-4">
+          <div className="flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle mb-1">Switching cost</p>
+            <p className="text-2xl font-display tabular-nums text-ink">{fmtMo(result.frictionCents)}</p>
+            <p className="text-xs text-foreground-muted mt-0.5">{fmtPct(result.frictionPct)} of property value — equity gap reinvesting must recover to outperform holding</p>
           </div>
-
-          {/* Cashflow note */}
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-surface-sunken/60 text-xs text-foreground-muted">
-            <span className="flex-shrink-0 font-bold">↓</span>
-            <span>Reinvesting also requires servicing a larger loan — this comparison measures equity growth only, not the higher monthly repayments.</span>
+          <div className="text-right flex-shrink-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle mb-1">Break-even</p>
+            {result.breakEvenYear !== null ? (
+              <>
+                <p className="text-2xl font-display text-ink">Yr {result.breakEvenYear}</p>
+                <p className="text-xs text-foreground-muted mt-0.5">reinvest overtakes hold</p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-display text-foreground-muted">Never</p>
+                <p className="text-xs text-foreground-subtle mt-0.5">within {inputs.horizonYears} yrs</p>
+              </>
+            )}
           </div>
+        </div>
+      </div>
 
-          {/* Chart */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <SectionLabel>Equity over {inputs.horizonYears} years</SectionLabel>
-              <div className="flex items-center gap-4 text-[11px] text-foreground-muted pb-3">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-5 h-[2px] bg-[hsl(188_32%_32%)] inline-block" /> Hold
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-5 h-[2px] border-t-2 border-dashed border-[hsl(30_70%_45%)] inline-block" /> Reinvest
-                </span>
-              </div>
-            </div>
-            <div className="border border-border rounded-xl bg-surface-raised p-4 overflow-hidden">
-              <EquityChart result={result} horizonYears={inputs.horizonYears} />
-              {result.breakEvenYear === null && (
-                <p className="text-xs text-foreground-muted mt-3">
-                  Reinvest growth ({fmtPct(inputs.reinvestGrowthRatePct)}) is at or below hold growth ({fmtPct(inputs.holdGrowthRatePct)}) — the reinvested path never overtakes holding within this horizon. The switching cost is permanent.
-                </p>
-              )}
-            </div>
+      {/* Cashflow note */}
+      <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-surface-sunken/60 text-xs text-foreground-muted">
+        <span className="flex-shrink-0 font-bold">↓</span>
+        <span>Reinvesting also requires servicing a larger loan — this comparison measures equity growth only, not the higher monthly repayments.</span>
+      </div>
+
+      {/* Chart */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <SectionLabel>Equity over {inputs.horizonYears} years</SectionLabel>
+          <div className="flex items-center gap-4 text-[11px] text-foreground-muted pb-3">
+            <span className="flex items-center gap-1.5">
+              <span className="w-5 h-[2px] bg-[hsl(188_32%_32%)] inline-block" /> Hold
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-5 h-[2px] border-t-2 border-dashed border-[hsl(30_70%_45%)] inline-block" /> Reinvest
+            </span>
           </div>
-
-          {/* Comparison tiles */}
-          <div>
-            <SectionLabel>Comparison at year {inputs.horizonYears}</SectionLabel>
-            <div className="border border-border rounded-xl bg-surface-raised overflow-hidden">
-              {/* Header */}
-              <div className="grid grid-cols-[1fr_1fr_1fr] gap-0 border-b border-rule bg-surface-sunken/40">
-                <div className="py-2 px-2" />
-                <div className="py-2 px-2 border-l border-rule/60">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle">Hold</span>
-                </div>
-                <div className="py-2 px-2 border-l border-rule/60">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle">Reinvest</span>
-                </div>
-              </div>
-              <CompareTile
-                label="Equity today"
-                hold={fmtMo(result.trajectories.holdEquityByYear[0])}
-                reinvest={fmtMo(result.trajectories.reinvestEquityByYear[0])}
-                reinvestSub="after friction"
-              />
-              <CompareTile
-                label={`Equity at yr ${horizon}`}
-                hold={fmtMo(holdAtN)}
-                reinvest={fmtMo(reinvestAtN)}
-              />
-              <CompareTile
-                label={`Est. value at yr ${horizon}`}
-                hold={fmtMo(holdValueAtN)}
-                reinvest={fmtMo(reinvestValueAtN)}
-              />
-              <CompareTile
-                label="Gain over horizon"
-                hold={`+${fmtMo(holdGain)}`}
-                reinvest={`+${fmtMo(reinvestGain)}`}
-              />
-              <CompareTile
-                label="Break-even"
-                hold="—"
-                reinvest={result.breakEvenYear !== null ? `Year ${result.breakEvenYear}` : `Beyond ${horizon} yrs`}
-                footer
-              />
-            </div>
-          </div>
-
-          {/* Assumptions */}
-          <div className="border border-border rounded-xl bg-surface-raised px-5 py-4">
-            <p className="text-xs font-semibold text-ink mb-3">
-              Modelling assumptions
-              <span className="ml-2 text-[11px] font-normal text-foreground-subtle">load-bearing for these projections</span>
+        </div>
+        <div className="border border-border rounded-xl bg-surface-raised p-4 overflow-hidden">
+          <EquityChart result={result} horizonYears={inputs.horizonYears} />
+          {result.breakEvenYear === null && (
+            <p className="text-xs text-foreground-muted mt-3">
+              Reinvest growth ({fmtPct(inputs.reinvestGrowthRatePct)}) is at or below hold growth ({fmtPct(inputs.holdGrowthRatePct)}) — the reinvested path never overtakes holding within this horizon. The switching cost is permanent.
             </p>
-            <div className="grid grid-cols-1 gap-3">
-              {ASSUMPTIONS.map(([title, body]) => (
-                <div key={title}>
-                  <p className="text-xs font-medium text-ink">{title}</p>
-                  <p className="text-[11px] text-foreground-muted leading-relaxed">{body}</p>
-                </div>
-              ))}
+          )}
+        </div>
+      </div>
+
+      {/* Comparison tiles */}
+      <div>
+        <SectionLabel>Comparison at year {inputs.horizonYears}</SectionLabel>
+        <div className="border border-border rounded-xl bg-surface-raised overflow-hidden">
+          <div className="grid grid-cols-[1fr_1fr_1fr] gap-0 border-b border-rule bg-surface-sunken/40">
+            <div className="py-2 px-2" />
+            <div className="py-2 px-2 border-l border-rule/60">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle">Hold</span>
+            </div>
+            <div className="py-2 px-2 border-l border-rule/60">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle">Reinvest</span>
             </div>
           </div>
-        </>
-      )}
+          <CompareTile
+            label="Equity today"
+            hold={fmtMo(result.trajectories.holdEquityByYear[0])}
+            reinvest={fmtMo(result.trajectories.reinvestEquityByYear[0])}
+            reinvestSub="after friction"
+          />
+          <CompareTile
+            label={`Equity at yr ${horizon}`}
+            hold={fmtMo(holdAtN)}
+            reinvest={fmtMo(reinvestAtN)}
+          />
+          <CompareTile
+            label={`Est. value at yr ${horizon}`}
+            hold={fmtMo(holdValueAtN)}
+            reinvest={fmtMo(reinvestValueAtN)}
+          />
+          <CompareTile
+            label="Gain over horizon"
+            hold={`+${fmtMo(holdGain)}`}
+            reinvest={`+${fmtMo(reinvestGain)}`}
+          />
+          <CompareTile
+            label="Break-even"
+            hold="—"
+            reinvest={result.breakEvenYear !== null ? `Year ${result.breakEvenYear}` : `Beyond ${horizon} yrs`}
+            footer
+          />
+        </div>
+      </div>
 
-      {/* Household surplus bar */}
-      <HouseholdSurplusBar
-        surplusCents={context.householdSurplusMonthlyCents}
-        consumedCents={result.blocked ? 0 : Math.max(0, -reinvestSummary.newLoanRepaymentMonthlyCents)}
-        label="New loan repayment (reinvest path)"
-        action="purchase"
-      />
+      {/* Assumptions */}
+      <div className="border border-border rounded-xl bg-surface-raised px-5 py-4">
+        <p className="text-xs font-semibold text-ink mb-3">
+          Modelling assumptions
+          <span className="ml-2 text-[11px] font-normal text-foreground-subtle">load-bearing for these projections</span>
+        </p>
+        <div className="grid grid-cols-1 gap-3">
+          {ASSUMPTIONS.map(([title, body]) => (
+            <div key={title}>
+              <p className="text-xs font-medium text-ink">{title}</p>
+              <p className="text-[11px] text-foreground-muted leading-relaxed">{body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   )
 }
@@ -946,8 +949,8 @@ export default function HoldReinvestPage() {
           </p>
         </div>
 
-        {/* Body: two columns */}
-        <div className="grid grid-cols-[420px_1fr] items-start">
+        {/* Top: two columns — inputs | summaries */}
+        <div className="grid grid-cols-[420px_1fr] items-start border-b border-rule">
           {/* Left: inputs */}
           <div className="border-r border-rule p-6">
             <InputsPanel
@@ -957,12 +960,15 @@ export default function HoldReinvestPage() {
               onChange={handleChange}
             />
           </div>
-          {/* Right: outputs */}
+          {/* Right: sale + reinvestment ledgers */}
           <div className="bg-surface-sunken/40 p-6">
-            <div className="sticky top-6">
-              <OutputsPanel inputs={inputs} result={result} context={context} />
-            </div>
+            <SummariesPanel inputs={inputs} result={result} />
           </div>
+        </div>
+
+        {/* Bottom: full-width analysis — switching cost, chart, comparison, assumptions */}
+        <div className="p-6 border-t border-rule">
+          <AnalysisSection inputs={inputs} result={result} />
         </div>
       </div>
     </div>
