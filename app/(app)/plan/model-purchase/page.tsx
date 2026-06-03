@@ -44,6 +44,8 @@ type Inputs = {
   adminAud: number
   pmFeePct: number
   vacancyPct: number
+  source: 'equity' | 'cash' | 'mix'
+  equityChecked: Record<string, boolean>
   equityDrawsAud: Record<string, number>
 }
 
@@ -72,6 +74,8 @@ const DEFAULT_INPUTS: Inputs = {
   adminAud: 0,
   pmFeePct: 0,
   vacancyPct: 0,
+  source: 'cash',
+  equityChecked: {},
   equityDrawsAud: {},
 }
 
@@ -351,71 +355,123 @@ function ImpactTile({
 function EquityList({
   equityAvailable,
   drawsAud,
+  checkedIds,
+  remainingCashCents,
   onChangeDraw,
+  onChangeChecked,
 }: {
   equityAvailable: ModelPurchaseResult['equityAvailable']
   drawsAud: Record<string, number>
+  checkedIds: Record<string, boolean>
+  remainingCashCents: number
   onChangeDraw: (propertyId: string, aud: number) => void
+  onChangeChecked: (propertyId: string, checked: boolean) => void
 }) {
+  if (equityAvailable.length === 0) {
+    return <p className="text-xs text-foreground-muted mt-3">No properties with a valuation recorded.</p>
+  }
+
   return (
-    <div className="flex flex-col gap-3 mt-3">
+    <div className="flex flex-col gap-2 mt-3">
       {equityAvailable.map(eq => {
         const drawAud = drawsAud[eq.propertyId] ?? 0
-        const usableAud = eq.usableEquityCents / 100
-        const outstandingAud = eq.outstandingCents / 100
+        const isOn = checkedIds[eq.propertyId] === true
         const valuationAud = eq.valuationCents / 100
+        const outstandingAud = eq.outstandingCents / 100
+        const maxAtFullAud = Math.max(0, valuationAud - outstandingAud)
+        const isDepleted = maxAtFullAud <= 0
         const curLvr = valuationAud > 0 ? outstandingAud / valuationAud : 0
-        const newLvr = valuationAud > 0 ? (outstandingAud + drawAud) / valuationAud : 0
-        const isOn = drawAud > 0
+        const newLvr = valuationAud > 0 ? Math.min(1, (outstandingAud + drawAud) / valuationAud) : 0
 
         return (
-          <div key={eq.propertyId} className={`border rounded p-3 ${isOn ? 'border-accent/40 bg-accent/5' : 'border-border bg-surface'}`}>
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div>
+          <div
+            key={eq.propertyId}
+            className={`border rounded-lg p-3 ${
+              isDepleted
+                ? 'border-border bg-surface opacity-60'
+                : isOn
+                  ? 'border-accent/40 bg-accent/5'
+                  : 'border-border bg-surface'
+            }`}
+          >
+            <label className={`flex items-start gap-2.5 ${isDepleted ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+              <input
+                type="checkbox"
+                className="mt-0.5 w-3.5 h-3.5 rounded accent-accent"
+                checked={isOn}
+                disabled={isDepleted}
+                onChange={e => {
+                  const checked = e.target.checked
+                  onChangeChecked(eq.propertyId, checked)
+                  if (checked && drawAud === 0) {
+                    const autoFill = Math.min(maxAtFullAud, Math.max(0, remainingCashCents / 100))
+                    onChangeDraw(eq.propertyId, Math.round(autoFill))
+                  }
+                  if (!checked) {
+                    onChangeDraw(eq.propertyId, 0)
+                  }
+                }}
+              />
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-ink">{eq.nickname ?? eq.address}</p>
-                <p className="text-xs text-foreground-muted">
-                  {fmtShort(eq.valuationCents)} · {fmtPct(curLvr, 0)} LVR · {fmtShort(eq.usableEquityCents)} usable
-                </p>
+                {isDepleted ? (
+                  <p className="text-xs text-foreground-subtle">Already at 100% LVR</p>
+                ) : (
+                  <p className="text-xs text-foreground-muted">
+                    {fmtMo(eq.valuationCents)} · {fmtPct(curLvr, 0)} LVR now
+                  </p>
+                )}
               </div>
-            </div>
-            <div className="flex gap-3 items-center">
-              <div className="flex-1">
-                <MoneyInput
-                  valueAud={drawAud}
-                  onChange={v => onChangeDraw(eq.propertyId, Math.max(0, Math.min(v, usableAud)))}
-                  placeholder="0"
-                />
-              </div>
-              <button
-                type="button"
-                className="text-xs text-foreground-muted hover:text-foreground-subtle transition-colors"
-                onClick={() => onChangeDraw(eq.propertyId, 0)}
-              >
-                clear
-              </button>
-            </div>
-            {drawAud > 0 && (
-              <div className="mt-2">
-                {/* LVR bar */}
-                <div className="relative h-1.5 bg-surface-sunken rounded-full overflow-hidden">
-                  <div className="absolute top-0 bottom-0 left-0 bg-border-strong rounded-full" style={{ width: `${Math.min(100, curLvr * 100)}%` }} />
-                  <div
-                    className="absolute top-0 bottom-0 bg-negative/50 rounded-full"
-                    style={{ left: `${Math.min(100, curLvr * 100)}%`, width: `${Math.min(100 - curLvr * 100, Math.max(0, (newLvr - curLvr) * 100))}%` }}
-                  />
-                  <div className="absolute top-0 bottom-0 w-px bg-foreground-muted/50" style={{ left: '80%' }} />
+            </label>
+
+            {isOn && !isDepleted && (
+              <div className="mt-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[10px] text-foreground-muted mb-1">Draw</p>
+                    <MoneyInput
+                      valueAud={drawAud}
+                      onChange={v => onChangeDraw(eq.propertyId, Math.max(0, Math.min(maxAtFullAud, v)))}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-foreground-muted mb-1">To LVR</p>
+                    <PctInput
+                      value={Math.round(newLvr * 100)}
+                      onChange={v => {
+                        const lvr = Math.min(100, Math.max(0, v))
+                        onChangeDraw(
+                          eq.propertyId,
+                          Math.max(0, Math.min(maxAtFullAud, (lvr / 100) * valuationAud - outstandingAud)),
+                        )
+                      }}
+                    />
+                  </div>
                 </div>
-                <p className="text-[10px] text-foreground-muted mt-1">
-                  LVR {fmtPct(curLvr, 0)} → {fmtPct(newLvr, 0)} · 80% cap
-                </p>
+                <div className="mt-2">
+                  <div className="relative h-1.5 bg-surface-sunken rounded-full overflow-hidden">
+                    <div
+                      className="absolute top-0 bottom-0 left-0 bg-border-strong rounded-full"
+                      style={{ width: `${Math.min(100, curLvr * 100)}%` }}
+                    />
+                    <div
+                      className="absolute top-0 bottom-0 bg-negative/50 rounded-full"
+                      style={{
+                        left: `${Math.min(100, curLvr * 100)}%`,
+                        width: `${Math.min(100 - curLvr * 100, Math.max(0, (newLvr - curLvr) * 100))}%`,
+                      }}
+                    />
+                    <div className="absolute top-0 bottom-0 w-px bg-foreground-muted/60" style={{ left: '80%' }} />
+                  </div>
+                  <p className="text-[10px] text-foreground-subtle mt-1">
+                    80% common cap · up to {fmtMo(maxAtFullAud * 100)} at 100%
+                  </p>
+                </div>
               </div>
             )}
           </div>
         )
       })}
-      {equityAvailable.length === 0 && (
-        <p className="text-xs text-foreground-muted">No properties with a valuation recorded.</p>
-      )}
     </div>
   )
 }
@@ -433,7 +489,6 @@ function InputsPanel({
 }) {
   const [costsOpen, setCostsOpen] = useState(false)
   const [runningOpen, setRunningOpen] = useState(false)
-  const [showEquity, setShowEquity] = useState(false)
 
   const depositAud = Math.round(inputs.priceAud * inputs.depositPct / 100)
   const baseLoanAud = Math.max(0, inputs.priceAud - depositAud)
@@ -458,8 +513,6 @@ function InputsPanel({
     inputs.landlordInsAud, inputs.strataAud, inputs.landTaxAud,
     inputs.maintenanceAud, inputs.adminAud, inputs.pmFeePct, inputs.vacancyPct,
   ].filter(v => v > 0).length
-
-  const totalEquityDrawn = Object.values(inputs.equityDrawsAud).reduce((s, v) => s + v, 0)
 
   return (
     <div className="flex flex-col gap-5">
@@ -512,33 +565,51 @@ function InputsPanel({
             </InputRow>
           )}
 
-          {/* Equity toggle */}
-          <div>
-            <button
-              type="button"
-              className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground-subtle transition-colors"
-              onClick={() => setShowEquity(o => !o)}
-            >
-              <svg className={`w-3 h-3 transition-transform ${showEquity ? 'rotate-90' : ''}`} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 2l4 4-4 4" />
-              </svg>
-              Equity from existing properties
-              {totalEquityDrawn > 0 && (
-                <span className="ml-1 text-xs text-accent font-medium">
-                  {fmtMo(totalEquityDrawn * 100)} drawn
-                </span>
-              )}
-            </button>
-            {showEquity && (
-              <EquityList
-                equityAvailable={result.equityAvailable}
-                drawsAud={inputs.equityDrawsAud}
-                onChangeDraw={(id, aud) =>
-                  onChange({ equityDrawsAud: { ...inputs.equityDrawsAud, [id]: aud } })
-                }
-              />
-            )}
+          {/* Funded from segmented control */}
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-foreground-muted pt-2 flex-shrink-0">Funded from</span>
+            <div className="w-44 flex-shrink-0 flex border border-border rounded overflow-hidden text-sm">
+              {(['equity', 'cash', 'mix'] as const).map((val, i) => (
+                <button
+                  key={val}
+                  type="button"
+                  className={`flex-1 py-2 text-center text-xs transition-colors ${
+                    inputs.source === val ? 'bg-ink text-white font-semibold' : 'bg-surface text-foreground-muted hover:bg-surface-sunken'
+                  } ${i > 0 ? 'border-l border-border' : ''}`}
+                  onClick={() => {
+                    if (val === 'cash') {
+                      onChange({ source: val, equityChecked: {}, equityDrawsAud: {} })
+                    } else {
+                      onChange({ source: val })
+                    }
+                  }}
+                >
+                  {val === 'equity' ? 'Equity' : val === 'cash' ? 'Cash' : 'Both'}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {inputs.source !== 'cash' && (
+            <EquityList
+              equityAvailable={result.equityAvailable}
+              drawsAud={inputs.equityDrawsAud}
+              checkedIds={inputs.equityChecked}
+              remainingCashCents={result.cashContributionCents}
+              onChangeDraw={(id, aud) =>
+                onChange({ equityDrawsAud: { ...inputs.equityDrawsAud, [id]: aud } })
+              }
+              onChangeChecked={(id, checked) =>
+                onChange({ equityChecked: { ...inputs.equityChecked, [id]: checked } })
+              }
+            />
+          )}
+
+          {inputs.source === 'mix' && result.cashContributionCents > 0 && (
+            <p className="text-xs text-foreground-muted">
+              Remaining <span className="font-medium text-ink">{fmtMo(result.cashContributionCents)}</span> funded by cash
+            </p>
+          )}
 
           {/* Allocation status */}
           {inputs.priceAud > 0 && (
