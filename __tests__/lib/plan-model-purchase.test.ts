@@ -43,6 +43,7 @@ function makeProperty(overrides: Partial<PlanContextProperty> = {}): PlanContext
     nickname: null,
     startDate: '2020-01-01',
     endDate: null,
+    purchasePriceCents: null,
     latestValuation: { valueCents: 150000000, valuedAt: '2026-01-01' }, // $1.5M
     ...overrides,
   }

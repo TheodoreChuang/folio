@@ -11,6 +11,7 @@ export type PlanContextProperty = {
   nickname: string | null
   startDate: string
   endDate: string | null
+  purchasePriceCents: number | null
   latestValuation: { valueCents: number; valuedAt: string } | null
 }
 
@@ -113,6 +114,7 @@ export async function fetchPlanContext(userId: string): Promise<PlanContext> {
       nickname: p.nickname,
       startDate: p.startDate,
       endDate: p.endDate ?? null,
+      purchasePriceCents: p.purchasePriceCents ?? null,
       latestValuation: v ? { valueCents: v.valueCents, valuedAt: v.valuedAt } : null,
     }
   })

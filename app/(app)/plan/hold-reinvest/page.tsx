@@ -9,6 +9,10 @@ import {
   computeHoldReinvest,
   type HoldReinvestResult,
 } from '@/lib/aggregate/plan/calculators/hold-reinvest'
+import {
+  computeCgtEstimate,
+  type CgtEstimateResult,
+} from '@/lib/aggregate/plan/calculators/cgt-estimate'
 import type { PlanContext, PlanContextProperty } from '@/lib/aggregate/plan/context'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -25,7 +29,17 @@ type Inputs = {
   sellingLegalAud: number
   sellingMarketingAud: number
   sellingOtherAud: number
-  cgtAud: number
+  cgtMode: 'estimate' | 'manual'
+  cgtManualAud: number
+  cgtPurchasePriceAud: number
+  cgtCostStampDutyAud: number
+  cgtCostLegalAud: number
+  cgtCostBuildingPestAud: number
+  cgtCostBuyerAgentAud: number
+  cgtCostImprovementsAud: number
+  cgtDepreciationAud: number
+  cgtDiscountPct: number
+  cgtMarginalRatePct: number
   stampDutyAud: number
   buyingLegalAud: number
   buildingPestAud: number
@@ -46,7 +60,17 @@ const DEFAULT_INPUTS: Inputs = {
   sellingLegalAud: 1500,
   sellingMarketingAud: 0,
   sellingOtherAud: 0,
-  cgtAud: 0,
+  cgtMode: 'estimate',
+  cgtManualAud: 0,
+  cgtPurchasePriceAud: 0,
+  cgtCostStampDutyAud: 0,
+  cgtCostLegalAud: 0,
+  cgtCostBuildingPestAud: 0,
+  cgtCostBuyerAgentAud: 0,
+  cgtCostImprovementsAud: 0,
+  cgtDepreciationAud: 0,
+  cgtDiscountPct: 50,
+  cgtMarginalRatePct: 37,
   stampDutyAud: 0,
   buyingLegalAud: 1500,
   buildingPestAud: 600,
@@ -297,13 +321,18 @@ function InputsPanel({
   result,
   properties,
   onChange,
+  cgtCents,
+  cgtEstimate,
 }: {
   inputs: Inputs
   result: HoldReinvestResult | null
   properties: PlanContextProperty[]
   onChange: (patch: Partial<Inputs>) => void
+  cgtCents: number
+  cgtEstimate: CgtEstimateResult | null
 }) {
   const [buyingOpen, setBuyingOpen] = useState(true)
+  const [cgtOpen, setCgtOpen] = useState(false)
 
   const selectedProp = properties.find(p => p.id === inputs.selectedPropertyId)
   const priceDelta = selectedProp?.latestValuation
@@ -336,6 +365,7 @@ function InputsPanel({
                 onChange({
                   selectedPropertyId: id,
                   salePriceAud: prop?.latestValuation ? prop.latestValuation.valueCents / 100 : 0,
+                  cgtPurchasePriceAud: prop?.purchasePriceCents ? prop.purchasePriceCents / 100 : 0,
                 })
               }}
             >
@@ -387,13 +417,108 @@ function InputsPanel({
 
           {/* CGT */}
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle mb-2">
-              Capital gains tax <span className="normal-case font-normal text-foreground-subtle">— optional estimate</span>
+            {/* Summary header */}
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle pt-0.5">
+                {inputs.cgtMode === 'manual' ? 'CGT — your figure' : 'Estimated CGT'}
+              </p>
+              <span className="text-sm font-semibold tabular-nums text-ink">
+                {inputs.cgtMode === 'estimate'
+                  ? (cgtEstimate ? fmtMo(cgtCents) : '—')
+                  : (inputs.cgtManualAud > 0 ? fmtMo(Math.round(inputs.cgtManualAud * 100)) : '—')}
+              </span>
+            </div>
+            <p className="text-[11px] text-foreground-muted leading-snug mb-3">
+              {inputs.cgtMode === 'manual'
+                ? (inputs.cgtManualAud > 0
+                    ? 'Manual figure — overrides the estimate'
+                    : 'Enter a figure below, or switch to Estimate')
+                : !cgtEstimate
+                ? 'Enter a sale price to compute an estimate'
+                : cgtEstimate.isCapitalLoss
+                ? 'Sale is below the cost base — a capital loss, no CGT payable'
+                : <>Cost base <strong>{fmtShort(cgtEstimate.costBaseCents)}</strong> · gain <strong>{fmtShort(cgtEstimate.grossGainCents)}</strong> · {inputs.cgtDiscountPct}% discount · {inputs.cgtMarginalRatePct}% rate</>}
             </p>
-            <MoneyInput valueAud={inputs.cgtAud} onChange={v => onChange({ cgtAud: v })} placeholder="Estimated CGT" />
-            <p className="text-[11px] text-foreground-subtle mt-1.5 leading-snug">
-              CGT depends on ownership history, depreciation claimed, and marginal rate. Enter your accountant's estimate.
-            </p>
+            <Collapsible
+              title="CGT details"
+              summary={inputs.cgtMode === 'manual' ? 'Manual' : 'Estimate'}
+              open={cgtOpen}
+              onToggle={() => setCgtOpen(o => !o)}
+            >
+              {/* Mode toggle */}
+              <div className="flex border border-border rounded overflow-hidden text-sm mb-4">
+                <button
+                  type="button"
+                  className={`flex-1 py-2 text-center text-xs transition-colors ${inputs.cgtMode !== 'manual' ? 'bg-foreground-muted text-white font-medium' : 'bg-surface text-foreground-muted hover:bg-surface-sunken'}`}
+                  onClick={() => onChange({ cgtMode: 'estimate' })}
+                >
+                  Estimate
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 py-2 text-center text-xs transition-colors border-l border-border ${inputs.cgtMode === 'manual' ? 'bg-foreground-muted text-white font-medium' : 'bg-surface text-foreground-muted hover:bg-surface-sunken'}`}
+                  onClick={() => onChange({ cgtMode: 'manual' })}
+                >
+                  Manual
+                </button>
+              </div>
+
+              {inputs.cgtMode === 'manual' ? (
+                <div className="flex flex-col gap-3">
+                  <InputRow label="CGT amount">
+                    <MoneyInput valueAud={inputs.cgtManualAud} onChange={v => onChange({ cgtManualAud: v })} placeholder="Estimated CGT" />
+                  </InputRow>
+                  <p className="text-[11px] text-foreground-subtle leading-snug">
+                    A figure from your accountant. Leave blank to exclude CGT from the comparison.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <InputRow label="Original purchase price" hint="from your records">
+                    <MoneyInput valueAud={inputs.cgtPurchasePriceAud} onChange={v => onChange({ cgtPurchasePriceAud: v })} placeholder="430,000" />
+                  </InputRow>
+
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle mb-2">
+                      Purchase costs &amp; improvements <span className="normal-case font-normal text-foreground-subtle">— added to the cost base</span>
+                    </p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      {([
+                        ['Stamp duty (on purchase)', 'cgtCostStampDutyAud'],
+                        ['Legal & conveyancing', 'cgtCostLegalAud'],
+                        ['Building & pest', 'cgtCostBuildingPestAud'],
+                        ["Buyer's agent fee", 'cgtCostBuyerAgentAud'],
+                        ['Capital improvements', 'cgtCostImprovementsAud'],
+                      ] as const).map(([label, key]) => (
+                        <div key={key}>
+                          <p className="text-xs text-foreground-muted mb-1">{label}</p>
+                          <MoneyInput valueAud={inputs[key]} onChange={v => onChange({ [key]: v } as Partial<Inputs>)} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-foreground-muted mb-1">CGT discount <span className="text-foreground-subtle text-[11px]">50% if held &gt; 12 mo</span></p>
+                      <PctInput value={inputs.cgtDiscountPct} onChange={v => onChange({ cgtDiscountPct: v })} suffix="%" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-foreground-muted mb-1">Marginal tax rate <span className="text-foreground-subtle text-[11px]">your top rate</span></p>
+                      <PctInput value={inputs.cgtMarginalRatePct} onChange={v => onChange({ cgtMarginalRatePct: v })} suffix="%" />
+                    </div>
+                  </div>
+
+                  <InputRow label="Depreciation claimed" hint="Div 40 — added back to the gain">
+                    <MoneyInput valueAud={inputs.cgtDepreciationAud} onChange={v => onChange({ cgtDepreciationAud: v })} placeholder="0" />
+                  </InputRow>
+
+                  <p className="text-[11px] text-foreground-subtle leading-snug">
+                    The cost base also includes the <strong>selling costs</strong> entered above. An estimate only — a large gain can span tax brackets, so confirm with your accountant.
+                  </p>
+                </div>
+              )}
+            </Collapsible>
           </div>
         </div>
       </div>
@@ -616,9 +741,13 @@ const ASSUMPTIONS = [
 function SummariesPanel({
   inputs,
   result,
+  cgtCents,
+  cgtEstimate,
 }: {
   inputs: Inputs
   result: HoldReinvestResult | null
+  cgtCents: number
+  cgtEstimate: CgtEstimateResult | null
 }) {
   if (!result || inputs.salePriceAud === 0) {
     return (
@@ -649,16 +778,22 @@ function SummariesPanel({
             <LedgerRow label="Loan payouts" sub="outstanding balances" value={`−${fmtMo(saleSummary.loanPayoutsCents)}`} />
           )}
           <LedgerRow label="Net cash after loans" value={fmtMo(saleSummary.netAfterLoansCents)} total positive={saleSummary.netAfterLoansCents > 0} />
-          {inputs.cgtAud > 0 && (
+          {inputs.cgtMode === 'estimate' && cgtEstimate && !cgtEstimate.isCapitalLoss && (
             <>
-              <LedgerRow label="Estimated CGT" value={`−${fmtMo(Math.round(inputs.cgtAud * 100))}`} />
+              <LedgerRow label="Estimated CGT" value={`−${fmtMo(cgtCents)}`} />
+              <LedgerRow label="Net cash after CGT" value={fmtMo(saleSummary.netAfterCgtCents)} total positive={saleSummary.netAfterCgtCents > 0} />
+            </>
+          )}
+          {inputs.cgtMode === 'manual' && inputs.cgtManualAud > 0 && (
+            <>
+              <LedgerRow label="CGT — your figure" value={`−${fmtMo(cgtCents)}`} />
               <LedgerRow label="Net cash after CGT" value={fmtMo(saleSummary.netAfterCgtCents)} total positive={saleSummary.netAfterCgtCents > 0} />
             </>
           )}
         </div>
-        {inputs.cgtAud === 0 && (
+        {inputs.cgtMode === 'manual' && inputs.cgtManualAud === 0 && (
           <p className="text-[11px] text-foreground-subtle mt-1.5 px-1">
-            CGT not entered — add an estimate in Step 1 for a more accurate comparison.
+            CGT not entered — switch to Estimate or enter your accountant&apos;s figure in Step 1.
           </p>
         )}
       </div>
@@ -905,13 +1040,47 @@ export default function HoldReinvestPage() {
 
   const { context } = pageState
 
+  // Derive selling costs total (used in CGT cost base for estimate mode)
+  const salePriceCents = Math.round(inputs.salePriceAud * 100)
+  const commissionCentsForCgt = Math.round(salePriceCents * inputs.commissionPct / 100)
+  const sellingCostsTotalCents =
+    commissionCentsForCgt +
+    Math.round(inputs.sellingLegalAud * 100) +
+    Math.round(inputs.sellingMarketingAud * 100) +
+    Math.round(inputs.sellingOtherAud * 100)
+
+  // Compute CGT estimate (always computed when sale price is set; used in estimate mode)
+  const cgtEstimate: CgtEstimateResult | null =
+    inputs.salePriceAud > 0
+      ? computeCgtEstimate({
+          salePriceCents,
+          purchasePriceCents: Math.round(inputs.cgtPurchasePriceAud * 100),
+          costsCents: {
+            stampDuty: Math.round(inputs.cgtCostStampDutyAud * 100),
+            legal: Math.round(inputs.cgtCostLegalAud * 100),
+            buildingPest: Math.round(inputs.cgtCostBuildingPestAud * 100),
+            buyerAgent: Math.round(inputs.cgtCostBuyerAgentAud * 100),
+            improvements: Math.round(inputs.cgtCostImprovementsAud * 100),
+          },
+          sellingCostsTotalCents,
+          depreciationCents: Math.round(inputs.cgtDepreciationAud * 100),
+          discountPct: inputs.cgtDiscountPct,
+          marginalRatePct: inputs.cgtMarginalRatePct,
+        })
+      : null
+
+  const cgtCents =
+    inputs.cgtMode === 'manual'
+      ? Math.round(inputs.cgtManualAud * 100)
+      : (cgtEstimate?.estimatedCgtCents ?? 0)
+
   // Compute result (null when no property selected or no sale price)
   let result: HoldReinvestResult | null = null
   if (inputs.selectedPropertyId && inputs.salePriceAud > 0) {
     result = computeHoldReinvest({
       selectedPropertyId: inputs.selectedPropertyId,
-      salePriceCents: Math.round(inputs.salePriceAud * 100),
-      cgtCents: Math.round(inputs.cgtAud * 100),
+      salePriceCents,
+      cgtCents,
       newLoanRatePct: inputs.newLoanRatePct,
       newLoanTermYears: inputs.newLoanTermYears,
       newLoanType: inputs.newLoanType,
@@ -950,7 +1119,7 @@ export default function HoldReinvestPage() {
         </div>
 
         {/* Top: two columns — inputs | summaries */}
-        <div className="grid grid-cols-[420px_1fr] items-start border-b border-rule">
+        <div className="grid grid-cols-2 items-start border-b border-rule">
           {/* Left: inputs */}
           <div className="border-r border-rule p-6">
             <InputsPanel
@@ -958,11 +1127,13 @@ export default function HoldReinvestPage() {
               result={result}
               properties={context.properties}
               onChange={handleChange}
+              cgtCents={cgtCents}
+              cgtEstimate={cgtEstimate}
             />
           </div>
           {/* Right: sale + reinvestment ledgers */}
           <div className="bg-surface-sunken/40 p-6">
-            <SummariesPanel inputs={inputs} result={result} />
+            <SummariesPanel inputs={inputs} result={result} cgtCents={cgtCents} cgtEstimate={cgtEstimate} />
           </div>
         </div>
 
