@@ -147,8 +147,8 @@ export default function LoansPage() {
                 {e.name}
                 {entityFilter === e.id && (
                   <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
-                    <line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" strokeWidth="1.4"/>
-                    <line x1="2" y1="8" x2="8" y2="2" stroke="currentColor" strokeWidth="1.4"/>
+                    <line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" strokeWidth="1.4" />
+                    <line x1="2" y1="8" x2="8" y2="2" stroke="currentColor" strokeWidth="1.4" />
                   </svg>
                 )}
               </button>
@@ -168,17 +168,14 @@ export default function LoansPage() {
             foot={monthlyRepaymentsCents !== null ? (
               <span>{formatCents(monthlyRepaymentsCents * 12)} / yr</span>
             ) : undefined}
-            secondary
           />
           <MetricTile
             label="Weighted avg rate"
             value={loading ? '…' : weightedAvgRate !== null ? `${weightedAvgRate.toFixed(2)}%` : '—'}
-            secondary
           />
           <MetricTile
             label="Properties secured"
             value={loading ? '…' : String(securedPropertyIds.size)}
-            secondary
           />
         </div>
 
@@ -200,15 +197,15 @@ export default function LoansPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Lender</th>
-                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Nickname / Account</th>
-                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Entity</th>
-                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Security</th>
-                      <th className="text-right text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Balance</th>
-                      <th className="text-right text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Rate</th>
-                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Type</th>
-                      <th className="text-right text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Repayment</th>
+                    <tr className="border-b border-border bg-background">
+                      <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Lender</th>
+                      <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Nickname / Account</th>
+                      <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Entity</th>
+                      <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Security</th>
+                      <th className="text-right font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Balance</th>
+                      <th className="text-right font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Rate</th>
+                      <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Type</th>
+                      <th className="text-right font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Repayment</th>
                     </tr>
                   </thead>
                   <tbody>

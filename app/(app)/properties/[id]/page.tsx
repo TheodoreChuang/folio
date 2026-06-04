@@ -1714,7 +1714,7 @@ export default function PropertyDetailPage() {
             ) : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b border-border bg-background">
                     <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Date</th>
                     <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Source</th>
                     <th className="text-right font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Value</th>
