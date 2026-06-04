@@ -1,0 +1,109 @@
+/* =====================================================================
+   FOLIO — TAILWIND v4 THEME LAYER   (disposable consumer)
+   ---------------------------------------------------------------------
+   This is the ONLY Tailwind-aware file in the system. It maps Folio's
+   framework-agnostic tokens (tokens.css) onto Tailwind's theme
+   namespaces using `@theme inline`, so generated utilities resolve
+   directly to the :root variables rather than emitting their own copies.
+
+   • Source of truth stays in tokens.css.
+   • `inline` keeps the coupling one-directional: utilities point AT our
+     vars; our vars never point at Tailwind.
+   • If Tailwind is ever swapped out, delete THIS file. tokens.css,
+     folio.css and every screen keep working untouched.
+
+   Colour tokens are HSL channel triplets; wrapping them in hsl() here
+   lets Tailwind apply opacity modifiers (e.g. bg-surface/70) via
+   color-mix automatically.
+
+   Usage in a Tailwind v4 build: make this your CSS entry, or
+   `@import "./theme.css";` from it.
+   ===================================================================== */
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme inline {
+  /* ── Colours ──────────────────────────────────────────────────── */
+  --color-background:        hsl(var(--background));
+  --color-surface:           hsl(var(--surface));
+  --color-surface-sunken:    hsl(var(--surface-sunken));
+  --color-surface-raised:    hsl(var(--surface-raised));
+  --color-sidebar:           hsl(var(--sidebar-bg));
+
+  --color-foreground:        hsl(var(--foreground));
+  --color-foreground-muted:  hsl(var(--foreground-muted));
+  --color-foreground-subtle: hsl(var(--foreground-subtle));
+  --color-foreground-faint:  hsl(var(--foreground-faint));
+
+  --color-border:            hsl(var(--border));
+  --color-border-strong:     hsl(var(--border-strong));
+  --color-rule:              hsl(var(--rule));
+
+  --color-accent:            hsl(var(--accent));
+  --color-accent-hover:      hsl(var(--accent-hover));
+  --color-accent-soft:       hsl(var(--accent-soft));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-positive:          hsl(var(--positive));
+  --color-positive-soft:     hsl(var(--positive-soft));
+  --color-negative:          hsl(var(--negative));
+  --color-negative-soft:     hsl(var(--negative-soft));
+  --color-warning:           hsl(var(--warning));
+  --color-warning-soft:      hsl(var(--warning-soft));
+
+  /* ── Type families  → font-display / font-sans ────────────────── */
+  --font-display: var(--font-display);
+  --font-sans:    var(--font-sans);
+
+  /* ── Type scale  → text-2xs … text-5xl ────────────────────────── */
+  --text-2xs: var(--text-2xs);
+  --text-xs:  var(--text-xs);
+  --text-sm:  var(--text-sm);
+  --text-md:  var(--text-md);
+  --text-lg:  var(--text-lg);
+  --text-xl:  var(--text-xl);
+  --text-2xl: var(--text-2xl);
+  --text-3xl: var(--text-3xl);
+  --text-4xl: var(--text-4xl);
+  --text-5xl: var(--text-5xl);
+
+  /* ── Line-height  → leading-tight … leading-loose ─────────────── */
+  --leading-tight:  var(--leading-tight);
+  --leading-snug:   var(--leading-snug);
+  --leading-normal: var(--leading-normal);
+  --leading-loose:  var(--leading-loose);
+
+  /* ── Spacing  → p-1 … p-10, m-1 …, gap-1 … (Folio's scale) ─────── */
+  /* NOTE: this overrides Tailwind's default numeric spacing so the
+     scale matches Folio exactly (space-2 = 6px, not 8px). */
+  --spacing-0:  var(--space-0);
+  --spacing-px: var(--space-px);
+  --spacing-1:  var(--space-1);
+  --spacing-2:  var(--space-2);
+  --spacing-3:  var(--space-3);
+  --spacing-4:  var(--space-4);
+  --spacing-5:  var(--space-5);
+  --spacing-6:  var(--space-6);
+  --spacing-7:  var(--space-7);
+  --spacing-8:  var(--space-8);
+  --spacing-9:  var(--space-9);
+  --spacing-10: var(--space-10);
+
+  /* ── Radius  → rounded-xs … rounded-pill ──────────────────────── */
+  --radius-xs:   var(--radius-xs);
+  --radius-sm:   var(--radius-sm);
+  --radius:      var(--radius);
+  --radius-md:   var(--radius-md);
+  --radius-lg:   var(--radius-lg);
+  --radius-pill: var(--radius-pill);
+
+  /* ── Shadow  → shadow-flat … shadow-focus ─────────────────────── */
+  --shadow-flat:  var(--shadow-flat);
+  --shadow-rest:  var(--shadow-rest);
+  --shadow-pop:   var(--shadow-pop);
+  --shadow-focus: var(--shadow-focus);
+}
+
+/* Component heights (--density-row / -control / -cta / -tile) have no
+   natural Tailwind namespace — reference them directly with arbitrary
+   values, e.g.  h-[var(--density-cta)]  or  min-h-[var(--density-tile)]. */
