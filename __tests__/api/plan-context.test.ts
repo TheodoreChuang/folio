@@ -205,6 +205,18 @@ describe('GET /api/plan/context', () => {
     expect(context.properties[0].latestValuation).toBeNull()
   })
 
+  it('returns purchasePriceCents on properties', async () => {
+    mocks.mockFetchPortfolioData.mockResolvedValue({
+      properties: [makeProperty({ purchasePriceCents: 75000000 })],
+      valuations: [],
+      balances: [],
+      loans: [],
+    })
+    const res = await GET()
+    const { context } = await res.json()
+    expect(context.properties[0].purchasePriceCents).toBe(75000000)
+  })
+
   it('returns the most recent valuation for a property', async () => {
     mocks.mockFetchPortfolioData.mockResolvedValue({
       properties: [makeProperty()],

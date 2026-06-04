@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { computeHoldReinvest } from '@/lib/aggregate/plan/calculators/hold-reinvest'
 import type { HoldReinvestInput } from '@/lib/aggregate/plan/calculators/hold-reinvest'
 import type { PlanContextLoan } from '@/lib/aggregate/plan/context'
+import { interestOnlyPayment } from '@/lib/aggregate/plan/calculators/rate-sensitivity'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,6 @@ function baseInput(overrides: Partial<HoldReinvestInput> = {}): HoldReinvestInpu
       buildingPestCents: 0,
       otherCents: 0,
     },
-    properties: [],
     loans: [makeLoan()],
     ...overrides,
   }
@@ -130,6 +130,8 @@ describe('computeHoldReinvest', () => {
     expect(result.reinvestSummary.effectiveNewLoanCents).toBe(
       result.reinvestSummary.newLoanCents + 1_500_000,
     )
+    const commissionCents = Math.round(50_000_000 * 2.0 / 100)
+    expect(result.frictionCents).toBe(commissionCents + 0 + 200_000 + 1_500_000)
   })
 
   it('lmiAmountCents not added when LVR ≤ 80%', () => {
@@ -303,5 +305,15 @@ describe('computeHoldReinvest', () => {
     }))
     const commission = Math.round(85_000_000 * 2.0 / 100)
     expect(result.saleSummary.sellingCostsCents).toBe(commission + 150_000 + 50_000 + 25_000)
+  })
+
+  it('interest-only loan uses IO repayment formula', () => {
+    const io = computeHoldReinvest(baseInput({ newLoanType: 'interest_only' }))
+    const pni = computeHoldReinvest(baseInput({ newLoanType: 'principal_and_interest' }))
+    const expectedIoRepayment = interestOnlyPayment(6.0, io.reinvestSummary.effectiveNewLoanCents)
+    expect(io.reinvestSummary.newLoanRepaymentMonthlyCents).toBe(expectedIoRepayment)
+    expect(io.reinvestSummary.newLoanRepaymentMonthlyCents).toBeLessThan(
+      pni.reinvestSummary.newLoanRepaymentMonthlyCents,
+    )
   })
 })

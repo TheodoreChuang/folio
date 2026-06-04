@@ -95,7 +95,10 @@ function fmtShort(cents: number): string {
   if (abs >= 100_000_000) {
     s = '$' + (abs / 100_000_000).toFixed(2).replace(/\.?0+$/, '') + 'M'
   } else if (abs >= 1_000_000) {
-    s = '$' + Math.round(abs / 100_000) + 'k'
+    const kv = Math.round(abs / 100_000)
+    s = kv >= 1000
+      ? '$' + (abs / 100_000_000).toFixed(2).replace(/\.?0+$/, '') + 'M'
+      : '$' + kv + 'k'
   } else {
     s = '$' + Math.round(abs / 100).toLocaleString('en-AU')
   }
@@ -366,6 +369,13 @@ function InputsPanel({
                   selectedPropertyId: id,
                   salePriceAud: prop?.latestValuation ? prop.latestValuation.valueCents / 100 : 0,
                   cgtPurchasePriceAud: prop?.purchasePriceCents ? prop.purchasePriceCents / 100 : 0,
+                  cgtManualAud: 0,
+                  cgtCostStampDutyAud: 0,
+                  cgtCostLegalAud: 0,
+                  cgtCostBuildingPestAud: 0,
+                  cgtCostBuyerAgentAud: 0,
+                  cgtCostImprovementsAud: 0,
+                  cgtDepreciationAud: 0,
                 })
               }}
             >
@@ -686,8 +696,8 @@ function EquityChart({
               <div className="border border-border bg-surface rounded-lg px-3 py-2 text-xs shadow-sm">
                 <p className="text-foreground-muted mb-1">{label === 0 ? 'Now' : `Year ${label}`}</p>
                 {payload.map(p => (
-                  <p key={p.dataKey as string} className="tabular-nums" style={{ color: p.color }}>
-                    {p.dataKey === 'holdK' ? 'Hold' : 'Reinvest'}: ${Number(p.value).toLocaleString('en-AU')}k
+                  <p key={String(p.dataKey ?? '')} className="tabular-nums" style={{ color: p.color }}>
+                    {p.dataKey === 'holdK' ? 'Hold' : 'Reinvest'}: ${(Array.isArray(p.value) ? 0 : Number(p.value)).toLocaleString('en-AU')}k
                   </p>
                 ))}
               </div>
@@ -995,8 +1005,17 @@ export default function HoldReinvestPage() {
   const [inputs, setInputs] = useState<Inputs>(DEFAULT_INPUTS)
 
   useEffect(() => {
-    const load = () => {
-      fetch('/api/plan/context')
+    let currentController: AbortController | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    const load = (isRefresh = false) => {
+      if (currentController) currentController.abort()
+      if (timeoutId) clearTimeout(timeoutId)
+      currentController = new AbortController()
+      const { signal } = currentController
+      timeoutId = setTimeout(() => currentController?.abort(), 15_000)
+
+      fetch('/api/plan/context', { signal })
         .then(res => {
           if (res.status === 401) { router.push('/login'); return null }
           return res.json()
@@ -1005,15 +1024,28 @@ export default function HoldReinvestPage() {
           if (!body) return
           if (body.context) {
             setPageState({ status: 'loaded', context: body.context })
-          } else {
+            setInputs(prev =>
+              body.context.properties.some((p: { id: string }) => p.id === prev.selectedPropertyId)
+                ? prev
+                : { ...prev, selectedPropertyId: '', salePriceAud: 0 },
+            )
+          } else if (!isRefresh) {
             setPageState({ status: 'error' })
           }
         })
-        .catch(() => setPageState({ status: 'error' }))
+        .catch(err => {
+          if ((err as DOMException).name === 'AbortError') return
+          if (!isRefresh) setPageState({ status: 'error' })
+        })
     }
     load()
-    window.addEventListener('focus', load)
-    return () => window.removeEventListener('focus', load)
+    const onFocus = () => load(true)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      if (currentController) currentController.abort()
+      if (timeoutId) clearTimeout(timeoutId)
+      window.removeEventListener('focus', onFocus)
+    }
   }, [router])
 
   const handleChange = useCallback((patch: Partial<Inputs>) => {
@@ -1100,7 +1132,6 @@ export default function HoldReinvestPage() {
         buildingPestCents: Math.round(inputs.buildingPestAud * 100),
         otherCents: Math.round(inputs.buyingOtherAud * 100),
       },
-      properties: context.properties,
       loans: context.loans,
     })
   }

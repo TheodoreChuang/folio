@@ -47,7 +47,7 @@ export function computeCgtEstimate(inputs: CgtEstimateInputs): CgtEstimateResult
   const assessableGainCents = Math.max(0, grossGainCents)
 
   const discountAmountCents = Math.round(assessableGainCents * (discountPct / 100))
-  const netCapitalGainCents = assessableGainCents - discountAmountCents
+  const netCapitalGainCents = Math.max(0, assessableGainCents - discountAmountCents)
   const estimatedCgtCents = Math.round(netCapitalGainCents * (marginalRatePct / 100))
 
   return {

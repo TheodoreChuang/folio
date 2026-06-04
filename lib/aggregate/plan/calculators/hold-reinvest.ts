@@ -1,5 +1,5 @@
 import { pmt, interestOnlyPayment } from './rate-sensitivity'
-import type { PlanContextProperty, PlanContextLoan } from '@/lib/aggregate/plan/context'
+import type { PlanContextLoan } from '@/lib/aggregate/plan/context'
 
 export type SellingCosts = {
   commissionPct: number
@@ -28,7 +28,6 @@ export type HoldReinvestInput = {
   horizonYears: number
   sellingCosts: SellingCosts
   buyingCosts: BuyingCosts
-  properties: PlanContextProperty[]
   loans: PlanContextLoan[]
 }
 
