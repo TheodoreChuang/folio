@@ -22,6 +22,7 @@ type CreateInstallmentLoanInput = {
 type UpdateInstallmentLoanInput = {
   lender?: string
   nickname?: string | null
+  accountReference?: string | null
   startDate?: string
   endDate?: string
   entityId?: string | null

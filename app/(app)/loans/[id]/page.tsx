@@ -486,6 +486,18 @@ export default function LoanDetailPage() {
                 onCancel={() => setEditingField(null)}
               />
               <FieldRow
+                label={<>Account / loan reference <span className="font-normal text-foreground-faint">optional</span></>}
+                fieldKey="accountReference"
+                editingField={editingField}
+                editValue={editValue}
+                fieldSaving={fieldSaving}
+                displayValue={loan.accountReference ?? null}
+                onStartEdit={() => startEdit('accountReference', loan.accountReference ?? '')}
+                onValueChange={setEditValue}
+                onCommit={v => commitField('accountReference', v)}
+                onCancel={() => setEditingField(null)}
+              />
+              <FieldRow
                 label={<>Nickname <span className="font-normal text-foreground-faint">optional</span></>}
                 fieldKey="nickname"
                 editingField={editingField}

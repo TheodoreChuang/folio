@@ -59,6 +59,7 @@ export async function PATCH(
     const updates: {
       lender?: string
       nickname?: string | null
+      accountReference?: string | null
       startDate?: string
       endDate?: string
       entityId?: string | null
@@ -80,6 +81,10 @@ export async function PATCH(
 
     if ('nickname' in raw) {
       updates.nickname = typeof raw.nickname === 'string' ? raw.nickname.trim() || null : null
+    }
+
+    if ('accountReference' in raw) {
+      updates.accountReference = typeof raw.accountReference === 'string' ? raw.accountReference.trim() || null : null
     }
 
     if ('startDate' in raw) {

@@ -60,6 +60,10 @@ type LedgerSummaryResponse = {
   }
 }
 
+type PlanContextSummary = {
+  householdSurplusMonthlyCents: number | null
+}
+
 // ---------- chart config ----------
 
 const cashflowChartConfig = {
@@ -84,6 +88,7 @@ export default function DashboardPage() {
   const [portfolio, setPortfolio] = useState<PortfolioLVR | null>(null)
   const [ledger, setLedger] = useState<LedgerSummaryResponse | null>(null)
   const [trends, setTrends] = useState<TrendPoint[] | null>(null)
+  const [planContext, setPlanContext] = useState<PlanContextSummary | null>(null)
 
   useEffect(() => {
     void fetch('/api/portfolio/summary')
@@ -109,6 +114,15 @@ export default function DashboardPage() {
       .catch(() => null)
   }, [])
 
+  useEffect(() => {
+    void fetch('/api/plan/context')
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { context?: PlanContextSummary } | null) => {
+        if (data?.context) setPlanContext(data.context)
+      })
+      .catch(() => null)
+  }, [])
+
   // --- derived values ---
 
   const totalValueCents = portfolio?.totalValueCents ?? 0
@@ -116,6 +130,12 @@ export default function DashboardPage() {
   const netEquityCents = totalValueCents - totalDebtCents
   const lvrPct = portfolio?.lvr ?? null
   const netCashflow = ledger?.totals.netAfterMortgage ?? null
+
+  const personalSurplus = planContext?.householdSurplusMonthlyCents ?? null
+  const portfolioCashflow = netCashflow
+  const totalSurplus = personalSurplus !== null && portfolioCashflow !== null
+    ? personalSurplus + portfolioCashflow
+    : null
 
   const missingProperties = ledger
     ? ledger.totals.properties.filter(p => !p.hasStatement)
@@ -188,6 +208,47 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Serviceability */}
+      {(personalSurplus !== null || portfolioCashflow !== null) && (
+        <div>
+          <SectionLabel>
+            Serviceability · monthly
+            <span className="ml-2 text-[10px] font-normal tracking-normal text-foreground-muted normal-case">
+              — can the household carry the portfolio?
+            </span>
+          </SectionLabel>
+          <div className="flex items-stretch gap-3">
+            <MetricTile
+              label="Personal surplus"
+              value={personalSurplus !== null ? formatMoney(personalSurplus) : '—'}
+              valueClassName={personalSurplus !== null && personalSurplus < 0 ? 'text-negative' : undefined}
+              foot={personalSurplus !== null ? <span className="tag-est text-[10px] font-medium text-foreground-muted">Estimated · from Household</span> : undefined}
+              className="flex-1"
+            />
+            <div className="flex items-center text-2xl font-light text-foreground-subtle px-1">+</div>
+            <MetricTile
+              label="Portfolio cashflow"
+              value={portfolioCashflow !== null ? formatMoney(portfolioCashflow) : '—'}
+              valueClassName={portfolioCashflow !== null && portfolioCashflow < 0 ? 'text-negative' : undefined}
+              foot={<span className="text-foreground-muted">after loan repayments</span>}
+              className="flex-1"
+            />
+            <div className="flex items-center text-2xl font-light text-foreground-subtle px-1">=</div>
+            <MetricTile
+              label="Total surplus"
+              value={totalSurplus !== null ? formatMoney(totalSurplus) : '—'}
+              valueClassName={totalSurplus !== null && totalSurplus < 0 ? 'text-negative' : undefined}
+              foot={totalSurplus !== null ? (
+                <span className="text-foreground-muted">
+                  {totalSurplus >= 0 ? '+' : ''}{formatMoney(totalSurplus * 12)} / yr
+                </span>
+              ) : undefined}
+              className="flex-1 border-accent/35 bg-accent-soft/50"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Cashflow trend chart */}
       <div>

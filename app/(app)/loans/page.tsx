@@ -8,6 +8,25 @@ import { Button } from '@/components/ui/button'
 import { MetricTile } from '@/components/ui/metric-tile'
 import type { Property, InstallmentLoan, InstallmentLoanBalance, Entity } from '@/db/schema'
 import { formatCents } from '@/lib/format'
+import { pmt, interestOnlyPayment } from '@/lib/aggregate/plan/calculators/rate-sensitivity'
+
+function estimateRepaymentCents(loan: FlatLoan): number | null {
+  const balance = loan.latestBalance?.balanceCents
+  const ratePct = loan.interestRate != null ? parseFloat(loan.interestRate) : null
+  if (!balance || ratePct == null || isNaN(ratePct)) return null
+  if (loan.loanType === 'interest_only') return interestOnlyPayment(ratePct, balance)
+  if (loan.loanType === 'principal_and_interest') {
+    const termMonths = loan.loanTermYears ? loan.loanTermYears * 12 : 360
+    return pmt(ratePct, termMonths, balance)
+  }
+  return null
+}
+
+function loanTypeLabel(loanType: string | null): string {
+  if (loanType === 'interest_only') return 'IO'
+  if (loanType === 'principal_and_interest') return 'P&I'
+  return loanType ?? '—'
+}
 
 type LoanWithBalance = InstallmentLoan & {
   latestBalance: Pick<InstallmentLoanBalance, 'balanceCents' | 'recordedAt'> | null
@@ -79,6 +98,21 @@ export default function LoansPage() {
   const totalDebtCents = filteredLoans.reduce((sum, l) => sum + (l.latestBalance?.balanceCents ?? 0), 0)
   const securedPropertyIds = new Set(filteredLoans.map(l => l.propertyId).filter(Boolean))
 
+  const monthlyRepaymentsCents = (() => {
+    const amounts = filteredLoans.map(estimateRepaymentCents).filter((v): v is number => v !== null)
+    return amounts.length > 0 ? amounts.reduce((s, v) => s + v, 0) : null
+  })()
+
+  const weightedAvgRate = (() => {
+    let weightedSum = 0, totalBalance = 0
+    for (const l of filteredLoans) {
+      const bal = l.latestBalance?.balanceCents
+      const rate = l.interestRate != null ? parseFloat(l.interestRate) : null
+      if (bal && rate != null && !isNaN(rate)) { weightedSum += bal * rate; totalBalance += bal }
+    }
+    return totalBalance > 0 ? weightedSum / totalBalance : null
+  })()
+
   const entityChips = entities.filter(e => loans.some(l => l.entityId === e.id))
 
   return (
@@ -122,11 +156,24 @@ export default function LoansPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-4 gap-3 mb-6">
           <MetricTile
             label="Total debt"
             value={loading ? '…' : formatCents(totalDebtCents)}
             foot={<span>{filteredLoans.length} loan{filteredLoans.length !== 1 ? 's' : ''}</span>}
+          />
+          <MetricTile
+            label="Monthly repayments (est)"
+            value={loading ? '…' : monthlyRepaymentsCents !== null ? formatCents(monthlyRepaymentsCents) : '—'}
+            foot={monthlyRepaymentsCents !== null ? (
+              <span>{formatCents(monthlyRepaymentsCents * 12)} / yr</span>
+            ) : undefined}
+            secondary
+          />
+          <MetricTile
+            label="Weighted avg rate"
+            value={loading ? '…' : weightedAvgRate !== null ? `${weightedAvgRate.toFixed(2)}%` : '—'}
+            secondary
           />
           <MetricTile
             label="Properties secured"
@@ -155,11 +202,13 @@ export default function LoansPage() {
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Lender</th>
-                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Nickname</th>
+                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Nickname / Account</th>
                       <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Entity</th>
                       <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Security</th>
                       <th className="text-right text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Balance</th>
+                      <th className="text-right text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Rate</th>
                       <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Type</th>
+                      <th className="text-right text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Repayment</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -170,13 +219,29 @@ export default function LoansPage() {
                         className="border-b border-rule last:border-b-0 hover:bg-background cursor-pointer transition-colors"
                       >
                         <td className="px-4 py-3 font-medium text-foreground">{loan.lender}</td>
-                        <td className="px-4 py-3 text-foreground-muted">{loan.nickname ?? '—'}</td>
+                        <td className="px-4 py-3">
+                          <div className="text-foreground">{loan.nickname ?? '—'}</div>
+                          {loan.accountReference && (
+                            <div className="text-xs text-foreground-muted mt-0.5">acct ending {loan.accountReference.slice(-4)}</div>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-foreground-muted">{loan.entityName ?? '—'}</td>
                         <td className="px-4 py-3 text-foreground-muted">{loan.propertyAddress}</td>
                         <td className="px-4 py-3 text-right tabular-nums font-medium">
                           {loan.latestBalance ? formatCents(loan.latestBalance.balanceCents) : '—'}
                         </td>
-                        <td className="px-4 py-3 text-foreground-muted">—</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-foreground-muted">
+                          {loan.interestRate != null ? `${loan.interestRate}%` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-foreground-muted">{loanTypeLabel(loan.loanType)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-foreground-muted">
+                          {(() => {
+                            const rep = estimateRepaymentCents(loan)
+                            return rep !== null ? (
+                              <>{formatCents(rep)} <span className="text-[10px] text-foreground-subtle">est</span></>
+                            ) : '—'
+                          })()}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

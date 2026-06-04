@@ -832,10 +832,7 @@ function SummariesPanel({
           <div className="grid grid-cols-2 gap-2 mt-2">
             <div className="border border-border rounded-lg p-3 bg-surface-raised">
               <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-1">New loan</p>
-              <p className="text-base font-semibold tabular-nums text-foreground">{fmtShort(reinvestSummary.effectiveNewLoanCents)}</p>
-              {result.showLmi && inputs.lmiAud > 0 && (
-                <p className="text-[11px] text-foreground-subtle">incl. {fmtShort(Math.round(inputs.lmiAud * 100))} LMI</p>
-              )}
+              <p className="text-base font-semibold tabular-nums text-foreground">{fmtShort(reinvestSummary.newLoanCents)}</p>
             </div>
             <div className={`border rounded-lg p-3 bg-surface-raised ${result.showLmi ? 'border-negative/40' : 'border-border'}`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-1">LVR</p>
@@ -843,6 +840,16 @@ function SummariesPanel({
                 {fmtPct(reinvestSummary.lvrRatio * 100)}
               </p>
               {result.showLmi && <p className="text-[11px] text-negative/80">LMI territory</p>}
+            </div>
+            {result.showLmi && (
+              <div className="border border-border rounded-lg p-3 bg-surface-raised">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-1">LMI</p>
+                <p className="text-base font-semibold tabular-nums text-foreground">{fmtShort(Math.round(inputs.lmiAud * 100))}</p>
+              </div>
+            )}
+            <div className={`border border-accent/30 rounded-lg p-3 bg-accent-soft/50 ${result.showLmi ? '' : 'col-span-2'}`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-1">Effective new loan</p>
+              <p className="text-base font-semibold tabular-nums text-foreground">{fmtShort(reinvestSummary.effectiveNewLoanCents)}</p>
             </div>
             <div className="border border-border rounded-lg p-3 bg-surface-raised col-span-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-1">New repayment</p>
