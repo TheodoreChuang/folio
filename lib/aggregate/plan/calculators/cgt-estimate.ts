@@ -16,6 +16,7 @@ export type CgtEstimateInputs = {
 
 export type CgtEstimateResult = {
   costBaseCents: number
+  adjustedCostBaseCents: number
   rawGainCents: number
   grossGainCents: number
   isCapitalLoss: boolean
@@ -40,8 +41,9 @@ export function computeCgtEstimate(inputs: CgtEstimateInputs): CgtEstimateResult
 
   const rawGainCents = salePriceCents - costBaseCents
 
-  // Div 40 depreciation is added back (it reduced the cost base over the hold)
+  // Depreciation reduces the cost base, so the gain is larger by that amount
   const grossGainCents = rawGainCents + depreciationCents
+  const adjustedCostBaseCents = costBaseCents - depreciationCents
 
   const isCapitalLoss = grossGainCents < 0
   const assessableGainCents = Math.max(0, grossGainCents)
@@ -52,6 +54,7 @@ export function computeCgtEstimate(inputs: CgtEstimateInputs): CgtEstimateResult
 
   return {
     costBaseCents,
+    adjustedCostBaseCents,
     rawGainCents,
     grossGainCents,
     isCapitalLoss,

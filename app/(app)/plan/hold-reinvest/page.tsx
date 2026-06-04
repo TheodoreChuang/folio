@@ -447,7 +447,7 @@ function InputsPanel({
                 ? 'Enter a sale price to compute an estimate'
                 : cgtEstimate.isCapitalLoss
                 ? 'Sale is below the cost base — a capital loss, no CGT payable'
-                : <>Cost base <strong>{fmtShort(cgtEstimate.costBaseCents)}</strong> · gain <strong>{fmtShort(cgtEstimate.grossGainCents)}</strong> · {inputs.cgtDiscountPct}% discount · {inputs.cgtMarginalRatePct}% rate</>}
+                : <>Cost base <strong>{fmtShort(cgtEstimate.adjustedCostBaseCents)}</strong> · gain <strong>{fmtShort(cgtEstimate.grossGainCents)}</strong> · {inputs.cgtDiscountPct}% discount · {inputs.cgtMarginalRatePct}% rate</>}
             </p>
             <Collapsible
               title="CGT details"
@@ -519,7 +519,7 @@ function InputsPanel({
                     </div>
                   </div>
 
-                  <InputRow label="Depreciation claimed" hint="Div 40 — added back to the gain">
+                  <InputRow label="Depreciation claimed" hint="reduces cost base">
                     <MoneyInput valueAud={inputs.cgtDepreciationAud} onChange={v => onChange({ cgtDepreciationAud: v })} placeholder="0" />
                   </InputRow>
 

@@ -95,6 +95,16 @@ describe('computeCgtEstimate', () => {
     expect(result.grossGainCents).toBe(result.rawGainCents)
   })
 
+  it('adjustedCostBaseCents equals costBaseCents minus depreciation', () => {
+    const result = computeCgtEstimate(base())
+    expect(result.adjustedCostBaseCents).toBe(result.costBaseCents - cents(12_000))
+  })
+
+  it('adjustedCostBaseCents reconciles with gross gain (sale - adjustedCostBase = grossGain)', () => {
+    const result = computeCgtEstimate(base())
+    expect(result.adjustedCostBaseCents + result.grossGainCents).toBe(cents(640_000))
+  })
+
   it('handles all zero costs', () => {
     const result = computeCgtEstimate(
       base({
