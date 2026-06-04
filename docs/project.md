@@ -45,18 +45,6 @@ See `docs/product-foundation.md` for full product vision, user profile, and bran
 All designs live in `docs/visual-designs/`. Each screen has its own HTML file.
 Shared styles are in `folio.css`. Visual designs are the source of truth for UI decisions.
 
-## Key tracks
-
-### Track 1 — Core portfolio views (current focus)
-Implement Property Detail, Loan Detail, and the dashboard Prompts strip.
-These are the highest-leverage screens for the core user flow.
-
-### Track 2 — Household context
-Income sources, living expenses, personal surplus.
-
-### Track 3 — Plan / Scenario modeling
-Rate sensitivity, extra repayments, projection charts. Backend not started.
-
 ## Task tracking
 
 GitHub Issues + milestones. One milestone per screen/feature (e.g. "Property Detail").

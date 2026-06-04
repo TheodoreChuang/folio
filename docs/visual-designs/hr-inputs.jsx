@@ -75,6 +75,7 @@
 
   function Inputs({ input, setField, d }) {
     const [buyOpen, setBuyOpen] = useState(true);
+    const [cgtOpen, setCgtOpen] = useState(false);
 
     const bcItems = F.BUYING_COST_FIELDS.filter((f) => F.num((input.buyingCosts || {})[f.key]) > 0);
     const buySummary = bcItems.length ?
@@ -132,13 +133,78 @@
             )}
           </div>
 
-          <div className="hr-sub-label"><span className="lab">Capital gains tax</span><span className="opt">optional estimate</span></div>
-          <div className="calc-input-row">
-            <Money value={input.cgt} allowBlank
-            onChange={(v) => setField('cgt', v)} placeholder="Estimated CGT" />
-            <div className="input-help hr-cgt-help">
-              CGT can be substantial. Enter your estimate to see cash after tax. It depends on ownership history, depreciation claimed, and your marginal rate.
+          <div className="hr-sub-label"><span className="lab">Capital gains tax</span><span className="opt">on the property being sold</span></div>
+          <div className="hr-cgt">
+            <div className="hr-cgt-head">
+              <div className="hr-cgt-lab">{input.cgtMode === 'manual' ? 'CGT — your figure' : 'Estimated CGT'}</div>
+              <div className="hr-cgt-val">{d.cgtEntered ? F.fmtMoney(d.cgt) : '—'}</div>
             </div>
+            <div className="hr-cgt-break">
+              {input.cgtMode === 'manual' ?
+              d.cgtEntered ? 'Manual figure — overrides the estimate' : 'Enter a figure below, or switch to Estimate' :
+              d.isCapitalLoss ?
+              'Sale is below the cost base — a capital loss, no CGT payable' :
+              <>Cost base <b>{F.fmtMoneyShort(d.costBase)}</b> · gain <b>{F.fmtMoneyShort(d.grossGain)}</b> · {F.fmtPct(d.cgtDiscountPct / 100)} discount · {F.fmtPct(d.cgtRate / 100)} rate</>}
+            </div>
+
+            <Collapsible title="CGT details"
+            summary={<span className="summary">{input.cgtMode === 'manual' ? 'Manual' : 'Estimate'}</span>}
+            open={cgtOpen} onToggle={() => setCgtOpen((o) => !o)}>
+
+              <div className="seg hr-seg hr-cgt-seg">
+                <button type="button" className={input.cgtMode !== 'manual' ? 'is-on' : ''}
+                onClick={() => setField('cgtMode', 'estimate')}>Estimate</button>
+                <button type="button" className={input.cgtMode === 'manual' ? 'is-on' : ''}
+                onClick={() => setField('cgtMode', 'manual')}>Manual</button>
+              </div>
+
+              {input.cgtMode === 'manual' ?
+              <div className="calc-input-row" style={{ marginTop: 'var(--space-4)' }}>
+                  <label>CGT amount</label>
+                  <Money value={input.cgt} allowBlank onChange={(v) => setField('cgt', v)} placeholder="Estimated CGT" />
+                  <div className="input-help hr-cgt-help">A figure from your accountant. Leave blank to exclude CGT from the comparison.</div>
+                </div> :
+
+              <>
+                  <div className="calc-input-row" style={{ marginTop: 'var(--space-4)' }}>
+                    <label>Original purchase price<span className="hint">from your records</span></label>
+                    <Money value={input.cgtPurchasePrice} onChange={(v) => setField('cgtPurchasePrice', v)} placeholder="430,000" />
+                  </div>
+
+                  <div className="hr-sub-label" style={{ marginTop: 'var(--space-5)' }}>
+                    <span className="lab">Purchase costs &amp; improvements</span><span className="opt">added to the cost base</span>
+                  </div>
+                  <div className="mp-cost-grid">
+                    {F.CGT_COST_FIELDS.map((f) =>
+                  <div key={f.key} className="mp-cost-field">
+                        <label>{f.label}</label>
+                        <Money value={(input.cgtCosts || {})[f.key]} allowBlank
+                    onChange={(v) => setField('cgtCosts.' + f.key, v)} />
+                      </div>
+                  )}
+                  </div>
+
+                  <div className="mp-row-2" style={{ marginTop: 'var(--space-5)' }}>
+                    <div className="calc-input-row">
+                      <label>CGT discount<span className="hint">50% if held &gt; 12 months</span></label>
+                      <DecimalInput value={input.cgtDiscount} suffix="%" onChange={(v) => setField('cgtDiscount', v)} />
+                    </div>
+                    <div className="calc-input-row">
+                      <label>Marginal tax rate<span className="hint">your top rate</span></label>
+                      <DecimalInput value={input.cgtRate} suffix="%" onChange={(v) => setField('cgtRate', v)} />
+                    </div>
+                  </div>
+
+                  <div className="calc-input-row" style={{ marginTop: 'var(--space-4)' }}>
+                    <label>Depreciation claimed<span className="hint">Div 40 — added back to the gain</span></label>
+                    <Money value={input.cgtDepreciation} allowBlank onChange={(v) => setField('cgtDepreciation', v)} placeholder="0" />
+                  </div>
+
+                  <p className="hr-fineprint">
+                    The cost base also includes the <strong>selling costs</strong> entered above. An estimate only — a large gain can span tax brackets, so confirm with your accountant.
+                  </p>
+                </>}
+            </Collapsible>
           </div>
         </div>
 
