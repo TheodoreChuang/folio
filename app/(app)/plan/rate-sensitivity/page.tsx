@@ -87,7 +87,7 @@ function RateSlider({
   const fillWidth = `${Math.abs(thumbPos - 50)}%`
 
   const tagClass = isToday
-    ? 'bg-ink text-white'
+    ? 'bg-foreground text-white'
     : isUp
     ? 'bg-negative text-white'
     : 'bg-positive text-white'
@@ -130,7 +130,7 @@ function RateSlider({
         </div>
         {/* Thumb */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 w-[22px] h-[22px] rounded-full bg-surface border-[1.5px] border-ink shadow-sm cursor-grab active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-accent/25"
+          className="absolute top-1/2 -translate-y-1/2 w-[22px] h-[22px] rounded-full bg-surface border-[1.5px] border-foreground shadow-sm cursor-grab active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-accent/25"
           style={{ left: `${thumbPos}%`, transform: 'translate(-50%, -50%)' }}
           role="slider"
           aria-valuemin={MIN}
@@ -169,7 +169,7 @@ function RateSlider({
             fontWeight = 'font-semibold'
             if (tickUp) { dotColor = 'bg-negative'; labelColor = 'text-negative' }
             if (tickDown) { dotColor = 'bg-positive'; labelColor = 'text-positive' }
-            if (tickToday) { dotColor = 'bg-ink'; labelColor = 'text-ink' }
+            if (tickToday) { dotColor = 'bg-foreground'; labelColor = 'text-foreground' }
           }
 
           return (
@@ -220,7 +220,7 @@ export default function RateSensitivityPage() {
     return (
       <div>
         <BackToScenarios />
-        <div className="flex items-center justify-center py-24 text-sm text-muted">Loading…</div>
+        <div className="flex items-center justify-center py-24 text-sm text-foreground-muted">Loading…</div>
       </div>
     )
   }
@@ -229,7 +229,7 @@ export default function RateSensitivityPage() {
     return (
       <div>
         <BackToScenarios />
-        <p className="text-sm text-muted py-8">Failed to load. Refresh to try again.</p>
+        <p className="text-sm text-foreground-muted py-8">Failed to load. Refresh to try again.</p>
       </div>
     )
   }
@@ -249,8 +249,8 @@ export default function RateSensitivityPage() {
       <BackToScenarios />
 
       <div className="mb-6">
-        <h1 className="font-display text-2xl text-ink">Rate sensitivity</h1>
-        <p className="text-sm text-muted mt-0.5">
+        <h1 className="font-display text-2xl text-foreground">Rate sensitivity</h1>
+        <p className="text-sm text-foreground-muted mt-0.5">
           Stress every variable loan against a rate rise or fall, and see where the cashflow lands.
         </p>
       </div>
@@ -272,7 +272,7 @@ export default function RateSensitivityPage() {
             Total repayment change
           </p>
           <div className="flex items-baseline gap-3">
-            <span className={`font-display text-3xl tracking-tight ${delta === 0 ? 'text-ink' : isUp ? 'text-negative' : 'text-positive'}`}>
+            <span className={`font-display text-3xl tracking-tight ${delta === 0 ? 'text-foreground' : isUp ? 'text-negative' : 'text-positive'}`}>
               {delta === 0 ? 'No change' : formatDelta(result.totalChangeCents)}
             </span>
             {delta !== 0 && (
@@ -326,17 +326,17 @@ export default function RateSensitivityPage() {
                     className="grid grid-cols-[minmax(0,1.5fr)_96px_116px_92px] gap-3 px-5 py-4 border-t border-rule text-sm"
                   >
                     <div>
-                      <span className="block font-semibold text-ink">{row.nickname ?? row.lender}</span>
+                      <span className="block font-semibold text-foreground">{row.nickname ?? row.lender}</span>
                       <span className="block mt-0.5 text-[10px] text-foreground-muted tabular-nums">
                         {row.nickname ? row.lender + ' · ' : ''}{formatRate(row.baseRate)}
                         {delta !== 0 && ` → ${formatRate(row.newRate)}`}
                       </span>
                     </div>
-                    <div className="text-right tabular-nums text-ink self-center text-sm">
+                    <div className="text-right tabular-nums text-foreground self-center text-sm">
                       {formatCents(row.balanceCents)}
                     </div>
                     <div className="text-right self-center">
-                      <span className="block tabular-nums text-ink">{formatCents(row.deltaRepaymentCents)}</span>
+                      <span className="block tabular-nums text-foreground">{formatCents(row.deltaRepaymentCents)}</span>
                       {delta !== 0 && (
                         <span className="block mt-0.5 text-[10px] text-foreground-subtle tabular-nums">
                           was {formatCents(row.todayRepaymentCents)}
@@ -352,9 +352,9 @@ export default function RateSensitivityPage() {
 
               {/* Total row */}
               <div className="grid grid-cols-[minmax(0,1.5fr)_96px_116px_92px] gap-3 px-5 py-4 border-t border-border bg-surface-sunken/60 text-sm">
-                <div className="font-semibold text-ink">Total</div>
+                <div className="font-semibold text-foreground">Total</div>
                 <div />
-                <div className="text-right tabular-nums font-semibold text-ink self-center">
+                <div className="text-right tabular-nums font-semibold text-foreground self-center">
                   {formatCents(result.totalDeltaRepaymentsCents)}
                 </div>
                 <div className={`text-right tabular-nums font-bold self-center ${isUp ? 'text-negative' : isDown ? 'text-positive' : 'text-foreground-faint'}`}>
@@ -374,7 +374,7 @@ export default function RateSensitivityPage() {
 
         {/* No variable loans */}
         {result.perLoan.length === 0 && context.loans.length > 0 && (
-          <p className="text-sm text-muted py-4">
+          <p className="text-sm text-foreground-muted py-4">
             No variable loans with a recorded rate and balance. Add rate and balance data to your loans to model a rate move.
           </p>
         )}

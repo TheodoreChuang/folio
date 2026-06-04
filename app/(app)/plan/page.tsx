@@ -118,7 +118,7 @@ function ScenarioCard({ card, context }: { card: CardDef; context: PlanContext |
         <p className="font-display font-normal text-xl leading-snug tracking-[-0.005em] text-foreground-subtle text-pretty m-0">
           {card.question}
         </p>
-        <div className="flex items-center mt-auto pt-4 border-t border-ruled text-sm text-foreground-subtle">
+        <div className="flex items-center mt-auto pt-4 border-t border-rule text-sm text-foreground-subtle">
           <span className="inline-flex items-center gap-[7px] font-medium">
             <LockIcon />
             {card.disabledReason}
@@ -141,13 +141,13 @@ function ScenarioCard({ card, context }: { card: CardDef; context: PlanContext |
       <span className="text-2xs uppercase tracking-[0.1em] text-foreground-subtle font-semibold">
         {card.eyebrow}
       </span>
-      <div className="font-semibold text-lg tracking-[-0.01em] text-ink">
+      <div className="font-semibold text-lg tracking-[-0.01em] text-foreground">
         {card.title}
       </div>
-      <p className="font-display font-normal text-xl leading-snug tracking-[-0.005em] text-ink text-pretty m-0">
+      <p className="font-display font-normal text-xl leading-snug tracking-[-0.005em] text-foreground text-pretty m-0">
         {card.question}
       </p>
-      <div className="flex items-center justify-between mt-auto pt-4 border-t border-ruled text-sm font-medium text-accent">
+      <div className="flex items-center justify-between mt-auto pt-4 border-t border-rule text-sm font-medium text-accent">
         <span className="inline-flex items-center gap-1.5">
           {card.ctaLabel}
           <span className="transition-transform duration-150 group-hover:translate-x-0.5">→</span>
@@ -171,7 +171,7 @@ function SkeletonCard() {
         <div className="h-4 w-full bg-border/70 rounded-sm" />
         <div className="h-4 w-3/4 bg-border/70 rounded-sm" />
       </div>
-      <div className="mt-auto pt-4 border-t border-ruled">
+      <div className="mt-auto pt-4 border-t border-rule">
         <div className="h-4 w-32 bg-border/50 rounded-sm" />
       </div>
     </div>
@@ -206,8 +206,8 @@ export default function PlanPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="font-display text-2xl text-ink">Plan</h1>
-        <p className="text-sm text-muted mt-0.5">
+        <h1 className="font-display text-2xl text-foreground">Plan</h1>
+        <p className="text-sm text-foreground-muted mt-0.5">
           Model what happens when conditions change — or when you change the portfolio.
         </p>
       </div>
@@ -219,7 +219,7 @@ export default function PlanPage() {
       )}
 
       {state.status === 'error' && (
-        <p className="text-sm text-muted py-8">Failed to load. Refresh to try again.</p>
+        <p className="text-sm text-foreground-muted py-8">Failed to load. Refresh to try again.</p>
       )}
 
       {state.status === 'loaded' && (

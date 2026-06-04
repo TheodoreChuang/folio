@@ -421,23 +421,23 @@ export default function UploadPage() {
     <div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="font-display text-2xl text-ink">Upload</h1>
-          <p className="text-sm text-muted mt-0.5">Drop a statement. Folio classifies it and asks only when uncertain.</p>
+          <h1 className="font-display text-2xl text-foreground">Upload</h1>
+          <p className="text-sm text-foreground-muted mt-0.5">Drop a statement. Folio classifies it and asks only when uncertain.</p>
         </div>
         {totalSessions > 0 && (
           <div className="inline-flex items-center gap-0.5 p-0.5 bg-sunken border border-border rounded-lg">
             <button
               onClick={() => setUploadState('idle')}
-              className={`px-3 h-[26px] text-xs font-medium rounded-md transition-colors ${uploadState === 'idle' ? 'bg-surface shadow-sm text-ink' : 'text-muted hover:text-ink'}`}
+              className={`px-3 h-[26px] text-xs font-medium rounded-md transition-colors ${uploadState === 'idle' ? 'bg-surface shadow-sm text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
             >
               Idle
             </button>
             <button
               onClick={() => setUploadState('review')}
-              className={`px-3 h-[26px] text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${uploadState === 'review' ? 'bg-surface shadow-sm text-ink' : 'text-muted hover:text-ink'}`}
+              className={`px-3 h-[26px] text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${uploadState === 'review' ? 'bg-surface shadow-sm text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
             >
               In review
-              <span className="px-1.5 py-px bg-warn text-white rounded-full text-[10px] font-semibold leading-none">
+              <span className="px-1.5 py-px bg-negative text-white rounded-full text-[10px] font-semibold leading-none">
                 {totalSessions}
               </span>
             </button>
@@ -469,8 +469,8 @@ export default function UploadPage() {
           {needsInputSessions.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Needs your input</p>
-                <span className="text-xs bg-border text-muted rounded-full px-2 py-0.5">{needsInputSessions.length}</span>
+                <p className="text-xs font-semibold text-foreground-muted uppercase tracking-wide">Needs your input</p>
+                <span className="text-xs bg-border text-foreground-muted rounded-full px-2 py-0.5">{needsInputSessions.length}</span>
               </div>
               <div className="space-y-3">
                 {needsInputSessions.map(session => {
@@ -480,33 +480,33 @@ export default function UploadPage() {
                     <div key={session.sourceDocumentId} className="bg-surface border border-border rounded-lg overflow-hidden">
                       <div className="px-4 py-3 border-b border-border flex items-center gap-2">
                         <span className="text-accent font-bold text-sm">?</span>
-                        <p className="text-sm font-medium text-ink truncate flex-1">{session.documentFileName}</p>
-                        <span className="text-xs text-muted">{session.items.length} item{session.items.length !== 1 ? 's' : ''}</span>
+                        <p className="text-sm font-medium text-foreground truncate flex-1">{session.documentFileName}</p>
+                        <span className="text-xs text-foreground-muted">{session.items.length} item{session.items.length !== 1 ? 's' : ''}</span>
                       </div>
                       <div className="divide-y divide-ruled">
                         {session.items.map(item => (
                           <div key={item.id} className="px-4 py-2.5 flex items-center gap-3">
-                            <span className="text-xs text-muted w-24 flex-shrink-0">{item.lineItemDate}</span>
-                            <span className="text-sm text-ink flex-1 truncate min-w-0">{item.description}</span>
+                            <span className="text-xs text-foreground-muted w-24 flex-shrink-0">{item.lineItemDate}</span>
+                            <span className="text-sm text-foreground flex-1 truncate min-w-0">{item.description}</span>
                             <select
                               value={item.category}
                               onChange={e => handlePatchItem(item.id, { category: e.target.value })}
-                              className="text-xs border border-border rounded px-2 py-1 bg-surface text-muted flex-shrink-0"
+                              className="text-xs border border-border rounded px-2 py-1 bg-surface text-foreground-muted flex-shrink-0"
                             >
                               {CATEGORY_OPTIONS.map(opt => (
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                               ))}
                             </select>
-                            <span className="text-xs text-muted text-right w-20 flex-shrink-0">{formatCents(item.amountCents)}</span>
+                            <span className="text-xs text-foreground-muted text-right w-20 flex-shrink-0">{formatCents(item.amountCents)}</span>
                           </div>
                         ))}
                       </div>
                       <div className="px-4 py-3 border-t border-border bg-surface/50 flex items-center gap-3">
-                        <span className="text-xs text-muted flex-shrink-0">Which property?</span>
+                        <span className="text-xs text-foreground-muted flex-shrink-0">Which property?</span>
                         <select
                           value={selectedProperty}
                           onChange={e => setSessionPropertyMap(prev => ({ ...prev, [session.sourceDocumentId]: e.target.value }))}
-                          className="flex-1 text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-ink"
+                          className="flex-1 text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-foreground"
                         >
                           <option value="">Select a property…</option>
                           {properties.map(p => (
@@ -533,8 +533,8 @@ export default function UploadPage() {
           {matchedSessions.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Matched</p>
-                <span className="text-xs bg-border text-muted rounded-full px-2 py-0.5">{matchedSessions.length}</span>
+                <p className="text-xs font-semibold text-foreground-muted uppercase tracking-wide">Matched</p>
+                <span className="text-xs bg-border text-foreground-muted rounded-full px-2 py-0.5">{matchedSessions.length}</span>
               </div>
               <div className="space-y-2">
                 {matchedSessions.map(session => {
@@ -548,10 +548,10 @@ export default function UploadPage() {
                           <polyline points="2,8 6,12 14,4"/>
                         </svg>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-ink truncate">{session.documentFileName}</p>
-                          {property && <p className="text-xs text-muted">{propertyLabel(property)}</p>}
+                          <p className="text-sm font-medium text-foreground truncate">{session.documentFileName}</p>
+                          {property && <p className="text-xs text-foreground-muted">{propertyLabel(property)}</p>}
                         </div>
-                        <span className="text-xs text-muted">{session.items.length} items</span>
+                        <span className="text-xs text-foreground-muted">{session.items.length} items</span>
                         <span className={`text-xs font-medium ${net >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                           {net >= 0 ? '+' : ''}{formatCents(Math.abs(net))} net
                         </span>
@@ -562,7 +562,7 @@ export default function UploadPage() {
                             else s.add(session.sourceDocumentId)
                             return s
                           })}
-                          className="text-xs text-muted hover:text-ink"
+                          className="text-xs text-foreground-muted hover:text-foreground"
                         >
                           {isExpanded ? 'Hide' : 'Expand'}
                         </button>
@@ -571,10 +571,10 @@ export default function UploadPage() {
                         <div className="border-t border-border divide-y divide-ruled">
                           {session.items.map(item => (
                             <div key={item.id} className="px-4 py-2 flex items-center gap-3">
-                              <span className="text-xs text-muted w-24 flex-shrink-0">{item.lineItemDate}</span>
-                              <span className="text-sm text-ink flex-1 truncate min-w-0">{item.description}</span>
-                              <span className="text-xs text-muted">{CATEGORY_LABELS[item.category] ?? item.category}</span>
-                              <span className="text-xs text-muted text-right w-20 flex-shrink-0">{formatCents(item.amountCents)}</span>
+                              <span className="text-xs text-foreground-muted w-24 flex-shrink-0">{item.lineItemDate}</span>
+                              <span className="text-sm text-foreground flex-1 truncate min-w-0">{item.description}</span>
+                              <span className="text-xs text-foreground-muted">{CATEGORY_LABELS[item.category] ?? item.category}</span>
+                              <span className="text-xs text-foreground-muted text-right w-20 flex-shrink-0">{formatCents(item.amountCents)}</span>
                             </div>
                           ))}
                         </div>
@@ -590,8 +590,8 @@ export default function UploadPage() {
           {loanNeedsLoanSessions.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Loan statements — assign loan</p>
-                <span className="text-xs bg-border text-muted rounded-full px-2 py-0.5">{loanNeedsLoanSessions.length}</span>
+                <p className="text-xs font-semibold text-foreground-muted uppercase tracking-wide">Loan statements — assign loan</p>
+                <span className="text-xs bg-border text-foreground-muted rounded-full px-2 py-0.5">{loanNeedsLoanSessions.length}</span>
               </div>
               <div className="space-y-3">
                 {loanNeedsLoanSessions.map(session => {
@@ -601,20 +601,20 @@ export default function UploadPage() {
                     <div key={session.sourceDocumentId} className="bg-surface border border-border rounded-lg overflow-hidden">
                       <div className="px-4 py-3 border-b border-border flex items-center gap-2">
                         <span className="text-accent font-bold text-sm">?</span>
-                        <p className="text-sm font-medium text-ink truncate flex-1">{session.documentFileName}</p>
-                        <span className="text-xs text-muted">{session.items.length} payment{session.items.length !== 1 ? 's' : ''}</span>
+                        <p className="text-sm font-medium text-foreground truncate flex-1">{session.documentFileName}</p>
+                        <span className="text-xs text-foreground-muted">{session.items.length} payment{session.items.length !== 1 ? 's' : ''}</span>
                       </div>
                       <div className="divide-y divide-ruled">
                         <div className="grid grid-cols-4 px-4 py-2 bg-sunken">
-                          <span className="text-xs font-medium text-muted">Date</span>
-                          <span className="text-xs font-medium text-muted text-right">Amount</span>
-                          <span className="text-xs font-medium text-muted text-right">Interest ($)</span>
-                          <span className="text-xs font-medium text-muted text-right">Principal ($)</span>
+                          <span className="text-xs font-medium text-foreground-muted">Date</span>
+                          <span className="text-xs font-medium text-foreground-muted text-right">Amount</span>
+                          <span className="text-xs font-medium text-foreground-muted text-right">Interest ($)</span>
+                          <span className="text-xs font-medium text-foreground-muted text-right">Principal ($)</span>
                         </div>
                         {session.items.map(item => (
                           <div key={item.id} className="grid grid-cols-4 px-4 py-2 items-center gap-2">
-                            <span className="text-xs text-muted">{item.paymentDate}</span>
-                            <span className="text-sm text-ink text-right">{formatCents(item.amountCents)}</span>
+                            <span className="text-xs text-foreground-muted">{item.paymentDate}</span>
+                            <span className="text-sm text-foreground text-right">{formatCents(item.amountCents)}</span>
                             <input
                               type="number"
                               step="0.01"
@@ -623,7 +623,7 @@ export default function UploadPage() {
                               onChange={e => setLoanItemEdits(prev => ({ ...prev, [item.id]: { ...prev[item.id], interest: e.target.value } }))}
                               onBlur={e => handlePatchLoanItem(item.id, 'interest', e.target.value)}
                               placeholder="—"
-                              className="text-xs text-right border border-border rounded px-2 py-1 bg-surface text-ink w-full"
+                              className="text-xs text-right border border-border rounded px-2 py-1 bg-surface text-foreground w-full"
                             />
                             <input
                               type="number"
@@ -633,17 +633,17 @@ export default function UploadPage() {
                               onChange={e => setLoanItemEdits(prev => ({ ...prev, [item.id]: { ...prev[item.id], principal: e.target.value } }))}
                               onBlur={e => handlePatchLoanItem(item.id, 'principal', e.target.value)}
                               placeholder="—"
-                              className="text-xs text-right border border-border rounded px-2 py-1 bg-surface text-ink w-full"
+                              className="text-xs text-right border border-border rounded px-2 py-1 bg-surface text-foreground w-full"
                             />
                           </div>
                         ))}
                       </div>
                       <div className="px-4 py-3 border-t border-border bg-surface/50 flex items-center gap-3">
-                        <span className="text-xs text-muted flex-shrink-0">Which loan?</span>
+                        <span className="text-xs text-foreground-muted flex-shrink-0">Which loan?</span>
                         <select
                           value={selectedLoan}
                           onChange={e => setSessionLoanMap(prev => ({ ...prev, [session.sourceDocumentId]: e.target.value }))}
-                          className="flex-1 text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-ink"
+                          className="flex-1 text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-foreground"
                         >
                           <option value="">Select a loan…</option>
                           {allLoans.map(l => (
@@ -670,8 +670,8 @@ export default function UploadPage() {
           {loanApprovedSessions.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Loan payments approved</p>
-                <span className="text-xs bg-border text-muted rounded-full px-2 py-0.5">{loanApprovedSessions.length}</span>
+                <p className="text-xs font-semibold text-foreground-muted uppercase tracking-wide">Loan payments approved</p>
+                <span className="text-xs bg-border text-foreground-muted rounded-full px-2 py-0.5">{loanApprovedSessions.length}</span>
               </div>
               <div className="space-y-2">
                 {loanApprovedSessions.map(session => {
@@ -683,11 +683,11 @@ export default function UploadPage() {
                         <polyline points="2,8 6,12 14,4"/>
                       </svg>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-ink truncate">{session.documentFileName}</p>
-                        {loan && <p className="text-xs text-muted">{loanLabel(loan)}</p>}
+                        <p className="text-sm font-medium text-foreground truncate">{session.documentFileName}</p>
+                        {loan && <p className="text-xs text-foreground-muted">{loanLabel(loan)}</p>}
                       </div>
-                      <span className="text-xs text-muted">{session.items.length} payments</span>
-                      <span className="text-xs font-medium text-ink">{formatCents(total)}</span>
+                      <span className="text-xs text-foreground-muted">{session.items.length} payments</span>
+                      <span className="text-xs font-medium text-foreground">{formatCents(total)}</span>
                     </div>
                   )
                 })}
@@ -698,18 +698,18 @@ export default function UploadPage() {
           {/* Mortgage entries */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <p className="text-xs font-semibold text-muted uppercase tracking-wide">Mortgage entries</p>
+              <p className="text-xs font-semibold text-foreground-muted uppercase tracking-wide">Mortgage entries</p>
             </div>
             <div className="bg-surface border border-border rounded-lg p-4">
-              <p className="text-xs text-muted mb-3">Record loan repayments not captured in a bank statement.</p>
+              <p className="text-xs text-foreground-muted mb-3">Record loan repayments not captured in a bank statement.</p>
               <form onSubmit={handleMortgageSubmit} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted block mb-1">Property</label>
+                    <label className="text-xs text-foreground-muted block mb-1">Property</label>
                     <select
                       value={mortgagePropertyId}
                       onChange={e => setMortgagePropertyId(e.target.value)}
-                      className="w-full text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-ink"
+                      className="w-full text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-foreground"
                     >
                       <option value="">Select property…</option>
                       {properties.map(p => (
@@ -718,12 +718,12 @@ export default function UploadPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-muted block mb-1">Loan</label>
+                    <label className="text-xs text-foreground-muted block mb-1">Loan</label>
                     <select
                       value={mortgageLoanId}
                       onChange={e => setMortgageLoanId(e.target.value)}
                       disabled={!mortgagePropertyId || mortgageLoans.length === 0}
-                      className="w-full text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-ink disabled:opacity-50"
+                      className="w-full text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-foreground disabled:opacity-50"
                     >
                       <option value="">Select loan…</option>
                       {mortgageLoans.map(l => (
@@ -734,7 +734,7 @@ export default function UploadPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-muted block mb-1">Amount ($)</label>
+                    <label className="text-xs text-foreground-muted block mb-1">Amount ($)</label>
                     <input
                       type="number"
                       step="0.01"
@@ -742,16 +742,16 @@ export default function UploadPage() {
                       value={mortgageAmount}
                       onChange={e => setMortgageAmount(e.target.value)}
                       placeholder="0.00"
-                      className="w-full text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-ink"
+                      className="w-full text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-foreground"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted block mb-1">Date</label>
+                    <label className="text-xs text-foreground-muted block mb-1">Date</label>
                     <input
                       type="date"
                       value={mortgageDate}
                       onChange={e => setMortgageDate(e.target.value)}
-                      className="w-full text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-ink"
+                      className="w-full text-sm border border-border rounded-md px-3 py-1.5 bg-surface text-foreground"
                     />
                   </div>
                 </div>
@@ -771,14 +771,14 @@ export default function UploadPage() {
           <div className="bg-surface border border-border rounded-lg px-5 py-4 flex items-center justify-between gap-4">
             <div className="min-w-0">
               {matchedSessions.length > 0 ? (
-                <p className="text-sm text-ink">
+                <p className="text-sm text-foreground">
                   Will commit <strong>{matchedSessions.length} matched</strong> document{matchedSessions.length !== 1 ? 's' : ''}.
                   {needsInputSessions.length > 0 && (
-                    <span className="text-muted"> {needsInputSessions.length} unresolved — will stay in queue.</span>
+                    <span className="text-foreground-muted"> {needsInputSessions.length} unresolved — will stay in queue.</span>
                   )}
                 </p>
               ) : (
-                <p className="text-sm text-muted">
+                <p className="text-sm text-foreground-muted">
                   {needsInputSessions.length > 0
                     ? `${needsInputSessions.length} document${needsInputSessions.length !== 1 ? 's need' : ' needs'} a property before committing.`
                     : 'No PM documents ready to commit.'}
@@ -802,14 +802,14 @@ export default function UploadPage() {
             <div className="bg-surface border border-border rounded-lg px-5 py-4 flex items-center justify-between gap-4">
               <div className="min-w-0">
                 {loanApprovedSessions.length > 0 ? (
-                  <p className="text-sm text-ink">
+                  <p className="text-sm text-foreground">
                     Will record <strong>{loanApprovedSessions.reduce((sum, s) => sum + s.items.length, 0)} loan payments</strong> from {loanApprovedSessions.length} document{loanApprovedSessions.length !== 1 ? 's' : ''}.
                     {loanNeedsLoanSessions.length > 0 && (
-                      <span className="text-muted"> {loanNeedsLoanSessions.length} not ready — will stay in queue.</span>
+                      <span className="text-foreground-muted"> {loanNeedsLoanSessions.length} not ready — will stay in queue.</span>
                     )}
                   </p>
                 ) : (
-                  <p className="text-sm text-muted">
+                  <p className="text-sm text-foreground-muted">
                     {`${loanNeedsLoanSessions.length} loan statement${loanNeedsLoanSessions.length !== 1 ? 's need' : ' needs'} a loan assigned.`}
                   </p>
                 )}
@@ -845,15 +845,15 @@ export default function UploadPage() {
               </svg>
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium text-ink">Drop documents here</p>
-              <p className="text-xs text-muted mt-1">PM statements, bank statements, loan statements</p>
+              <p className="text-sm font-medium text-foreground">Drop documents here</p>
+              <p className="text-xs text-foreground-muted mt-1">PM statements, bank statements, loan statements</p>
             </div>
             <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); fileInputRef.current?.click() }}>
               or click to browse
             </Button>
             <div className="flex items-center gap-2">
               {['PDF', 'Multiple files OK'].map(chip => (
-                <span key={chip} className="text-xs px-2 py-0.5 rounded-full bg-border text-muted">{chip}</span>
+                <span key={chip} className="text-xs px-2 py-0.5 rounded-full bg-border text-foreground-muted">{chip}</span>
               ))}
             </div>
             <input
@@ -871,8 +871,8 @@ export default function UploadPage() {
               <div className="flex items-center gap-3">
                 <span className="text-warning font-bold text-base">!</span>
                 <div>
-                  <p className="text-sm font-medium text-ink">{totalSessions} {totalSessions === 1 ? 'document is' : 'documents are'} waiting on your input.</p>
-                  <p className="text-xs text-muted">{pendingCount} items from your last {totalSessions === 1 ? 'upload' : `${totalSessions} uploads`}</p>
+                  <p className="text-sm font-medium text-foreground">{totalSessions} {totalSessions === 1 ? 'document is' : 'documents are'} waiting on your input.</p>
+                  <p className="text-xs text-foreground-muted">{pendingCount} items from your last {totalSessions === 1 ? 'upload' : `${totalSessions} uploads`}</p>
                 </div>
               </div>
               <Button size="sm" variant="outline" onClick={() => setUploadState('review')}>
@@ -884,26 +884,26 @@ export default function UploadPage() {
           {fileStatuses.length > 0 && (
             <div className="bg-surface border border-border rounded-lg overflow-hidden">
               <div className="px-4 py-3 border-b border-border">
-                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Processing</p>
+                <p className="text-xs font-semibold text-foreground-muted uppercase tracking-wide">Processing</p>
               </div>
               <div className="divide-y divide-ruled">
                 {fileStatuses.map(f => (
                   <div key={f.id} className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="flex-shrink-0 text-muted" aria-hidden>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="flex-shrink-0 text-foreground-muted" aria-hidden>
                         <path d="M4 1h7l3 3v11H4z"/><path d="M10 1v4h4"/>
                       </svg>
-                      <span className="text-sm text-ink truncate">{f.name}</span>
+                      <span className="text-sm text-foreground truncate">{f.name}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {f.status === 'uploading' && (
-                        <span className="text-xs text-muted flex items-center gap-1">
+                        <span className="text-xs text-foreground-muted flex items-center gap-1">
                           <span className="inline-block w-3 h-3 border border-muted border-t-transparent rounded-full animate-spin"/>
                           Uploading…
                         </span>
                       )}
                       {f.status === 'extracting' && (
-                        <span className="text-xs text-muted flex items-center gap-1">
+                        <span className="text-xs text-foreground-muted flex items-center gap-1">
                           <span className="inline-block w-3 h-3 border border-muted border-t-transparent rounded-full animate-spin"/>
                           Extracting…
                         </span>
@@ -927,7 +927,7 @@ export default function UploadPage() {
           )}
 
           <div>
-            <p className="text-xs text-muted uppercase tracking-wide font-medium mb-3">Folio handles</p>
+            <p className="text-xs text-foreground-muted uppercase tracking-wide font-medium mb-3">Folio handles</p>
             <div className="grid grid-cols-4 gap-3">
               {[
                 { label: 'PM statements', title: 'Rent & agent fees', examples: 'McGrath, LJ Hooker, Ray White' },
@@ -936,9 +936,9 @@ export default function UploadPage() {
                 { label: 'Other', title: 'Rates, water, insurance', examples: 'Council notices, strata levies' },
               ].map(card => (
                 <div key={card.label} className="bg-surface border border-border rounded-lg p-4">
-                  <p className="text-xs text-muted mb-1">{card.label}</p>
-                  <p className="text-sm font-medium text-ink mb-2">{card.title}</p>
-                  <p className="text-xs text-muted">{card.examples}</p>
+                  <p className="text-xs text-foreground-muted mb-1">{card.label}</p>
+                  <p className="text-sm font-medium text-foreground mb-2">{card.title}</p>
+                  <p className="text-xs text-foreground-muted">{card.examples}</p>
                 </div>
               ))}
             </div>

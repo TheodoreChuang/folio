@@ -13,49 +13,48 @@
   ── DESIGN TOKENS (@theme) ──────────────────────────────────────────────────
   In Tailwind v4, all customisation lives here — not in tailwind.config.ts.
   Tailwind auto-generates utility classes from these:
-    --color-ink   → bg-ink, text-ink, border-ink, fill-ink …
-    --color-accent → bg-accent, text-accent …
-    --font-sans   → font-sans …
+    --color-foreground → text-foreground, bg-foreground …
+    --color-accent     → bg-accent, text-accent …
+    --font-sans        → font-sans …
 
-  Backward-compat token names (ink, screen-bg, muted, etc.) are kept so
-  existing pages don't break. Values are updated to the new design system.
-  New components should use the new semantic names (surface, sidebar, etc.).
+  Token names match docs/visual-designs/tokens.css (single source of truth).
 */
 @theme inline {
-  /* Fonts: DM Sans → Inter, Instrument Serif → Fraunces, DM Mono → Inter */
+  /* Fonts */
   --font-sans:  'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono:  'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: 'Fraunces', 'Lora', ui-serif, Georgia, serif;
 
-  /* Backward-compat palette (names kept, values updated to new design) */
-  --color-ink:              hsl(30 10% 12%);   /* foreground */
-  --color-paper:            hsl(40 35% 99%);   /* surface */
-  --color-screen-bg:        hsl(40 30% 97%);   /* background */
-  --color-ruled:            hsl(36 14% 90%);   /* rule */
-  --color-muted:            hsl(32 6% 38%);    /* foreground-muted */
-  --color-border:           hsl(36 12% 86%);   /* border */
-  --color-accent:           hsl(188 32% 32%);  /* accent (teal; was green) */
-  --color-accent-soft:      hsl(186 28% 92%);
-  --color-warn:             hsl(14 58% 42%);   /* negative */
-  --color-warn-light:       hsl(18 58% 94%);   /* negative-soft */
-
-  /* New semantic tokens for new components */
-  --color-sidebar:          hsl(38 28% 95%);
+  /* Surfaces */
+  --color-background:       hsl(40 30% 97%);
   --color-surface:          hsl(40 35% 99%);
-  --color-surface-raised:   hsl(0 0% 100%);   /* pure white — lifts off surface */
+  --color-surface-raised:   hsl(0 0% 100%);
   --color-surface-sunken:   hsl(38 22% 94%);
-  --color-foreground-subtle: hsl(34 5% 56%);
+  --color-sidebar:          hsl(38 28% 95%);
+
+  /* Ink (text) */
+  --color-foreground:        hsl(30 10% 12%);
   --color-foreground-muted:  hsl(32 6% 38%);
+  --color-foreground-subtle: hsl(34 5% 56%);
+  --color-foreground-faint:  hsl(36 8% 72%);
+
+  /* Lines */
+  --color-border:           hsl(36 12% 86%);
+  --color-rule:             hsl(36 14% 90%);
+
+  /* Accent */
+  --color-accent:           hsl(188 32% 32%);
+  --color-accent-soft:      hsl(186 28% 92%);
+
+  /* Semantic */
   --color-positive:         hsl(152 38% 30%);
   --color-positive-soft:    hsl(148 30% 92%);
   --color-negative:         hsl(14 58% 42%);
   --color-negative-soft:    hsl(18 58% 94%);
-  /* Warning (amber) — distinct from negative (red) */
   --color-warning:          hsl(34 70% 42%);
   --color-warning-soft:     hsl(38 76% 93%);
-  --color-foreground-faint: hsl(36 8% 72%);
 
-  /* Border radius scale (updated to new design system values) */
+  /* Border radius scale */
   --radius:    0.4375rem;   /* 7px */
   --radius-sm: 0.3125rem;   /* 5px */
   --radius-md: 0.625rem;    /* 10px */
@@ -138,8 +137,8 @@
   }
 
   body {
-    background-color: var(--color-screen-bg);
-    color: var(--color-ink);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
     font-family: var(--font-sans);
   }
 }

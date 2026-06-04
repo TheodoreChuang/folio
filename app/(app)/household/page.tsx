@@ -97,7 +97,7 @@ function FreqToggle({
             'flex-1 h-7 text-sm font-medium rounded-[5px] transition-colors',
             opt.value === value
               ? 'bg-accent-soft text-accent'
-              : 'text-muted hover:text-ink',
+              : 'text-foreground-muted hover:text-foreground',
           ].join(' ')}
         >
           {opt.label}
@@ -156,7 +156,7 @@ function ItemForm({
       {/* Row 1: Name + Amount */}
       <div className="grid grid-cols-[1fr_auto] gap-3 mb-3">
         <div>
-          <label className="block text-[10px] font-semibold text-muted uppercase tracking-widest mb-1">Name</label>
+          <label className="block text-[10px] font-semibold text-foreground-muted uppercase tracking-widest mb-1">Name</label>
           <Input
             ref={nameRef}
             value={name}
@@ -166,9 +166,9 @@ function ItemForm({
           />
         </div>
         <div>
-          <label className="block text-[10px] font-semibold text-muted uppercase tracking-widest mb-1">Amount</label>
+          <label className="block text-[10px] font-semibold text-foreground-muted uppercase tracking-widest mb-1">Amount</label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm pointer-events-none">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm pointer-events-none">$</span>
             <Input
               type="number"
               min="0"
@@ -185,7 +185,7 @@ function ItemForm({
 
       {/* Row 2: Detail (optional) */}
       <div className="mb-3">
-        <label className="block text-[10px] font-semibold text-muted uppercase tracking-widest mb-1">
+        <label className="block text-[10px] font-semibold text-foreground-muted uppercase tracking-widest mb-1">
           Detail <span className="normal-case font-normal">(optional)</span>
         </label>
         <Input
@@ -197,13 +197,13 @@ function ItemForm({
 
       {/* Row 3: Frequency */}
       <div className="mb-3">
-        <label className="block text-[10px] font-semibold text-muted uppercase tracking-widest mb-1">Frequency</label>
+        <label className="block text-[10px] font-semibold text-foreground-muted uppercase tracking-widest mb-1">Frequency</label>
         <FreqToggle value={frequency} onChange={setFrequency} />
       </div>
 
       {/* Preview */}
       {previewMonthly !== null && previewAnnual !== null && (
-        <p className="text-xs text-muted mb-3">
+        <p className="text-xs text-foreground-muted mb-3">
           ≈ {formatCents(previewMonthly)} / mo · {formatCents(previewAnnual)} / yr
         </p>
       )}
@@ -242,7 +242,7 @@ function EditGlyph({ onClick }: { onClick: () => void }) {
       type="button"
       onClick={onClick}
       aria-label="Edit"
-      className="text-muted hover:text-ink transition-colors"
+      className="text-foreground-muted hover:text-foreground transition-colors"
     >
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
         <path d="M2 8.5L8 2.5l1.5 1.5L3.5 10H2v-1.5z" />
@@ -269,8 +269,8 @@ function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => voi
           className={[
             'px-3 h-[26px] text-xs font-medium rounded-[5px] transition-colors',
             opt.value === view
-              ? 'bg-white text-ink shadow-[0_1px_0_hsl(36_12%_90%)]'
-              : 'text-muted hover:text-ink',
+              ? 'bg-white text-foreground shadow-[0_1px_0_hsl(36_12%_90%)]'
+              : 'text-foreground-muted hover:text-foreground',
           ].join(' ')}
         >
           {opt.label}
@@ -291,7 +291,7 @@ function gridCols(view: View) {
 
 function TableHeader({ view }: { view: View }) {
   return (
-    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2 border-b border-border text-[10px] font-semibold text-muted uppercase tracking-widest bg-surface-sunken`}>
+    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2 border-b border-border text-[10px] font-semibold text-foreground-muted uppercase tracking-widest bg-surface-sunken`}>
       <div />
       <div className="text-right w-28">As entered</div>
       {(view === 'monthly' || view === 'both') && (
@@ -312,18 +312,18 @@ function ItemRow({ item, view, onEdit }: { item: EnrichedItem; view: View; onEdi
   return (
     <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2.5 items-center hover:bg-surface-sunken/50 group border-b border-border/40 last:border-0`}>
       <div>
-        <div className="text-sm text-ink font-medium">{item.name}</div>
-        {item.detail && <div className="text-xs text-muted mt-0.5">{item.detail}</div>}
+        <div className="text-sm text-foreground font-medium">{item.name}</div>
+        {item.detail && <div className="text-xs text-foreground-muted mt-0.5">{item.detail}</div>}
       </div>
       <div className="text-sm text-right w-28 text-foreground-muted tabular-nums">
         {formatCentsEntered(item.amountCents)}
-        <span className="text-xs text-muted ml-1">{FREQ_ABBR[item.frequency]}</span>
+        <span className="text-xs text-foreground-muted ml-1">{FREQ_ABBR[item.frequency]}</span>
       </div>
       {(view === 'monthly' || view === 'both') && (
-        <div className="text-sm text-right w-24 tabular-nums text-ink">{formatCents(item.monthlyCents)}</div>
+        <div className="text-sm text-right w-24 tabular-nums text-foreground">{formatCents(item.monthlyCents)}</div>
       )}
       {(view === 'annual' || view === 'both') && (
-        <div className="text-sm text-right w-24 tabular-nums text-ink">{formatCents(annualCents)}</div>
+        <div className="text-sm text-right w-24 tabular-nums text-foreground">{formatCents(annualCents)}</div>
       )}
       <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
         <EditGlyph onClick={onEdit} />
@@ -336,14 +336,14 @@ function ItemRow({ item, view, onEdit }: { item: EnrichedItem; view: View; onEdi
 
 function SubtotalRow({ label, monthlyCents, view }: { label: string; monthlyCents: number; view: View }) {
   return (
-    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2.5 items-center border-t border-border bg-screen-bg`}>
-      <div className="text-xs font-semibold text-muted uppercase tracking-widest">{label}</div>
+    <div className={`grid ${gridCols(view)} gap-x-6 px-4 py-2.5 items-center border-t border-border bg-background`}>
+      <div className="text-xs font-semibold text-foreground-muted uppercase tracking-widest">{label}</div>
       <div className="w-28" />
       {(view === 'monthly' || view === 'both') && (
-        <div className="text-sm font-semibold text-right w-24 tabular-nums text-ink">{formatCents(monthlyCents)}</div>
+        <div className="text-sm font-semibold text-right w-24 tabular-nums text-foreground">{formatCents(monthlyCents)}</div>
       )}
       {(view === 'annual' || view === 'both') && (
-        <div className="text-sm font-semibold text-right w-24 tabular-nums text-ink">{formatCents(monthlyCents * 12)}</div>
+        <div className="text-sm font-semibold text-right w-24 tabular-nums text-foreground">{formatCents(monthlyCents * 12)}</div>
       )}
       <div />
     </div>
@@ -390,8 +390,8 @@ function EmptyState({ onAdd }: { onAdd: (type: BudgetItemType) => void }) {
           <path d="M12 5v14M5 12h14" />
         </svg>
       </div>
-      <p className="font-display font-normal text-2xl tracking-tight leading-tight text-ink">Set your household baseline</p>
-      <p className="text-sm text-muted max-w-[46ch] leading-snug">
+      <p className="font-display font-normal text-2xl tracking-tight leading-tight text-foreground">Set your household baseline</p>
+      <p className="text-sm text-foreground-muted max-w-[46ch] leading-snug">
         Add the income you bring in and the expenses you carry.
       </p>
       <div className="flex gap-2 mt-2">
@@ -520,8 +520,8 @@ export default function HouseholdPage() {
     <div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="font-display text-2xl text-ink">Household</h1>
-          <p className="text-sm text-muted mt-0.5">
+          <h1 className="font-display text-2xl text-foreground">Household</h1>
+          <p className="text-sm text-foreground-muted mt-0.5">
             Your personal income and expenses — independent of your portfolio.
           </p>
         </div>
@@ -529,7 +529,7 @@ export default function HouseholdPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-24 text-sm text-muted">Loading…</div>
+        <div className="flex items-center justify-center py-24 text-sm text-foreground-muted">Loading…</div>
       ) : !hasItems && !hasAnyAdd ? (
         <EmptyState onAdd={openAdd} />
       ) : (

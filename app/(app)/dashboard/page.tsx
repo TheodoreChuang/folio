@@ -137,7 +137,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Portfolio</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Portfolio</h1>
 
       {/* Prompts strip — statement completeness only */}
       {missingProperties.length > 0 && (
@@ -194,8 +194,8 @@ export default function DashboardPage() {
         <SectionLabel>Cashflow trend · last 12 months</SectionLabel>
         <div className="bg-surface border border-border rounded-[7px] p-5">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-medium text-ink">Monthly cashflow composition</span>
-            <div className="flex items-center gap-4 text-xs text-muted">
+            <span className="text-sm font-medium text-foreground">Monthly cashflow composition</span>
+            <div className="flex items-center gap-4 text-xs text-foreground-muted">
               <span className="flex items-center gap-1.5">
                 <span
                   className="inline-block w-2.5 h-2.5 rounded-sm"

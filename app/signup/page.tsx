@@ -39,20 +39,20 @@ export default function SignupPage() {
 
   if (sent) {
     return (
-      <div className="min-h-screen bg-screen-bg flex items-center justify-center px-4">
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
           <div className="font-display text-2xl text-center mb-7">Folio</div>
           <Card>
             <CardContent className="pt-7 pb-7 text-center">
               <div className="text-5xl mb-4">📬</div>
               <h2 className="text-lg font-semibold mb-2">Check your inbox</h2>
-              <p className="text-sm text-muted leading-relaxed">
+              <p className="text-sm text-foreground-muted leading-relaxed">
                 We sent a magic link to<br />
-                <strong className="text-ink">{email}</strong><br /><br />
+                <strong className="text-foreground">{email}</strong><br /><br />
                 Click the link to log in — no password needed.
               </p>
               <div className="mt-5 pt-5 border-t border-border">
-                <p className="text-sm text-muted">
+                <p className="text-sm text-foreground-muted">
                   Didn't get it?{' '}
                   <Button variant="link" className="p-0 h-auto" onClick={() => setSent(false)}>
                     Resend email
@@ -67,13 +67,13 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-screen-bg flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="font-display text-2xl text-center mb-7">Folio</div>
         <Card>
           <CardContent className="pt-7 pb-7">
             <h2 className="text-lg font-semibold mb-1">Create your account</h2>
-            <p className="text-sm text-muted mb-6">Get your first report in under 5 minutes.</p>
+            <p className="text-sm text-foreground-muted mb-6">Get your first report in under 5 minutes.</p>
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email address</Label>
@@ -90,13 +90,13 @@ export default function SignupPage() {
                 {loading ? 'Sending…' : 'Send magic link →'}
               </Button>
             </div>
-            <p className="text-center text-sm text-muted mt-5">
+            <p className="text-center text-sm text-foreground-muted mt-5">
               Already have an account?{' '}
               <Link href="/login" className="text-accent font-medium hover:underline">Log in</Link>
             </p>
           </CardContent>
         </Card>
-        <p className="text-center text-[11px] text-muted mt-4 leading-relaxed">
+        <p className="text-center text-[11px] text-foreground-muted mt-4 leading-relaxed">
           By continuing you agree to our Terms &amp; Privacy Policy.
         </p>
       </div>

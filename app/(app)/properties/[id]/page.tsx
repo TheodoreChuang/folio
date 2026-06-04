@@ -113,7 +113,7 @@ function SelectField({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}{optional && <span className="font-normal text-muted"> (optional)</span>}</Label>
+      <Label htmlFor={id}>{label}{optional && <span className="font-normal text-foreground-muted"> (optional)</span>}</Label>
       <select
         id={id}
         className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -149,14 +149,14 @@ function PropFieldRow({
   const isEditing = editingField === fieldKey
   const isSaving = fieldSaving === fieldKey
   return (
-    <div className={`grid items-center py-3 ${last ? '' : 'border-b border-ruled'}`}
+    <div className={`grid items-center py-3 ${last ? '' : 'border-b border-rule'}`}
       style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
       <div className="text-xs font-medium text-foreground-subtle">{label}</div>
       <div>
         {isEditing ? (
           <div className="relative inline-flex items-center">
             {editPrefix && (
-              <span className="absolute left-2 text-sm text-muted pointer-events-none">{editPrefix}</span>
+              <span className="absolute left-2 text-sm text-foreground-muted pointer-events-none">{editPrefix}</span>
             )}
             <input
               type={inputType}
@@ -177,7 +177,7 @@ function PropFieldRow({
             role="button" tabIndex={0}
             onClick={onStartEdit}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStartEdit() }}
-            className={`group text-sm text-ink cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
+            className={`group text-sm text-foreground cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
           >
             {displayValue
               ? <span>{displayValue}</span>
@@ -218,7 +218,7 @@ function PropSelectRow({
   const isEditing = editingField === fieldKey
   const isSaving = fieldSaving === fieldKey
   return (
-    <div className={`grid items-center py-3 ${last ? '' : 'border-b border-ruled'}`}
+    <div className={`grid items-center py-3 ${last ? '' : 'border-b border-rule'}`}
       style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
       <div className="text-xs font-medium text-foreground-subtle">{label}</div>
       <div>
@@ -238,7 +238,7 @@ function PropSelectRow({
             role="button" tabIndex={0}
             onClick={onStartEdit}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStartEdit() }}
-            className={`group text-sm text-ink cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
+            className={`group text-sm text-foreground cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
           >
             {displayValue
               ? <span>{displayValue}</span>
@@ -818,7 +818,7 @@ export default function PropertyDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <span className="text-sm text-muted">Loading…</span>
+        <span className="text-sm text-foreground-muted">Loading…</span>
       </div>
     )
   }
@@ -826,7 +826,7 @@ export default function PropertyDetailPage() {
   if (notFound || !property) {
     return (
       <div className="text-center py-16">
-        <p className="text-sm text-muted">Property not found.</p>
+        <p className="text-sm text-foreground-muted">Property not found.</p>
         <Link href="/properties" className="text-accent text-sm hover:underline mt-2 inline-block">
           ← Back to properties
         </Link>
@@ -840,29 +840,29 @@ export default function PropertyDetailPage() {
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="mb-3 flex items-center gap-1.5 text-xs text-muted">
-        <Link href="/properties" className="hover:text-ink transition-colors">Properties</Link>
+      <div className="mb-3 flex items-center gap-1.5 text-xs text-foreground-muted">
+        <Link href="/properties" className="hover:text-foreground transition-colors">Properties</Link>
         <span>›</span>
-        <span className="text-ink">{property.nickname ?? property.address}</span>
+        <span className="text-foreground">{property.nickname ?? property.address}</span>
       </div>
 
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl text-ink">
+            <h1 className="font-display text-2xl text-foreground">
               {property.nickname ?? property.address}
             </h1>
             {isSold && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-sunken text-muted border border-border">
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-surface-sunken text-foreground-muted border border-border">
                 Sold
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3 mt-1 text-sm text-muted">
+          <div className="flex items-center gap-3 mt-1 text-sm text-foreground-muted">
             {property.nickname && <span>{property.address}</span>}
             {entityName && (
-              <span className="inline-flex items-center h-[22px] px-3 rounded-full text-[11px] font-medium uppercase tracking-[0.06em] bg-surface-sunken text-muted border border-border whitespace-nowrap">
+              <span className="inline-flex items-center h-[22px] px-3 rounded-full text-[11px] font-medium uppercase tracking-[0.06em] bg-surface-sunken text-foreground-muted border border-border whitespace-nowrap">
                 {entityName}
               </span>
             )}
@@ -904,14 +904,14 @@ export default function PropertyDetailPage() {
           value={latestValuation ? formatCents(latestValuation.valueCents) : '—'}
           foot={
             latestValuation
-              ? <span className="text-xs text-muted">as of {formatDate(latestValuation.valuedAt)}</span>
+              ? <span className="text-xs text-foreground-muted">as of {formatDate(latestValuation.valuedAt)}</span>
               : undefined
           }
         />
         <MetricTile
           label="Gross yield"
           value={yieldStats ? `${yieldStats.grossPercent.toFixed(1)}%` : '—'}
-          foot={yieldStats ? <span className="text-xs text-muted">{yieldStats.periodLabel}</span> : undefined}
+          foot={yieldStats ? <span className="text-xs text-foreground-muted">{yieldStats.periodLabel}</span> : undefined}
         />
         <MetricTile
           label="Net cashflow"
@@ -921,7 +921,7 @@ export default function PropertyDetailPage() {
               : '—'
           }
           valueClassName={avgMonthlyNetCents !== null && avgMonthlyNetCents < 0 ? 'text-red-500' : undefined}
-          foot={avgMonthlyNetCents !== null ? <span className="text-xs text-muted">avg / month · 12 mo</span> : undefined}
+          foot={avgMonthlyNetCents !== null ? <span className="text-xs text-foreground-muted">avg / month · 12 mo</span> : undefined}
         />
         <MetricTile
           label="LVR"
@@ -945,7 +945,7 @@ export default function PropertyDetailPage() {
                 setActiveTab(tab)
                 if (tab === 'management') loadManagement()
               }}
-              className={`relative pb-3 pt-2 text-sm font-medium transition-colors capitalize${activeTab === tab ? ' text-ink' : ' text-muted hover:text-ink'}`}
+              className={`relative pb-3 pt-2 text-sm font-medium transition-colors capitalize${activeTab === tab ? ' text-foreground' : ' text-foreground-muted hover:text-foreground'}`}
             >
               {tab}
               {activeTab === tab && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent" />}
@@ -961,7 +961,7 @@ export default function PropertyDetailPage() {
             {/* Property details card */}
             <div className="bg-surface border border-border rounded-lg p-5">
               <div className="mb-4">
-                <h3 className="text-sm font-semibold text-ink">Property details</h3>
+                <h3 className="text-sm font-semibold text-foreground">Property details</h3>
               </div>
               <PropFieldRow
                 label="Nickname" fieldKey="nickname"
@@ -1027,40 +1027,40 @@ export default function PropertyDetailPage() {
                 onCommit={v => commitPropField('purchasePriceCents', v)}
                 onCancel={() => setEditingField(null)}
               />
-              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+              <div className="grid items-center py-3 border-b border-rule" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
                 <div className="text-xs font-medium text-foreground-subtle">Managing agent</div>
-                <div className="text-sm text-ink">{currentAgent?.agencyName ?? <span className="text-foreground-faint">—</span>}</div>
+                <div className="text-sm text-foreground">{currentAgent?.agencyName ?? <span className="text-foreground-faint">—</span>}</div>
               </div>
-              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+              <div className="grid items-center py-3 border-b border-rule" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
                 <div className="text-xs font-medium text-foreground-subtle">Lease end</div>
-                <div className="text-sm text-ink">{activeTenancy?.leaseEnd ? formatDate(activeTenancy.leaseEnd) : <span className="text-foreground-faint">—</span>}</div>
+                <div className="text-sm text-foreground">{activeTenancy?.leaseEnd ? formatDate(activeTenancy.leaseEnd) : <span className="text-foreground-faint">—</span>}</div>
               </div>
-              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+              <div className="grid items-center py-3 border-b border-rule" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
                 <div className="text-xs font-medium text-foreground-subtle">Weekly rent</div>
-                <div className="text-sm text-ink">{activeTenancy ? formatCents(activeTenancy.weeklyRentCents) : <span className="text-foreground-faint">—</span>}</div>
+                <div className="text-sm text-foreground">{activeTenancy ? formatCents(activeTenancy.weeklyRentCents) : <span className="text-foreground-faint">—</span>}</div>
               </div>
-              <div className="grid items-center py-3 border-b border-ruled" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
+              <div className="grid items-center py-3 border-b border-rule" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
                 <div className="text-xs font-medium text-foreground-subtle">Sale date</div>
-                <div className={`text-sm ${property.saleDate ? 'text-ink' : 'text-foreground-faint'}`}>{property.saleDate ? formatDate(property.saleDate) : 'Not sold'}</div>
+                <div className={`text-sm ${property.saleDate ? 'text-foreground' : 'text-foreground-faint'}`}>{property.saleDate ? formatDate(property.saleDate) : 'Not sold'}</div>
               </div>
               <div className="grid items-center py-3" style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}>
                 <div className="text-xs font-medium text-foreground-subtle">Sale price</div>
-                <div className="text-sm text-ink">{property.salePriceCents ? formatCents(property.salePriceCents) : <span className="text-foreground-faint">—</span>}</div>
+                <div className="text-sm text-foreground">{property.salePriceCents ? formatCents(property.salePriceCents) : <span className="text-foreground-faint">—</span>}</div>
               </div>
             </div>
 
             {/* Equity position card */}
             <div className="bg-surface border border-border rounded-lg p-5">
               <div className="flex items-baseline justify-between mb-5">
-                <h3 className="text-sm font-semibold text-ink">Equity position</h3>
+                <h3 className="text-sm font-semibold text-foreground">Equity position</h3>
                 {latestValuation && (
-                  <span className="text-xs text-muted">{formatDate(latestValuation.valuedAt)}</span>
+                  <span className="text-xs text-foreground-muted">{formatDate(latestValuation.valuedAt)}</span>
                 )}
               </div>
               {!latestValuation ? (
                 <div className="py-6 text-center">
-                  <p className="text-sm text-muted mb-1">No valuation recorded yet.</p>
-                  <p className="text-xs text-muted">Add one in the Insights tab.</p>
+                  <p className="text-sm text-foreground-muted mb-1">No valuation recorded yet.</p>
+                  <p className="text-xs text-foreground-muted">Add one in the Insights tab.</p>
                 </div>
               ) : (
                 <>
@@ -1086,23 +1086,23 @@ export default function PropertyDetailPage() {
                         bold: true,
                       },
                     ].map(({ label, sub, value, muted, bold }) => (
-                      <div key={label} className="grid gap-4 py-2.5 border-b border-ruled last:border-0 text-sm" style={{ gridTemplateColumns: '1fr auto' }}>
+                      <div key={label} className="grid gap-4 py-2.5 border-b border-rule last:border-0 text-sm" style={{ gridTemplateColumns: '1fr auto' }}>
                         <div>
-                          <div className="text-xs text-muted font-medium">{label}</div>
-                          {sub && <div className="text-xs text-muted mt-0.5">{sub}</div>}
+                          <div className="text-xs text-foreground-muted font-medium">{label}</div>
+                          {sub && <div className="text-xs text-foreground-muted mt-0.5">{sub}</div>}
                         </div>
-                        <div className={`tabular-nums ${bold ? 'font-semibold text-ink' : muted ? 'text-muted' : 'text-ink'}`}>{value}</div>
+                        <div className={`tabular-nums ${bold ? 'font-semibold text-foreground' : muted ? 'text-foreground-muted' : 'text-foreground'}`}>{value}</div>
                       </div>
                     ))}
                   </div>
                   {lvrDecimal !== null && (
                     <div className="mt-5">
-                      <div className="flex items-center justify-between text-xs text-muted mb-2">
+                      <div className="flex items-center justify-between text-xs text-foreground-muted mb-2">
                         <span>LVR</span>
-                        <span className="text-ink font-medium tabular-nums">{Math.round(lvrDecimal * 100)}%</span>
+                        <span className="text-foreground font-medium tabular-nums">{Math.round(lvrDecimal * 100)}%</span>
                       </div>
                       <LvrMeter value={lvrDecimal} />
-                      <div className="flex justify-between text-[10px] text-muted mt-1.5">
+                      <div className="flex justify-between text-[10px] text-foreground-muted mt-1.5">
                         <span>0%</span><span>60%</span><span>80%</span><span>100%</span>
                       </div>
                     </div>
@@ -1121,15 +1121,15 @@ export default function PropertyDetailPage() {
             {/* Tenancies */}
             <div className="bg-surface border border-border rounded-lg p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-ink">Tenancy &amp; lease</h3>
+                <h3 className="text-sm font-semibold text-foreground">Tenancy &amp; lease</h3>
                 <Button size="sm" variant="outline" onClick={() => setShowAddTenancy(true)}>
                   + Add tenancy
                 </Button>
               </div>
               {!mgmtLoaded ? (
-                <p className="text-sm text-muted py-2">Loading…</p>
+                <p className="text-sm text-foreground-muted py-2">Loading…</p>
               ) : tenancies.length === 0 ? (
-                <p className="text-sm text-muted">No tenancy records.</p>
+                <p className="text-sm text-foreground-muted">No tenancy records.</p>
               ) : (
                 <div className="space-y-3">
                   {tenancies.map(t => {
@@ -1142,7 +1142,7 @@ export default function PropertyDetailPage() {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0 space-y-0.5">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium text-ink">
+                              <span className="text-sm font-medium text-foreground">
                                 {t.leaseType === 'fixed_term' ? 'Fixed term' : 'Periodic'}
                               </span>
                               {active ? (
@@ -1150,29 +1150,29 @@ export default function PropertyDetailPage() {
                                   Active
                                 </span>
                               ) : (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full bg-surface-sunken text-muted border border-border">
+                                <span className="text-xs px-1.5 py-0.5 rounded-full bg-surface-sunken text-foreground-muted border border-border">
                                   Ended
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-muted">
+                            <p className="text-xs text-foreground-muted">
                               {formatDate(t.leaseStart)} – {t.leaseEnd ? formatDate(t.leaseEnd) : 'ongoing'}
                             </p>
-                            {t.tenants && <p className="text-xs text-muted">{t.tenants}</p>}
+                            {t.tenants && <p className="text-xs text-foreground-muted">{t.tenants}</p>}
                           </div>
                           <div className="text-right flex-shrink-0">
                             <p className="text-sm font-medium tabular-nums">
                               {formatCents(t.weeklyRentCents)}/wk
                             </p>
                             {t.bondCents && (
-                              <p className="text-xs text-muted mt-0.5">Bond: {formatCents(t.bondCents)}</p>
+                              <p className="text-xs text-foreground-muted mt-0.5">Bond: {formatCents(t.bondCents)}</p>
                             )}
                           </div>
                         </div>
-                        <div className="flex justify-end mt-3 pt-2 border-t border-ruled">
+                        <div className="flex justify-end mt-3 pt-2 border-t border-rule">
                           <button
                             onClick={() => handleDeleteTenancy(t.id)}
-                            className="text-xs text-muted hover:text-red-600 transition-colors"
+                            className="text-xs text-foreground-muted hover:text-red-600 transition-colors"
                           >
                             Delete
                           </button>
@@ -1187,15 +1187,15 @@ export default function PropertyDetailPage() {
             {/* Management agents */}
             <div className="bg-surface border border-border rounded-lg p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-ink">Property management</h3>
+                <h3 className="text-sm font-semibold text-foreground">Property management</h3>
                 <Button size="sm" variant="outline" onClick={() => setShowAddAgent(true)}>
                   + Add agent
                 </Button>
               </div>
               {!mgmtLoaded ? (
-                <p className="text-sm text-muted py-2">Loading…</p>
+                <p className="text-sm text-foreground-muted py-2">Loading…</p>
               ) : managementAgents.length === 0 ? (
-                <p className="text-sm text-muted">No management agent records.</p>
+                <p className="text-sm text-foreground-muted">No management agent records.</p>
               ) : (
                 <div className="space-y-3">
                   {managementAgents.map(a => {
@@ -1208,36 +1208,36 @@ export default function PropertyDetailPage() {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0 space-y-0.5">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium text-ink">{a.agencyName}</span>
+                              <span className="text-sm font-medium text-foreground">{a.agencyName}</span>
                               {active ? (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">
                                   Active
                                 </span>
                               ) : (
-                                <span className="text-xs px-1.5 py-0.5 rounded-full bg-surface-sunken text-muted border border-border">
+                                <span className="text-xs px-1.5 py-0.5 rounded-full bg-surface-sunken text-foreground-muted border border-border">
                                   Previous
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-muted">
+                            <p className="text-xs text-foreground-muted">
                               From {formatDate(a.effectiveFrom)}
                               {a.effectiveTo ? ` – ${formatDate(a.effectiveTo)}` : ''}
                             </p>
                             {a.contactName && (
-                              <p className="text-xs text-muted">
+                              <p className="text-xs text-foreground-muted">
                                 {a.contactName}{a.phone ? ` · ${a.phone}` : ''}
                               </p>
                             )}
-                            <p className="text-xs text-muted">
+                            <p className="text-xs text-foreground-muted">
                               {CADENCE_LABELS[a.statementCadence]} statements
                               {a.feePercent ? ` · ${a.feePercent}% management fee` : ''}
                             </p>
                           </div>
                         </div>
-                        <div className="flex justify-end mt-3 pt-2 border-t border-ruled">
+                        <div className="flex justify-end mt-3 pt-2 border-t border-rule">
                           <button
                             onClick={() => handleDeleteAgent(a.id)}
-                            className="text-xs text-muted hover:text-red-600 transition-colors"
+                            className="text-xs text-foreground-muted hover:text-red-600 transition-colors"
                           >
                             Delete
                           </button>
@@ -1256,16 +1256,16 @@ export default function PropertyDetailPage() {
         {activeTab === 'loans' && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-muted uppercase tracking-wide font-medium">
+            <p className="text-xs text-foreground-muted uppercase tracking-wide font-medium">
               Loans secured by this property
             </p>
-            <Link href="/loans" className="text-xs text-muted hover:text-accent transition-colors">
+            <Link href="/loans" className="text-xs text-foreground-muted hover:text-accent transition-colors">
               Open Loans section →
             </Link>
           </div>
           {loans.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-sm text-muted mb-3">No loans linked to this property.</p>
+              <p className="text-sm text-foreground-muted mb-3">No loans linked to this property.</p>
               <Button size="sm" variant="outline" onClick={() => router.push('/loans/new')}>
                 + Add a loan
               </Button>
@@ -1280,8 +1280,8 @@ export default function PropertyDetailPage() {
                   <div key={loan.id} className="bg-surface border border-border rounded-lg p-5">
                     <div className="flex items-start justify-between mb-4">
                       <div>
-                        <p className="font-medium text-ink">{loan.nickname ?? loan.lender}</p>
-                        <div className="flex items-center gap-1.5 text-xs text-muted mt-0.5 flex-wrap">
+                        <p className="font-medium text-foreground">{loan.nickname ?? loan.lender}</p>
+                        <div className="flex items-center gap-1.5 text-xs text-foreground-muted mt-0.5 flex-wrap">
                           <span>{loan.lender}</span>
                           {loan.accountReference && (
                             <>
@@ -1323,11 +1323,11 @@ export default function PropertyDetailPage() {
                           sub: null,
                         },
                       ].map(({ k, v, sub }) => (
-                        <div key={k} className="grid gap-4 py-2 border-b border-ruled last:border-0 text-sm" style={{ gridTemplateColumns: '140px 1fr' }}>
-                          <span className="text-xs text-muted font-medium">{k}</span>
-                          <span className="text-ink tabular-nums">
+                        <div key={k} className="grid gap-4 py-2 border-b border-rule last:border-0 text-sm" style={{ gridTemplateColumns: '140px 1fr' }}>
+                          <span className="text-xs text-foreground-muted font-medium">{k}</span>
+                          <span className="text-foreground tabular-nums">
                             {v}
-                            {sub && <span className="text-xs text-muted ml-2">{sub}</span>}
+                            {sub && <span className="text-xs text-foreground-muted ml-2">{sub}</span>}
                           </span>
                         </div>
                       ))}
@@ -1337,11 +1337,11 @@ export default function PropertyDetailPage() {
               })}
               {equityCents !== null && equityCents > 0 && (
                 <div className="flex items-center justify-between py-3 px-4 bg-surface border border-dashed border-border rounded-lg text-sm">
-                  <span className="text-muted">
-                    Equity available: <span className="font-semibold text-ink">{formatCents(equityCents)}</span>
+                  <span className="text-foreground-muted">
+                    Equity available: <span className="font-semibold text-foreground">{formatCents(equityCents)}</span>
                   </span>
                   <button
-                    className="text-xs text-muted hover:text-accent transition-colors"
+                    className="text-xs text-foreground-muted hover:text-accent transition-colors"
                     onClick={() => router.push('/loans/new')}
                   >
                     + Add another loan
@@ -1377,7 +1377,7 @@ export default function PropertyDetailPage() {
                 const outCents = entries.filter(e => e.category !== 'rent').reduce((s, e) => s + e.amountCents, 0)
                 const netCents = inCents - outCents
                 return (
-                  <span className="text-xs text-muted inline-flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs text-foreground-muted inline-flex items-center gap-1.5 flex-wrap">
                     <span className="text-foreground-subtle">{entries.length} {entries.length === 1 ? 'entry' : 'entries'}</span>
                     <span className="w-1 h-1 rounded-full bg-foreground-subtle inline-block" />
                     <span className="text-green-700">+{formatCents(inCents)}</span>
@@ -1385,7 +1385,7 @@ export default function PropertyDetailPage() {
                     <span>−{formatCents(outCents)}</span>
                     <span className="w-1 h-1 rounded-full bg-foreground-subtle inline-block" />
                     <span className="text-foreground-subtle">net</span>{' '}
-                    <span className={`font-medium text-ink`}>{netCents >= 0 ? `+${formatCents(netCents)}` : `−${formatCents(Math.abs(netCents))}`}</span>
+                    <span className={`font-medium text-foreground`}>{netCents >= 0 ? `+${formatCents(netCents)}` : `−${formatCents(Math.abs(netCents))}`}</span>
                   </span>
                 )
               })()}
@@ -1393,7 +1393,7 @@ export default function PropertyDetailPage() {
             <div className="flex items-center gap-2 flex-shrink-0">
               <Link
                 href="/upload"
-                className="inline-flex items-center gap-1.5 h-8 px-3 text-xs text-muted border border-input rounded-md hover:text-ink hover:border-border transition-colors"
+                className="inline-flex items-center gap-1.5 h-8 px-3 text-xs text-foreground-muted border border-input rounded-md hover:text-foreground hover:border-border transition-colors"
               >
                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
                   <path d="M3 8.5V10h6V8.5"/><path d="M6 2.5v5M4 4.5l2-2 2 2"/>
@@ -1409,7 +1409,7 @@ export default function PropertyDetailPage() {
 
           {showAddEntry && (
             <div className="bg-surface border border-border rounded-lg p-5 mb-4">
-              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
+              <p className="text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3">
                 New transaction
               </p>
               <div className="grid grid-cols-2 gap-3 mb-3">
@@ -1424,7 +1424,7 @@ export default function PropertyDetailPage() {
                 <div className="space-y-1.5">
                   <Label htmlFor="entry-amount">Amount ($)</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                     <Input
                       id="entry-amount" type="text" inputMode="decimal"
                       placeholder="1,200" className="pl-7"
@@ -1444,7 +1444,7 @@ export default function PropertyDetailPage() {
                 </SelectField>
                 <div className="space-y-1.5">
                   <Label htmlFor="entry-desc">
-                    Description <span className="font-normal text-muted">(optional)</span>
+                    Description <span className="font-normal text-foreground-muted">(optional)</span>
                   </Label>
                   <Input
                     id="entry-desc" placeholder="e.g. Water bill"
@@ -1465,11 +1465,11 @@ export default function PropertyDetailPage() {
 
           {entriesLoading ? (
             <div className="text-center py-8">
-              <span className="text-sm text-muted">Loading…</span>
+              <span className="text-sm text-foreground-muted">Loading…</span>
             </div>
           ) : entries.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-sm text-muted">No transactions for this month.</p>
+              <p className="text-sm text-foreground-muted">No transactions for this month.</p>
             </div>
           ) : (
             <div className="bg-surface border border-border rounded-lg overflow-hidden">
@@ -1485,8 +1485,8 @@ export default function PropertyDetailPage() {
                 </thead>
                 <tbody>
                   {entries.map(entry => (
-                    <tr key={entry.id} className="border-b border-ruled last:border-b-0 group">
-                      <td className="py-2.5 px-4 text-muted">{formatDate(entry.lineItemDate)}</td>
+                    <tr key={entry.id} className="border-b border-rule last:border-b-0 group">
+                      <td className="py-2.5 px-4 text-foreground-muted">{formatDate(entry.lineItemDate)}</td>
                       <td className="py-2.5 px-4">
                         <span className="inline-flex items-center gap-1.5">
                           <span
@@ -1496,7 +1496,7 @@ export default function PropertyDetailPage() {
                           {CATEGORY_LABELS[entry.category] ?? entry.category}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4 text-muted">{entry.description ?? '—'}</td>
+                      <td className="py-2.5 px-4 text-foreground-muted">{entry.description ?? '—'}</td>
                       <td className="py-2.5 px-4 text-right tabular-nums font-medium">
                         {entry.category === 'rent'
                           ? <span className="text-green-700">+{formatCents(entry.amountCents)}</span>
@@ -1507,7 +1507,7 @@ export default function PropertyDetailPage() {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button
-                              className="opacity-0 group-hover:opacity-100 text-muted hover:text-ink transition-opacity text-base leading-none px-1"
+                              className="opacity-0 group-hover:opacity-100 text-foreground-muted hover:text-foreground transition-opacity text-base leading-none px-1"
                               aria-label="Row actions"
                             >⋯</button>
                           </DropdownMenuTrigger>
@@ -1542,11 +1542,11 @@ export default function PropertyDetailPage() {
         <div>
 
           {/* Cashflow chart section */}
-          <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">Cashflow · last 12 months</p>
+          <p className="text-xs font-medium text-foreground-muted uppercase tracking-wide mb-3">Cashflow · last 12 months</p>
           <div className="bg-surface border border-border rounded-lg p-5 mb-7">
             <div className="flex items-start justify-between mb-4">
-              <span className="text-sm font-semibold text-ink">Net cashflow · monthly</span>
-              <div className="flex items-center gap-4 text-xs text-muted">
+              <span className="text-sm font-semibold text-foreground">Net cashflow · monthly</span>
+              <div className="flex items-center gap-4 text-xs text-foreground-muted">
                 <span className="flex items-center gap-1.5">
                   <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'hsl(152 38% 30% / 0.55)' }} />
                   Rent
@@ -1566,7 +1566,7 @@ export default function PropertyDetailPage() {
               </div>
             </div>
             {trends.length === 0 ? (
-              <p className="text-sm text-muted py-6 text-center">No cashflow data yet.</p>
+              <p className="text-sm text-foreground-muted py-6 text-center">No cashflow data yet.</p>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <ComposedChart
@@ -1601,7 +1601,7 @@ export default function PropertyDetailPage() {
           </div>
 
           {/* Valuation summary strip */}
-          <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">Valuation summary</p>
+          <p className="text-xs font-medium text-foreground-muted uppercase tracking-wide mb-3">Valuation summary</p>
           {(() => {
             const growthPercent = latestValuation && property.purchasePriceCents
               ? ((latestValuation.valueCents - property.purchasePriceCents) / property.purchasePriceCents) * 100
@@ -1629,7 +1629,7 @@ export default function PropertyDetailPage() {
                 <MetricTile
                   label="Current value"
                   value={latestValuation ? formatCents(latestValuation.valueCents) : '—'}
-                  foot={latestValuation ? <span className="text-xs text-muted">as of {formatDate(latestValuation.valuedAt)}</span> : undefined}
+                  foot={latestValuation ? <span className="text-xs text-foreground-muted">as of {formatDate(latestValuation.valuedAt)}</span> : undefined}
                 />
                 <MetricTile
                   label="Growth · since purchase"
@@ -1637,7 +1637,7 @@ export default function PropertyDetailPage() {
                   valueClassName={growthPercent !== null && growthPercent < 0 ? 'text-negative' : growthPercent !== null ? 'text-positive' : undefined}
                   foot={
                     property.purchasePriceCents && latestValuation
-                      ? <span className="text-xs text-muted">
+                      ? <span className="text-xs text-foreground-muted">
                           {formatCents(property.purchasePriceCents)} → {formatCents(latestValuation.valueCents)}
                           {yearsHeld !== null ? ` · ${yearsHeld < 1 ? '<1 yr' : `${Math.floor(yearsHeld)} yr${Math.floor(yearsHeld) !== 1 ? 's' : ''}`}` : ''}
                         </span>
@@ -1650,7 +1650,7 @@ export default function PropertyDetailPage() {
                   valueClassName="text-base"
                   foot={
                     latestValuation
-                      ? <span className="text-xs text-muted inline-flex items-center gap-1.5">
+                      ? <span className="text-xs text-foreground-muted inline-flex items-center gap-1.5">
                           {formatDate(latestValuation.valuedAt)}
                           {isRecent && (
                             <span className="inline-flex items-center h-[18px] px-1.5 rounded text-[9px] font-semibold uppercase tracking-wide bg-positive-soft text-positive">
@@ -1669,8 +1669,8 @@ export default function PropertyDetailPage() {
           {chartData.length >= 2 && (
             <div className="bg-surface border border-border rounded-lg p-5 mb-5">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-ink">Value over time</span>
-                <span className="flex items-center gap-1.5 text-xs text-muted">
+                <span className="text-sm font-semibold text-foreground">Value over time</span>
+                <span className="flex items-center gap-1.5 text-xs text-foreground-muted">
                   <span className="inline-block w-2.5 h-0.5" style={{ background: 'hsl(188 32% 32%)' }} />
                   Valuation
                 </span>
@@ -1707,18 +1707,18 @@ export default function PropertyDetailPage() {
           )}
 
           {/* Valuation history table */}
-          <p className="text-xs font-medium text-muted uppercase tracking-wide mb-3">Valuation history</p>
+          <p className="text-xs font-medium text-foreground-muted uppercase tracking-wide mb-3">Valuation history</p>
           <div className="bg-surface border border-border rounded-lg overflow-hidden mb-5">
             {valuations.length === 0 ? (
-              <p className="text-sm text-muted p-5">No valuations recorded yet.</p>
+              <p className="text-sm text-foreground-muted p-5">No valuations recorded yet.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Date</th>
-                    <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Source</th>
-                    <th className="text-right font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Value</th>
-                    <th className="text-right font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Change</th>
+                    <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Date</th>
+                    <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Source</th>
+                    <th className="text-right font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Value</th>
+                    <th className="text-right font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Change</th>
                     <th className="w-8"></th>
                   </tr>
                 </thead>
@@ -1727,9 +1727,9 @@ export default function PropertyDetailPage() {
                     const prev = valuations[i + 1]
                     const changeCents = prev ? v.valueCents - prev.valueCents : null
                     return (
-                      <tr key={v.id} className="border-b border-ruled last:border-b-0 group">
-                        <td className="py-2.5 px-4 text-muted">{formatDate(v.valuedAt)}</td>
-                        <td className="py-2.5 px-4 text-muted capitalize">{v.source ? v.source.replace(/_/g, ' ') : 'Manual entry'}</td>
+                      <tr key={v.id} className="border-b border-rule last:border-b-0 group">
+                        <td className="py-2.5 px-4 text-foreground-muted">{formatDate(v.valuedAt)}</td>
+                        <td className="py-2.5 px-4 text-foreground-muted capitalize">{v.source ? v.source.replace(/_/g, ' ') : 'Manual entry'}</td>
                         <td className="py-2.5 px-4 text-right tabular-nums font-medium">{formatCents(v.valueCents)}</td>
                         <td className="py-2.5 px-4 text-right tabular-nums text-xs">
                           {changeCents !== null ? (
@@ -1737,7 +1737,7 @@ export default function PropertyDetailPage() {
                               {changeCents >= 0 ? '+' : '−'}{formatCents(Math.abs(changeCents))}
                             </span>
                           ) : (
-                            <span className="text-muted">baseline</span>
+                            <span className="text-foreground-muted">baseline</span>
                           )}
                         </td>
                         <td className="py-2.5 pr-3">
@@ -1746,12 +1746,12 @@ export default function PropertyDetailPage() {
                               <button onClick={() => handleDeleteValuation(v.id)} disabled={deletingVal} className="text-xs text-red-600 hover:text-red-700">
                                 {deletingVal ? 'Deleting…' : 'Delete'}
                               </button>
-                              <button onClick={() => setDeleteValId(null)} className="text-xs text-muted hover:text-ink">Cancel</button>
+                              <button onClick={() => setDeleteValId(null)} className="text-xs text-foreground-muted hover:text-foreground">Cancel</button>
                             </div>
                           ) : (
                             <button
                               onClick={() => setDeleteValId(v.id)}
-                              className="opacity-0 group-hover:opacity-100 text-muted hover:text-ink transition-opacity text-base leading-none"
+                              className="opacity-0 group-hover:opacity-100 text-foreground-muted hover:text-foreground transition-opacity text-base leading-none"
                               title="Delete valuation"
                             >⋯</button>
                           )}
@@ -1767,8 +1767,8 @@ export default function PropertyDetailPage() {
           {/* Add valuation form */}
           <div className="bg-surface border border-border rounded-lg p-5">
             <div className="flex items-baseline justify-between mb-4">
-              <h4 className="text-sm font-semibold text-ink">Add a new valuation</h4>
-              <span className="text-xs text-muted">Typically once every 6–12 months</span>
+              <h4 className="text-sm font-semibold text-foreground">Add a new valuation</h4>
+              <span className="text-xs text-foreground-muted">Typically once every 6–12 months</span>
             </div>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="space-y-1.5">
@@ -1778,7 +1778,7 @@ export default function PropertyDetailPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="val-amount">Value ($)</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                   <Input id="val-amount" type="text" inputMode="decimal" placeholder="920,000" className="pl-7" value={valDollars} onChange={e => setValDollars(e.target.value)} />
                 </div>
               </div>
@@ -1786,12 +1786,12 @@ export default function PropertyDetailPage() {
                 {VALUATION_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </SelectField>
               <div className="space-y-1.5">
-                <Label htmlFor="val-reference">Reference <span className="font-normal text-muted">(optional)</span></Label>
+                <Label htmlFor="val-reference">Reference <span className="font-normal text-foreground-muted">(optional)</span></Label>
                 <Input id="val-reference" placeholder="e.g. Bank val report #1234" value={valReference} onChange={e => setValReference(e.target.value)} />
               </div>
             </div>
             <div className="space-y-1.5 mb-3">
-              <Label htmlFor="val-notes">Notes <span className="font-normal text-muted">(optional)</span></Label>
+              <Label htmlFor="val-notes">Notes <span className="font-normal text-foreground-muted">(optional)</span></Label>
               <Input id="val-notes" placeholder="e.g. Comparable sale: 18 Elm Street, $935k March 2026" value={valNotes} onChange={e => setValNotes(e.target.value)} />
             </div>
             <div className="flex gap-2">
@@ -1827,7 +1827,7 @@ export default function PropertyDetailPage() {
             <div className="space-y-1.5">
               <Label htmlFor="sold-price">Sale price ($)</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                 <Input
                   id="sold-price" type="text" inputMode="decimal"
                   placeholder="950,000" className="pl-7"
@@ -1838,7 +1838,7 @@ export default function PropertyDetailPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="sold-settlement">
-                Settlement date <span className="font-normal text-muted">(optional)</span>
+                Settlement date <span className="font-normal text-foreground-muted">(optional)</span>
               </Label>
               <Input
                 id="sold-settlement" type="date"
@@ -1910,7 +1910,7 @@ export default function PropertyDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ten-end">
-                  Lease end <span className="font-normal text-muted">(optional)</span>
+                  Lease end <span className="font-normal text-foreground-muted">(optional)</span>
                 </Label>
                 <Input
                   id="ten-end" type="date"
@@ -1922,7 +1922,7 @@ export default function PropertyDetailPage() {
             <div className="space-y-1.5">
               <Label htmlFor="ten-rent">Weekly rent ($)</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                 <Input
                   id="ten-rent" type="text" inputMode="decimal"
                   placeholder="450" className="pl-7"
@@ -1933,7 +1933,7 @@ export default function PropertyDetailPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="ten-tenants">
-                Tenants <span className="font-normal text-muted">(optional)</span>
+                Tenants <span className="font-normal text-foreground-muted">(optional)</span>
               </Label>
               <Input
                 id="ten-tenants" placeholder="e.g. John & Jane Smith"
@@ -1943,10 +1943,10 @@ export default function PropertyDetailPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="ten-bond">
-                Bond ($) <span className="font-normal text-muted">(optional)</span>
+                Bond ($) <span className="font-normal text-foreground-muted">(optional)</span>
               </Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                 <Input
                   id="ten-bond" type="text" inputMode="decimal"
                   placeholder="1,800" className="pl-7"
@@ -1998,7 +1998,7 @@ export default function PropertyDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="agent-to">
-                  Effective to <span className="font-normal text-muted">(optional)</span>
+                  Effective to <span className="font-normal text-foreground-muted">(optional)</span>
                 </Label>
                 <Input
                   id="agent-to" type="date"
@@ -2020,7 +2020,7 @@ export default function PropertyDetailPage() {
               </SelectField>
               <div className="space-y-1.5">
                 <Label htmlFor="agent-fee">
-                  Management fee (%) <span className="font-normal text-muted">(optional)</span>
+                  Management fee (%) <span className="font-normal text-foreground-muted">(optional)</span>
                 </Label>
                 <Input
                   id="agent-fee" type="text" inputMode="decimal"
@@ -2032,7 +2032,7 @@ export default function PropertyDetailPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="agent-contact">
-                Contact name <span className="font-normal text-muted">(optional)</span>
+                Contact name <span className="font-normal text-foreground-muted">(optional)</span>
               </Label>
               <Input
                 id="agent-contact" placeholder="e.g. Sarah Jones"
@@ -2043,7 +2043,7 @@ export default function PropertyDetailPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="agent-phone">
-                  Phone <span className="font-normal text-muted">(optional)</span>
+                  Phone <span className="font-normal text-foreground-muted">(optional)</span>
                 </Label>
                 <Input
                   id="agent-phone" type="tel" placeholder="0412 345 678"
@@ -2053,7 +2053,7 @@ export default function PropertyDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="agent-email">
-                  Email <span className="font-normal text-muted">(optional)</span>
+                  Email <span className="font-normal text-foreground-muted">(optional)</span>
                 </Label>
                 <Input
                   id="agent-email" type="email" placeholder="agent@agency.com.au"

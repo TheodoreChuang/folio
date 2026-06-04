@@ -25,10 +25,10 @@ function ioCountdownMonths(ioEndDate: string): number {
 }
 
 const LENDER_BG: Record<string, string> = {
-  cba:       'hsl(212 48% 30%)',
-  westpac:   'hsl(0 65% 38%)',
-  anz:       'hsl(208 70% 36%)',
-  nab:       'hsl(2 60% 36%)',
+  cba: 'hsl(212 48% 30%)',
+  westpac: 'hsl(0 65% 38%)',
+  anz: 'hsl(208 70% 36%)',
+  nab: 'hsl(2 60% 36%)',
   macquarie: 'hsl(0 0% 12%)',
 }
 
@@ -68,7 +68,7 @@ function FieldRow({
   const isSaving = fieldSaving === fieldKey
   return (
     <div
-      className={`grid items-center py-3 ${last ? '' : 'border-b border-ruled'}`}
+      className={`grid items-center py-3 ${last ? '' : 'border-b border-rule'}`}
       style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}
     >
       <div className="text-xs font-medium text-foreground-subtle">{label}</div>
@@ -88,7 +88,7 @@ function FieldRow({
               className={`w-full text-sm px-2 py-1 rounded border border-border bg-surface outline-none focus:border-accent transition-colors${editSuffix ? ' pr-7' : ''}`}
             />
             {editSuffix && (
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-muted pointer-events-none">
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-foreground-muted pointer-events-none">
                 {editSuffix}
               </span>
             )}
@@ -99,7 +99,7 @@ function FieldRow({
             tabIndex={0}
             onClick={onStartEdit}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStartEdit() }}
-            className={`group text-sm text-ink cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
+            className={`group text-sm text-foreground cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
           >
             {displayValue !== null && displayValue !== ''
               ? <span>{displayValue}</span>
@@ -108,7 +108,7 @@ function FieldRow({
             {!isSaving && (
               <span className="opacity-0 group-hover:opacity-60 transition-opacity">
                 <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
-                  <path d="M2 8.5L8 2.5l1.5 1.5L3.5 10H2v-1.5z"/>
+                  <path d="M2 8.5L8 2.5l1.5 1.5L3.5 10H2v-1.5z" />
                 </svg>
               </span>
             )}
@@ -340,7 +340,7 @@ export default function LoanDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <span className="text-sm text-muted">Loading…</span>
+        <span className="text-sm text-foreground-muted">Loading…</span>
       </div>
     )
   }
@@ -348,7 +348,7 @@ export default function LoanDetailPage() {
   if (notFound || !loan) {
     return (
       <div className="text-center py-16">
-        <p className="text-sm text-muted">Loan not found.</p>
+        <p className="text-sm text-foreground-muted">Loan not found.</p>
         <Link href="/loans" className="text-accent text-sm hover:underline mt-2 inline-block">← Back to loans</Link>
       </div>
     )
@@ -363,7 +363,7 @@ export default function LoanDetailPage() {
     ioMonths = ioCountdownMonths(loan.ioEndDate)
     ioTileValue = `${ioMonths} months`
     ioTileFoot = (
-      <span className="flex items-center gap-2 text-xs text-muted">
+      <span className="flex items-center gap-2 text-xs text-foreground-muted">
         <span>{formatDate(loan.ioEndDate)}</span>
         {ioMonths <= 18 && (
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-100 text-amber-700 border border-amber-200">
@@ -375,17 +375,17 @@ export default function LoanDetailPage() {
     )
   } else if (loan.loanType === 'principal_and_interest') {
     ioTileValue = 'P&I'
-    ioTileFoot = <span className="text-xs text-muted">Principal &amp; interest</span>
+    ioTileFoot = <span className="text-xs text-foreground-muted">Principal &amp; interest</span>
   } else {
     ioTileValue = '—'
-    ioTileFoot = <span className="text-xs text-muted">Loan type not set</span>
+    ioTileFoot = <span className="text-xs text-foreground-muted">Loan type not set</span>
   }
 
   const loanTypeSubtitle = loan.loanType === 'interest_only'
     ? `Interest only${loan.ioEndDate ? ` · IO ends ${formatDate(loan.ioEndDate)}` : ''}`
     : loan.loanType === 'principal_and_interest'
-    ? 'Principal & interest'
-    : null
+      ? 'Principal & interest'
+      : null
 
   const totalPaidCents = repayments.reduce((sum, r) => sum + r.amountCents, 0)
   const allInterestOnly = repayments.length > 0 && repayments.every(r => r.principalCents === null || r.principalCents === 0)
@@ -396,19 +396,19 @@ export default function LoanDetailPage() {
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-xs text-muted mb-3">
-        <Link href="/loans" className="hover:text-ink transition-colors">Loans</Link>
+      <div className="flex items-center gap-1.5 text-xs text-foreground-muted mb-3">
+        <Link href="/loans" className="hover:text-foreground transition-colors">Loans</Link>
         <span>›</span>
         <span>{loan.lender}</span>
       </div>
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className="font-display text-2xl text-ink">
+        <h1 className="font-display text-2xl text-foreground">
           {loan.nickname ?? loan.lender}{loan.propertyAddress ? ` · ${loan.propertyAddress}` : ''}
         </h1>
         <div className="flex items-center gap-2 mt-2 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 border border-border rounded-full text-xs text-muted bg-surface-sunken pl-0.5 pr-3 py-0.5">
+          <span className="inline-flex items-center gap-1.5 border border-border rounded-full text-xs text-foreground-muted bg-surface-sunken pl-0.5 pr-3 py-0.5">
             <span
               className="w-5 h-5 rounded-full inline-flex items-center justify-center text-[9px] font-bold tracking-tight"
               style={glyphStyle}
@@ -418,7 +418,7 @@ export default function LoanDetailPage() {
             {loan.lender}
           </span>
           {loan.entityName && (
-            <span className="inline-flex items-center h-[22px] px-3 rounded-full text-[10px] font-medium uppercase tracking-wide bg-surface-sunken text-muted border border-border whitespace-nowrap">
+            <span className="inline-flex items-center h-[22px] px-3 rounded-full text-[10px] font-medium uppercase tracking-wide bg-surface-sunken text-foreground-muted border border-border whitespace-nowrap">
               {loan.entityName}
             </span>
           )}
@@ -433,7 +433,7 @@ export default function LoanDetailPage() {
         <MetricTile
           label="Current balance"
           value={currentBalance !== null ? formatCents(currentBalance) : '—'}
-          foot={loan.latestBalance ? <span className="text-xs text-muted">as of {formatDate(loan.latestBalance.recordedAt)}</span> : undefined}
+          foot={loan.latestBalance ? <span className="text-xs text-foreground-muted">as of {formatDate(loan.latestBalance.recordedAt)}</span> : undefined}
         />
         <MetricTile
           label={loan.loanType === 'interest_only' ? 'IO period ends in' : 'Loan type'}
@@ -447,7 +447,7 @@ export default function LoanDetailPage() {
         <button
           type="button"
           onClick={() => setActiveTab('overview')}
-          className={`relative pb-3 pt-2 text-sm font-medium transition-colors${activeTab === 'overview' ? ' text-ink' : ' text-muted hover:text-ink'}`}
+          className={`relative pb-3 pt-2 text-sm font-medium transition-colors${activeTab === 'overview' ? ' text-foreground' : ' text-foreground-muted hover:text-foreground'}`}
         >
           Overview
           {activeTab === 'overview' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent" />}
@@ -455,7 +455,7 @@ export default function LoanDetailPage() {
         <button
           type="button"
           onClick={() => { setActiveTab('repayments'); void loadRepayments() }}
-          className={`relative pb-3 pt-2 text-sm font-medium transition-colors${activeTab === 'repayments' ? ' text-ink' : ' text-muted hover:text-ink'}`}
+          className={`relative pb-3 pt-2 text-sm font-medium transition-colors${activeTab === 'repayments' ? ' text-foreground' : ' text-foreground-muted hover:text-foreground'}`}
         >
           Repayments
           {activeTab === 'repayments' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent" />}
@@ -469,8 +469,8 @@ export default function LoanDetailPage() {
           {/* Loan terms — inline editing */}
           <div className="bg-surface border border-border rounded-lg p-5">
             <div className="flex items-baseline justify-between mb-5">
-              <h3 className="text-sm font-semibold text-ink">Loan terms</h3>
-              <span className="text-xs text-muted">Click any field to edit</span>
+              <h3 className="text-sm font-semibold text-foreground">Loan terms</h3>
+              <span className="text-xs text-foreground-muted">Click any field to edit</span>
             </div>
             <div className="flex flex-col">
               <FieldRow
@@ -499,21 +499,22 @@ export default function LoanDetailPage() {
               />
               {/* Loan type segmented control */}
               <div
-                className="grid items-center py-3 border-b border-ruled"
+                className="grid items-center py-3 border-b border-rule"
                 style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}
               >
                 <div className="text-xs font-medium text-foreground-subtle">Loan type</div>
-                <div className="flex rounded border border-border overflow-hidden w-fit h-[26px]">
-                  {(['interest_only', 'principal_and_interest'] as const).map((type, i) => (
+                <div className="flex rounded-md border border-border bg-surface p-0.5 gap-0.5 w-fit">
+                  {(['interest_only', 'principal_and_interest'] as const).map(type => (
                     <button
                       key={type}
                       type="button"
                       onClick={() => toggleLoanType(type)}
                       disabled={fieldSaving === 'loanType'}
                       className={[
-                        'px-3 text-xs font-medium transition-colors h-full',
-                        loan.loanType === type ? 'bg-ink text-surface' : 'bg-surface text-muted hover:text-ink',
-                        i > 0 ? 'border-l border-border' : '',
+                        'px-2.5 py-0.5 text-xs font-medium transition-colors rounded',
+                        loan.loanType === type
+                          ? 'bg-foreground text-background shadow-sm'
+                          : 'text-foreground-muted hover:text-foreground',
                       ].join(' ')}
                     >
                       {type === 'interest_only' ? 'IO' : 'P&I'}
@@ -568,7 +569,7 @@ export default function LoanDetailPage() {
                 style={{ gridTemplateColumns: '130px 1fr', gap: '16px' }}
               >
                 <div className="text-xs font-medium text-foreground-subtle">Security</div>
-                <div className="text-sm text-ink">
+                <div className="text-sm text-foreground">
                   {loan.propertyAddress
                     ? <span className="font-medium">{loan.propertyAddress}</span>
                     : <span className="text-foreground-faint">No property linked</span>
@@ -581,35 +582,35 @@ export default function LoanDetailPage() {
           {/* Balance history */}
           <div className="bg-surface border border-border rounded-lg p-5">
             <div className="flex items-baseline justify-between mb-5">
-              <h3 className="text-sm font-semibold text-ink">Balance history</h3>
+              <h3 className="text-sm font-semibold text-foreground">Balance history</h3>
               {balances.length > 0 && (
-                <span className="text-xs text-muted">{balances.length} snapshot{balances.length !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-foreground-muted">{balances.length} snapshot{balances.length !== 1 ? 's' : ''}</span>
               )}
             </div>
 
             {balances.length === 0 ? (
-              <p className="text-sm text-muted mb-4">No balance snapshots recorded yet.</p>
+              <p className="text-sm text-foreground-muted mb-4">No balance snapshots recorded yet.</p>
             ) : (
               <div className="mb-5">
                 {balances.map(b => (
-                  <div key={b.id} className="flex items-center justify-between py-2 border-b border-ruled last:border-b-0">
-                    <span className="text-sm text-muted">{formatDate(b.recordedAt)}</span>
+                  <div key={b.id} className="flex items-center justify-between py-2 border-b border-rule last:border-b-0">
+                    <span className="text-sm text-foreground-muted">{formatDate(b.recordedAt)}</span>
                     <span className="text-sm font-medium tabular-nums">{formatCents(b.balanceCents)}</span>
                   </div>
                 ))}
               </div>
             )}
 
-            <div className="pt-5" style={{ borderTop: '1px dashed hsl(var(--color-ruled))' }}>
+            <div className="pt-5" style={{ borderTop: '1px dashed hsl(var(--color-rule))' }}>
               <div className="grid gap-3 items-end" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
                 <div>
-                  <label className="block text-[11px] text-muted mb-1">Date</label>
+                  <label className="block text-[11px] text-foreground-muted mb-1">Date</label>
                   <Input type="date" value={addBalanceDate} onChange={e => setAddBalanceDate(e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-muted mb-1">Balance</label>
+                  <label className="block text-[11px] text-foreground-muted mb-1">Balance</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -628,7 +629,7 @@ export default function LoanDetailPage() {
                   style={{ height: '32px' }}
                 >
                   <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" className="mr-1" aria-hidden>
-                    <line x1="6" y1="2" x2="6" y2="10"/><line x1="2" y1="6" x2="10" y2="6"/>
+                    <line x1="6" y1="2" x2="6" y2="10" /><line x1="2" y1="6" x2="10" y2="6" />
                   </svg>
                   {addingBalance ? 'Adding…' : 'Add'}
                 </Button>
@@ -643,17 +644,17 @@ export default function LoanDetailPage() {
       {activeTab === 'repayments' && (
         <div>
           {repaymentsLoading ? (
-            <div className="text-sm text-muted py-8 text-center">Loading repayments…</div>
+            <div className="text-sm text-foreground-muted py-8 text-center">Loading repayments…</div>
           ) : (
             <>
               {repaymentsFetched && repayments.length === 0 && (
-                <p className="text-sm text-muted mb-6">No repayments recorded yet.</p>
+                <p className="text-sm text-foreground-muted mb-6">No repayments recorded yet.</p>
               )}
               {repayments.length > 0 && (
                 <>
                   <div className="w-full">
                     <div
-                      className="grid text-xs font-semibold text-muted uppercase tracking-wider pb-2 border-b border-border"
+                      className="grid text-xs font-semibold text-foreground-muted uppercase tracking-wider pb-2 border-b border-border"
                       style={{ gridTemplateColumns: '130px 140px 130px 130px 1fr' }}
                     >
                       <span>Date</span>
@@ -665,26 +666,26 @@ export default function LoanDetailPage() {
                     {repayments.map(r => (
                       <div
                         key={r.id}
-                        className="grid py-2.5 border-b border-ruled last:border-b-0 items-center"
+                        className="grid py-2.5 border-b border-rule last:border-b-0 items-center"
                         style={{ gridTemplateColumns: '130px 140px 130px 130px 1fr' }}
                       >
-                        <span className="text-sm text-muted">{formatDate(r.paymentDate)}</span>
+                        <span className="text-sm text-foreground-muted">{formatDate(r.paymentDate)}</span>
                         <span className="text-sm font-semibold tabular-nums text-right">
                           −{formatCents(r.amountCents)}
                         </span>
-                        <span className={`text-sm tabular-nums text-right ${r.interestCents === null ? 'text-foreground-faint' : 'text-muted'}`}>
+                        <span className={`text-sm tabular-nums text-right ${r.interestCents === null ? 'text-foreground-faint' : 'text-foreground-muted'}`}>
                           {r.interestCents !== null ? formatCents(r.interestCents) : '—'}
                         </span>
-                        <span className={`text-sm tabular-nums text-right ${r.principalCents === null ? 'text-foreground-faint' : 'text-muted'}`}>
+                        <span className={`text-sm tabular-nums text-right ${r.principalCents === null ? 'text-foreground-faint' : 'text-foreground-muted'}`}>
                           {r.principalCents !== null ? formatCents(r.principalCents) : '—'}
                         </span>
                         <span className="text-sm flex items-center gap-1.5">
                           {r.sourceDocumentId ? (
                             <>
-                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" className="text-muted shrink-0" aria-hidden>
-                                <path d="M2 1h7l2 2v8H2z"/><path d="M9 1v2h2M5 8h3"/>
+                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" className="text-foreground-muted shrink-0" aria-hidden>
+                                <path d="M2 1h7l2 2v8H2z" /><path d="M9 1v2h2M5 8h3" />
                               </svg>
-                              <span className="text-muted truncate">{r.sourceFileName ?? 'Statement'}</span>
+                              <span className="text-foreground-muted truncate">{r.sourceFileName ?? 'Statement'}</span>
                             </>
                           ) : (
                             <span className="text-foreground-faint">Manual</span>
@@ -693,7 +694,7 @@ export default function LoanDetailPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between pt-3 text-sm text-muted border-t border-border">
+                  <div className="flex items-center justify-between pt-3 text-sm text-foreground-muted border-t border-border">
                     <span>{formatCents(totalPaidCents)} paid · {repayments.length} {repayments.length === 1 ? 'entry' : 'entries'}</span>
                     {allInterestOnly && <span>100% interest</span>}
                   </div>
@@ -701,15 +702,15 @@ export default function LoanDetailPage() {
               )}
 
               {/* Add repayment form */}
-              <div className="mt-7 pt-6" style={{ borderTop: '1px dashed hsl(var(--color-ruled))' }}>
+              <div className="mt-7 pt-6" style={{ borderTop: '1px dashed hsl(var(--color-rule))' }}>
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-ink">Add repayment</h3>
-                    <p className="text-xs text-muted mt-0.5">Record a one-off entry, or upload a lender statement to import them in bulk.</p>
+                    <h3 className="text-sm font-semibold text-foreground">Add repayment</h3>
+                    <p className="text-xs text-foreground-muted mt-0.5">Record a one-off entry, or upload a lender statement to import them in bulk.</p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => router.push('/upload')}>
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="mr-1.5" aria-hidden>
-                      <path d="M3 11v2h10v-2"/><path d="M8 3v8M5 6l3-3 3 3"/>
+                      <path d="M3 11v2h10v-2" /><path d="M8 3v8M5 6l3-3 3 3" />
                     </svg>
                     Upload statement
                   </Button>
@@ -722,7 +723,7 @@ export default function LoanDetailPage() {
                   <div>
                     <Label htmlFor="rep-amount" className="text-[11px]">Amount <span className="text-red-500">*</span></Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                       <Input
                         id="rep-amount"
                         type="text"
@@ -735,9 +736,9 @@ export default function LoanDetailPage() {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="rep-interest" className="text-[11px]">Interest <span className="text-muted font-normal">(opt.)</span></Label>
+                    <Label htmlFor="rep-interest" className="text-[11px]">Interest <span className="text-foreground-muted font-normal">(opt.)</span></Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                       <Input
                         id="rep-interest"
                         type="text"
@@ -750,9 +751,9 @@ export default function LoanDetailPage() {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="rep-principal" className="text-[11px]">Principal <span className="text-muted font-normal">(opt.)</span></Label>
+                    <Label htmlFor="rep-principal" className="text-[11px]">Principal <span className="text-foreground-muted font-normal">(opt.)</span></Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                       <Input
                         id="rep-principal"
                         type="text"

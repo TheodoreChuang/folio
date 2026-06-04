@@ -18,7 +18,7 @@ export function HouseholdSurplusBar({ surplusCents, consumedCents, label, action
           </svg>
         </div>
         <p className="text-sm text-foreground-muted leading-snug">
-          <strong className="font-semibold text-ink">Set up your Household</strong> to see how much of your monthly surplus this {action} would use.{' '}
+          <strong className="font-semibold text-foreground">Set up your Household</strong> to see how much of your monthly surplus this {action} would use.{' '}
           <Link href="/household" className="text-accent font-semibold">Go to Household →</Link>
         </p>
       </div>
@@ -39,9 +39,9 @@ export function HouseholdSurplusBar({ surplusCents, consumedCents, label, action
       <div className="flex justify-between items-baseline text-xs text-foreground-muted mb-3">
         <span>{label}</span>
         <span className="tabular-nums">
-          <strong className="text-ink font-semibold">{formatCents(displayConsumed)}</strong>
+          <strong className="text-foreground font-semibold">{formatCents(displayConsumed)}</strong>
           {' '}of{' '}
-          <strong className="text-ink font-semibold">{formatCents(surplusCents)}</strong>
+          <strong className="text-foreground font-semibold">{formatCents(surplusCents)}</strong>
           {' '}monthly surplus
         </span>
       </div>
@@ -65,15 +65,15 @@ export function HouseholdSurplusBar({ surplusCents, consumedCents, label, action
         ) : isCovered ? (
           <>
             This move frees up{' '}
-            <strong className="text-ink font-semibold tabular-nums">{formatCents(freedCents)}</strong>
+            <strong className="text-foreground font-semibold tabular-nums">{formatCents(freedCents)}</strong>
             {' '}per month of cashflow versus today — the servicing no longer draws on your{' '}
-            <strong className="text-ink font-semibold tabular-nums">{formatCents(surplusCents)}</strong>
+            <strong className="text-foreground font-semibold tabular-nums">{formatCents(surplusCents)}</strong>
             {' '}personal surplus.
           </>
         ) : (
           <>
             Leaves{' '}
-            <strong className="text-ink font-semibold tabular-nums">{formatCents(remainingCents)}</strong>
+            <strong className="text-foreground font-semibold tabular-nums">{formatCents(remainingCents)}</strong>
             {' '}per month remaining.
           </>
         )}

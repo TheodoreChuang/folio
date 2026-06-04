@@ -136,7 +136,7 @@ function Timeline({ rows }: { rows: IoRolloverRow[] }) {
                 className={`absolute -translate-x-1/2 text-center ${isAlt ? 'bottom-full mb-7' : 'top-full mt-7'}`}
               >
                 {!dense && (
-                  <div className="text-[10px] font-medium text-ink whitespace-nowrap">
+                  <div className="text-[10px] font-medium text-foreground whitespace-nowrap">
                     {row.nickname ?? `${row.lender}`}
                   </div>
                 )}
@@ -437,7 +437,7 @@ export default function InterestOnlyPage() {
       <div className="max-w-[920px]">
         <BackToScenarios />
         <div className="mb-6">
-          <h1 className="font-display text-2xl text-ink">Interest-only rollover</h1>
+          <h1 className="font-display text-2xl text-foreground">Interest-only rollover</h1>
           <p className="text-sm text-foreground-muted mt-0.5">
             When your interest-only periods end, can you cover the payment jump?
           </p>
@@ -467,7 +467,7 @@ export default function InterestOnlyPage() {
       <BackToScenarios />
 
       <div className="mb-6">
-        <h1 className="font-display text-2xl text-ink">Interest-only rollover</h1>
+        <h1 className="font-display text-2xl text-foreground">Interest-only rollover</h1>
         <p className="text-sm text-foreground-muted mt-0.5">
           When your interest-only periods end, can you cover the payment jump?
         </p>
@@ -490,7 +490,7 @@ export default function InterestOnlyPage() {
                 <span className="text-sm text-foreground-muted font-medium">/ mo more than today</span>
               </div>
               <p className="text-sm text-foreground-muted leading-snug max-w-[44ch]">
-                That&apos;s <strong className="font-semibold text-ink">{fmtMoney(result.totalAdditionalAnnualCents)}/yr</strong> of extra servicing once{' '}
+                That&apos;s <strong className="font-semibold text-foreground">{fmtMoney(result.totalAdditionalAnnualCents)}/yr</strong> of extra servicing once{' '}
                 {n === 1 ? 'the interest-only period expires' : 'every interest-only period expires'} — estimated at each loan&apos;s P&amp;I rate, its IO rate less {DEFAULT_DISCOUNT.toFixed(2)}% by default.
               </p>
             </div>
@@ -502,9 +502,9 @@ export default function InterestOnlyPage() {
                   <div className="flex justify-between items-baseline text-xs text-foreground-muted mb-2">
                     <span>Surplus consumed once rolled</span>
                     <span className="tabular-nums">
-                      <strong className="text-ink font-semibold">{formatCents(Math.min(result.totalAdditionalMonthlyCents, context.householdSurplusMonthlyCents))}</strong>
+                      <strong className="text-foreground font-semibold">{formatCents(Math.min(result.totalAdditionalMonthlyCents, context.householdSurplusMonthlyCents))}</strong>
                       {' '}of{' '}
-                      <strong className="text-ink font-semibold">{formatCents(context.householdSurplusMonthlyCents)}</strong>
+                      <strong className="text-foreground font-semibold">{formatCents(context.householdSurplusMonthlyCents)}</strong>
                       {' '}mo
                     </span>
                   </div>
@@ -528,7 +528,7 @@ export default function InterestOnlyPage() {
                 </div>
               ) : (
                 <p className="text-sm text-foreground-muted leading-snug">
-                  <strong className="font-semibold text-ink">Set up your Household</strong> to see how much of your monthly surplus these rollovers would consume.
+                  <strong className="font-semibold text-foreground">Set up your Household</strong> to see how much of your monthly surplus these rollovers would consume.
                 </p>
               )}
             </div>
@@ -575,7 +575,7 @@ export default function InterestOnlyPage() {
                 className="grid grid-cols-[minmax(0,1.6fr)_80px_100px_88px_88px_80px] gap-3 px-5 py-4 border-t border-rule text-sm"
               >
                 <div>
-                  <span className="block font-semibold text-ink">{row.nickname ?? row.lender}</span>
+                  <span className="block font-semibold text-foreground">{row.nickname ?? row.lender}</span>
                   <span className="block mt-0.5 text-[10px] text-foreground-muted tabular-nums">
                     {row.nickname ? `${row.lender} · ` : ''}{fmtK(row.balanceCents)} · {fmtRate(row.ioRate)} IO
                     {row.loanTermYears && ` · ${row.loanTermYears}yr loan`}
@@ -590,10 +590,10 @@ export default function InterestOnlyPage() {
                     onChange={rate => onLoanRate(row.loanId, rate)}
                   />
                 </div>
-                <div className="text-right tabular-nums text-ink self-center text-sm">
+                <div className="text-right tabular-nums text-foreground self-center text-sm">
                   {formatCents(row.ioMonthlyRepaymentCents)}
                 </div>
-                <div className="text-right tabular-nums text-ink self-center text-sm">
+                <div className="text-right tabular-nums text-foreground self-center text-sm">
                   {row.termUnknown ? (
                     <span className="text-foreground-muted text-xs">term unknown</span>
                   ) : (

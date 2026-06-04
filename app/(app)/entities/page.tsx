@@ -84,10 +84,10 @@ function AddEntityForm({
 
   return (
     <div className="bg-surface border border-border rounded-lg p-5 mb-6">
-      <p className="text-[10px] font-semibold text-muted uppercase tracking-widest mb-3">New entity</p>
+      <p className="text-[10px] font-semibold text-foreground-muted uppercase tracking-widest mb-3">New entity</p>
       <div className="space-y-3">
         <div>
-          <label htmlFor="new-entity-name" className="block text-xs font-medium text-ink mb-1">Name</label>
+          <label htmlFor="new-entity-name" className="block text-xs font-medium text-foreground mb-1">Name</label>
           <Input
             ref={inputRef}
             id="new-entity-name"
@@ -98,12 +98,12 @@ function AddEntityForm({
           />
         </div>
         <div>
-          <label htmlFor="new-entity-type" className="block text-xs font-medium text-ink mb-1">Type</label>
+          <label htmlFor="new-entity-type" className="block text-xs font-medium text-foreground mb-1">Type</label>
           <select
             id="new-entity-type"
             value={type}
             onChange={e => setType(e.target.value as EntityType)}
-            className="w-full h-9 border border-border rounded-md px-3 text-sm bg-white text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft"
+            className="w-full h-9 border border-border rounded-md px-3 text-sm bg-white text-foreground focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft"
           >
             {ENTITY_TYPES.map(t => (
               <option key={t.value} value={t.value}>{t.label}</option>
@@ -250,7 +250,7 @@ function EntityCard({
             <div className="flex items-center gap-2 mb-1">
               <h3
                 className={[
-                  'text-sm font-semibold text-ink leading-tight',
+                  'text-sm font-semibold text-foreground leading-tight',
                   isConfirmingDelete ? 'cursor-default' : 'cursor-pointer hover:text-accent transition-colors',
                 ].join(' ')}
                 onClick={isConfirmingDelete ? undefined : enterRename}
@@ -277,7 +277,7 @@ function EntityCard({
               <span className="text-accent font-semibold text-[11px] mt-0.5 shrink-0">i</span>
               <span>
                 Renaming will update{' '}
-                <strong className="font-semibold text-ink">{propCount} {propCount === 1 ? 'property' : 'properties'}</strong>{' '}
+                <strong className="font-semibold text-foreground">{propCount} {propCount === 1 ? 'property' : 'properties'}</strong>{' '}
                 and references in transaction history. Historical statements remain unchanged.
               </span>
             </div>
@@ -289,7 +289,7 @@ function EntityCard({
               {/* Properties stat */}
               <div className="flex flex-col gap-0.5">
                 <span className="text-[10px] font-semibold text-foreground-muted uppercase tracking-wider">Properties</span>
-                <span className={['text-sm font-semibold', propCount === 0 ? 'text-foreground-muted' : 'text-ink'].join(' ')}>
+                <span className={['text-sm font-semibold', propCount === 0 ? 'text-foreground-muted' : 'text-foreground'].join(' ')}>
                   {propCount === 0 ? '0' : propCount}
                 </span>
                 {propCount > 0 ? (
@@ -329,7 +329,7 @@ function EntityCard({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="w-7 h-7 flex items-center justify-center rounded-md text-foreground-muted hover:text-ink hover:bg-surface-sunken transition-colors text-lg leading-none"
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-foreground-muted hover:text-foreground hover:bg-surface-sunken transition-colors text-lg leading-none"
                   aria-label="Entity actions"
                 >
                   ⋯
@@ -407,7 +407,7 @@ function EntityCard({
       {/* Delete confirmation panel */}
       {isConfirmingDelete && (
         <div className="border-t border-negative/20 px-5 py-4 bg-negative-soft/30 rounded-b-lg">
-          <p className="text-sm text-ink mb-3">
+          <p className="text-sm text-foreground mb-3">
             <strong className="font-semibold">Delete this entity?</strong>{' '}
             No properties, loans, or transactions are attached — deletion is safe and permanent.
           </p>
@@ -510,13 +510,13 @@ export default function EntitiesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-screen-bg">
+    <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8">
 
         {/* Page head */}
         <div className="flex items-start justify-between mb-2">
           <div>
-            <h1 className="font-display text-2xl text-ink mb-1">Entities</h1>
+            <h1 className="font-display text-2xl text-foreground mb-1">Entities</h1>
             <p className="text-sm text-foreground-muted">
               Trusts, companies, and individuals that own property in Folio.
             </p>
@@ -582,11 +582,11 @@ export default function EntitiesPage() {
           {/* Safety footer */}
           <div className="space-y-3 text-sm text-foreground-muted leading-relaxed pt-2 border-t border-border">
             <p>
-              <strong className="font-semibold text-ink">Renaming is safe.</strong>{' '}
+              <strong className="font-semibold text-foreground">Renaming is safe.</strong>{' '}
               The new name appears everywhere — properties, loans, filter chips, transaction history — but the underlying records are untouched. Historical statements keep the name they were imported with.
             </p>
             <p>
-              <strong className="font-semibold text-ink">Archive preserves history; delete is permanent.</strong>{' '}
+              <strong className="font-semibold text-foreground">Archive preserves history; delete is permanent.</strong>{' '}
               Archive hides an entity from pickers and filters but keeps every record. Delete is only available when nothing is attached — most often, when you&apos;ve just created an entity by mistake.
             </p>
           </div>

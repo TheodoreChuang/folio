@@ -21,18 +21,18 @@ function MetricTile({ label, value, valueClassName, foot, secondary, className }
         className,
       )}
     >
-      <div className="text-xs font-medium text-muted">{label}</div>
+      <div className="text-xs font-medium text-foreground-muted">{label}</div>
       <div
         className={cn(
-          'font-semibold text-2xl tracking-[-0.01em] leading-none tabular-nums text-ink',
-          secondary && 'text-xl text-muted',
+          'font-semibold text-2xl tracking-[-0.01em] leading-none tabular-nums text-foreground',
+          secondary && 'text-xl text-foreground-muted',
           valueClassName,
         )}
       >
         {value}
       </div>
       {foot && (
-        <div className="flex items-center justify-between text-xs text-muted mt-auto">
+        <div className="flex items-center justify-between text-xs text-foreground-muted mt-auto">
           {foot}
         </div>
       )}

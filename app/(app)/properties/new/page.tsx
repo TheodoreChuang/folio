@@ -220,12 +220,12 @@ export default function NewPropertyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-screen-bg pb-32">
+    <div className="min-h-screen bg-background pb-32">
       <div className="max-w-2xl mx-auto px-4 py-8">
 
         <Link
           href="/properties"
-          className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-ink mb-5 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-foreground-muted hover:text-foreground mb-5 transition-colors"
         >
           <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden>
             <polyline points="6,2 2,5 6,8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -235,8 +235,8 @@ export default function NewPropertyPage() {
 
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 className="font-display text-2xl text-ink">Add a property</h1>
-            <p className="text-sm text-muted mt-0.5">
+            <h1 className="font-display text-2xl text-foreground">Add a property</h1>
+            <p className="text-sm text-foreground-muted mt-0.5">
               Tell us the basics. Folio will learn the rest from your statements.
             </p>
           </div>
@@ -251,8 +251,8 @@ export default function NewPropertyPage() {
             <div className="flex items-start gap-3 mb-5">
               <span className="w-6 h-6 rounded-full bg-accent text-white text-xs font-semibold flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
               <div>
-                <h3 className="text-sm font-semibold text-ink">Address</h3>
-                <p className="text-xs text-muted mt-0.5">Where is the property?</p>
+                <h3 className="text-sm font-semibold text-foreground">Address</h3>
+                <p className="text-xs text-foreground-muted mt-0.5">Where is the property?</p>
               </div>
             </div>
             <div className="space-y-4">
@@ -268,7 +268,7 @@ export default function NewPropertyPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="nickname">
-                    Nickname <span className="font-normal text-muted">(optional)</span>
+                    Nickname <span className="font-normal text-foreground-muted">(optional)</span>
                   </Label>
                   <Input
                     id="nickname"
@@ -276,7 +276,7 @@ export default function NewPropertyPage() {
                     value={nickname}
                     onChange={e => setNickname(e.target.value)}
                   />
-                  <p className="text-xs text-muted">A short name for the sidebar.</p>
+                  <p className="text-xs text-foreground-muted">A short name for the sidebar.</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Property type</Label>
@@ -291,7 +291,7 @@ export default function NewPropertyPage() {
                           i > 0 ? 'border-l border-input' : '',
                           propertyType === pt.value
                             ? 'bg-accent text-white'
-                            : 'bg-transparent text-ink hover:bg-screen-bg',
+                            : 'bg-transparent text-foreground hover:bg-background',
                         ].join(' ')}
                       >
                         {pt.label}
@@ -307,8 +307,8 @@ export default function NewPropertyPage() {
             <div className="flex items-start gap-3 mb-5">
               <span className="w-6 h-6 rounded-full bg-accent text-white text-xs font-semibold flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
               <div>
-                <h3 className="text-sm font-semibold text-ink">Acquisition</h3>
-                <p className="text-xs text-muted mt-0.5">When and how you bought it.</p>
+                <h3 className="text-sm font-semibold text-foreground">Acquisition</h3>
+                <p className="text-xs text-foreground-muted mt-0.5">When and how you bought it.</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -320,14 +320,14 @@ export default function NewPropertyPage() {
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
                 />
-                <p className="text-xs text-muted">Contract or settlement — either is fine.</p>
+                <p className="text-xs text-foreground-muted">Contract or settlement — either is fine.</p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="purchase-price">
-                  Purchase price <span className="font-normal text-muted">(optional)</span>
+                  Purchase price <span className="font-normal text-foreground-muted">(optional)</span>
                 </Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                   <Input
                     id="purchase-price"
                     type="text"
@@ -338,11 +338,11 @@ export default function NewPropertyPage() {
                     onChange={e => setPurchasePriceDollars(e.target.value)}
                   />
                 </div>
-                <p className="text-xs text-muted">The contract price.</p>
+                <p className="text-xs text-foreground-muted">The contract price.</p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="end-date">
-                  Sold date <span className="font-normal text-muted">(if applicable)</span>
+                  Sold date <span className="font-normal text-foreground-muted">(if applicable)</span>
                 </Label>
                 <Input
                   id="end-date"
@@ -358,15 +358,15 @@ export default function NewPropertyPage() {
             <div className="flex items-start gap-3 mb-5">
               <span className="w-6 h-6 rounded-full bg-accent text-white text-xs font-semibold flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
               <div>
-                <h3 className="text-sm font-semibold text-ink">Ownership</h3>
-                <p className="text-xs text-muted mt-0.5">Which entity holds the title?</p>
+                <h3 className="text-sm font-semibold text-foreground">Ownership</h3>
+                <p className="text-xs text-foreground-muted mt-0.5">Which entity holds the title?</p>
               </div>
             </div>
 
             {loadingEntities ? (
-              <div className="text-sm text-muted">Loading entities…</div>
+              <div className="text-sm text-foreground-muted">Loading entities…</div>
             ) : entities.length === 0 ? (
-              <div className="text-sm text-muted">
+              <div className="text-sm text-foreground-muted">
                 No entities found.{' '}
                 <Link href="/entities" className="text-accent hover:underline">Add an entity first →</Link>
               </div>
@@ -379,11 +379,11 @@ export default function NewPropertyPage() {
                     onClick={() => setEntityId(null)}
                     className={[
                       'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
-                      entityId === null ? 'bg-accent-soft' : 'bg-surface hover:bg-screen-bg',
+                      entityId === null ? 'bg-accent-soft' : 'bg-surface hover:bg-background',
                     ].join(' ')}
                   >
                     <RadioDot selected={entityId === null} />
-                    <p className="text-sm text-muted italic">None (unlinked)</p>
+                    <p className="text-sm text-foreground-muted italic">None (unlinked)</p>
                   </button>
                   {entities.map(e => (
                     <button
@@ -392,13 +392,13 @@ export default function NewPropertyPage() {
                       onClick={() => setEntityId(entityId === e.id ? null : e.id)}
                       className={[
                         'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
-                        entityId === e.id ? 'bg-accent-soft' : 'bg-surface hover:bg-screen-bg',
+                        entityId === e.id ? 'bg-accent-soft' : 'bg-surface hover:bg-background',
                       ].join(' ')}
                     >
                       <RadioDot selected={entityId === e.id} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-ink">{e.name}</p>
-                        <p className="text-xs text-muted capitalize">{e.type}</p>
+                        <p className="text-sm font-medium text-foreground">{e.name}</p>
+                        <p className="text-xs text-foreground-muted capitalize">{e.type}</p>
                       </div>
                     </button>
                   ))}
@@ -411,10 +411,10 @@ export default function NewPropertyPage() {
             <div className="flex items-start gap-3 mb-5">
               <span className="w-6 h-6 rounded-full bg-accent text-white text-xs font-semibold flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
               <div>
-                <h3 className="text-sm font-semibold text-ink">
-                  Opening valuation <span className="font-normal text-muted">(optional)</span>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Opening valuation <span className="font-normal text-foreground-muted">(optional)</span>
                 </h3>
-                <p className="text-xs text-muted mt-0.5">You can update it any time on the Insights tab.</p>
+                <p className="text-xs text-foreground-muted mt-0.5">You can update it any time on the Insights tab.</p>
               </div>
             </div>
 
@@ -422,7 +422,7 @@ export default function NewPropertyPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="value">Current value ($)</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                   <Input
                     id="value"
                     type="text"
@@ -464,10 +464,10 @@ export default function NewPropertyPage() {
               <div className="flex items-start gap-3">
                 <span className="w-6 h-6 rounded-full bg-accent text-white text-xs font-semibold flex items-center justify-center flex-shrink-0 mt-0.5">5</span>
                 <div>
-                  <h3 className="text-sm font-semibold text-ink">
-                    Lease & management <span className="font-normal text-muted">(optional)</span>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Lease & management <span className="font-normal text-foreground-muted">(optional)</span>
                   </h3>
-                  <p className="text-xs text-muted mt-0.5">Skip if vacant — you can add this when the lease starts.</p>
+                  <p className="text-xs text-foreground-muted mt-0.5">Skip if vacant — you can add this when the lease starts.</p>
                 </div>
               </div>
               <button
@@ -499,7 +499,7 @@ export default function NewPropertyPage() {
                             i > 0 ? 'border-l border-input' : '',
                             leaseType === lt.value
                               ? 'bg-accent text-white'
-                              : 'bg-transparent text-ink hover:bg-screen-bg',
+                              : 'bg-transparent text-foreground hover:bg-background',
                           ].join(' ')}
                         >
                           {lt.label}
@@ -510,7 +510,7 @@ export default function NewPropertyPage() {
                   <div className="space-y-1.5">
                     <Label htmlFor="weekly-rent">Weekly rent</Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted text-sm">$</span>
                       <Input
                         id="weekly-rent"
                         type="text"
@@ -521,7 +521,7 @@ export default function NewPropertyPage() {
                         onChange={e => setWeeklyRentDollars(e.target.value)}
                       />
                     </div>
-                    <p className="text-xs text-muted">Per week</p>
+                    <p className="text-xs text-foreground-muted">Per week</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="lease-start">Lease start</Label>
@@ -541,12 +541,12 @@ export default function NewPropertyPage() {
                         value={leaseEnd}
                         onChange={e => setLeaseEnd(e.target.value)}
                       />
-                      <p className="text-xs text-muted">Folio prompts you 6 weeks before this date.</p>
+                      <p className="text-xs text-foreground-muted">Folio prompts you 6 weeks before this date.</p>
                     </div>
                   )}
                   <div className="space-y-1.5 col-span-2">
                     <Label htmlFor="tenant-name">
-                      Tenant name <span className="font-normal text-muted">(optional)</span>
+                      Tenant name <span className="font-normal text-foreground-muted">(optional)</span>
                     </Label>
                     <Input
                       id="tenant-name"
@@ -557,7 +557,7 @@ export default function NewPropertyPage() {
                   </div>
                   <div className="space-y-1.5 col-span-2">
                     <Label htmlFor="agency-name">
-                      Managing agent <span className="font-normal text-muted">(optional)</span>
+                      Managing agent <span className="font-normal text-foreground-muted">(optional)</span>
                     </Label>
                     <Input
                       id="agency-name"
@@ -565,7 +565,7 @@ export default function NewPropertyPage() {
                       value={agencyName}
                       onChange={e => setAgencyName(e.target.value)}
                     />
-                    <p className="text-xs text-muted">Used to match PM statements automatically.</p>
+                    <p className="text-xs text-foreground-muted">Used to match PM statements automatically.</p>
                   </div>
                 </div>
               </div>
@@ -579,14 +579,14 @@ export default function NewPropertyPage() {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
           <div className="flex-1 min-w-0">
             {summaryParts.length > 0 ? (
-              <p className="text-sm text-ink truncate">
+              <p className="text-sm text-foreground truncate">
                 Will add <strong>{summaryParts[0]}</strong>
                 {summaryParts.slice(1).join(' · ') ? (
-                  <span className="text-muted"> · {summaryParts.slice(1).join(' · ')}</span>
+                  <span className="text-foreground-muted"> · {summaryParts.slice(1).join(' · ')}</span>
                 ) : null}
               </p>
             ) : (
-              <p className="text-sm text-muted">Fill in an address and purchase date to continue.</p>
+              <p className="text-sm text-foreground-muted">Fill in an address and purchase date to continue.</p>
             )}
           </div>
           <div className="flex gap-2 flex-shrink-0">

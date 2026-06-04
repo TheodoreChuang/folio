@@ -82,12 +82,12 @@ export default function LoansPage() {
   const entityChips = entities.filter(e => loans.some(l => l.entityId === e.id))
 
   return (
-    <div className="min-h-screen bg-screen-bg">
+    <div className="min-h-screen bg-background">
       <div className="max-w-5xl mx-auto px-4 py-8">
 
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="font-display text-2xl text-ink">Loans</h1>
+            <h1 className="font-display text-2xl text-foreground">Loans</h1>
             <p className="text-sm text-foreground-muted mt-0.5">All borrowings across the portfolio</p>
           </div>
           <Link href="/loans/new">
@@ -106,7 +106,7 @@ export default function LoansPage() {
                   'flex items-center gap-1.5 h-7 px-3 rounded-full border text-xs font-medium transition-colors',
                   entityFilter === e.id
                     ? 'bg-accent-soft border-accent/20 text-accent'
-                    : 'bg-surface border-border text-muted hover:text-ink hover:border-ink/20',
+                    : 'bg-surface border-border text-foreground-muted hover:text-foreground hover:border-foreground/20',
                 ].join(' ')}
               >
                 <span className="text-[10px] font-medium opacity-60">Entity</span>
@@ -141,11 +141,11 @@ export default function LoansPage() {
           </div>
 
           {loading ? (
-            <div className="bg-surface border border-border rounded-lg px-5 py-8 text-center text-sm text-muted">
+            <div className="bg-surface border border-border rounded-lg px-5 py-8 text-center text-sm text-foreground-muted">
               Loading loans…
             </div>
           ) : filteredLoans.length === 0 ? (
-            <div className="bg-surface border border-border rounded-lg px-5 py-8 text-center text-sm text-muted">
+            <div className="bg-surface border border-border rounded-lg px-5 py-8 text-center text-sm text-foreground-muted">
               {loans.length === 0 ? 'No loans yet. Add one with the button above.' : 'No loans match the current filter.'}
             </div>
           ) : (
@@ -154,12 +154,12 @@ export default function LoansPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="text-left text-[10px] font-semibold text-muted uppercase tracking-wider px-4 py-3">Lender</th>
-                      <th className="text-left text-[10px] font-semibold text-muted uppercase tracking-wider px-4 py-3">Nickname</th>
-                      <th className="text-left text-[10px] font-semibold text-muted uppercase tracking-wider px-4 py-3">Entity</th>
-                      <th className="text-left text-[10px] font-semibold text-muted uppercase tracking-wider px-4 py-3">Security</th>
-                      <th className="text-right text-[10px] font-semibold text-muted uppercase tracking-wider px-4 py-3">Balance</th>
-                      <th className="text-left text-[10px] font-semibold text-muted uppercase tracking-wider px-4 py-3">Type</th>
+                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Lender</th>
+                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Nickname</th>
+                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Entity</th>
+                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Security</th>
+                      <th className="text-right text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Balance</th>
+                      <th className="text-left text-[10px] font-semibold text-foreground-muted uppercase tracking-wider px-4 py-3">Type</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -167,16 +167,16 @@ export default function LoansPage() {
                       <tr
                         key={loan.id}
                         onClick={() => router.push(`/loans/${loan.id}`)}
-                        className="border-b border-ruled last:border-b-0 hover:bg-screen-bg cursor-pointer transition-colors"
+                        className="border-b border-rule last:border-b-0 hover:bg-background cursor-pointer transition-colors"
                       >
-                        <td className="px-4 py-3 font-medium text-ink">{loan.lender}</td>
-                        <td className="px-4 py-3 text-muted">{loan.nickname ?? '—'}</td>
-                        <td className="px-4 py-3 text-muted">{loan.entityName ?? '—'}</td>
-                        <td className="px-4 py-3 text-muted">{loan.propertyAddress}</td>
+                        <td className="px-4 py-3 font-medium text-foreground">{loan.lender}</td>
+                        <td className="px-4 py-3 text-foreground-muted">{loan.nickname ?? '—'}</td>
+                        <td className="px-4 py-3 text-foreground-muted">{loan.entityName ?? '—'}</td>
+                        <td className="px-4 py-3 text-foreground-muted">{loan.propertyAddress}</td>
                         <td className="px-4 py-3 text-right tabular-nums font-medium">
                           {loan.latestBalance ? formatCents(loan.latestBalance.balanceCents) : '—'}
                         </td>
-                        <td className="px-4 py-3 text-muted">—</td>
+                        <td className="px-4 py-3 text-foreground-muted">—</td>
                       </tr>
                     ))}
                   </tbody>

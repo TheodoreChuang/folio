@@ -14,12 +14,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default:     'bg-ink text-white hover:bg-ink/90',
+        default:     'bg-foreground text-white hover:bg-foreground/90',
         accent:      'bg-accent text-white hover:bg-accent/90',
-        secondary:   'bg-screen-bg text-ink border border-border hover:bg-ruled',
-        outline:     'border border-border bg-white text-ink hover:bg-screen-bg hover:border-ink',
-        ghost:       'text-muted hover:text-ink hover:bg-screen-bg',
-        destructive: 'bg-warn-light text-warn border border-warn/40 hover:bg-warn/10',
+        secondary:   'bg-background text-foreground border border-border hover:bg-ruled',
+        outline:     'border border-border bg-white text-foreground hover:bg-background hover:border-foreground',
+        ghost:       'text-foreground-muted hover:text-foreground hover:bg-background',
+        destructive: 'bg-negative-soft text-negative border border-warn/40 hover:bg-negative/10',
         link:        'text-accent underline-offset-4 hover:underline p-0 h-auto',
       },
       size: {
