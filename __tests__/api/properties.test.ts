@@ -40,6 +40,11 @@ const propRow = {
   lvrPercent: null,
 }
 
+function makeGetRequest(params?: Record<string, string>) {
+  const qs = params ? `?${new URLSearchParams(params)}` : ''
+  return new Request(`http://localhost/api/properties${qs}`, { method: 'GET' })
+}
+
 function makePostRequest(body: unknown) {
   return new Request('http://localhost/api/properties', {
     method: 'POST',
@@ -58,7 +63,7 @@ describe('GET /api/properties', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
-    const res = await GET()
+    const res = await GET(makeGetRequest())
     expect(res.status).toBe(401)
     const json = await res.json()
     expect(json.error).toBe('Unauthorized')
@@ -66,7 +71,7 @@ describe('GET /api/properties', () => {
 
   it('returns properties for authenticated user', async () => {
     mocks.mockListProperties.mockResolvedValue([propRow])
-    const res = await GET()
+    const res = await GET(makeGetRequest())
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.properties).toHaveLength(1)
@@ -75,7 +80,7 @@ describe('GET /api/properties', () => {
 
   it('returns empty array when user has no properties', async () => {
     mocks.mockListProperties.mockResolvedValue([])
-    const res = await GET()
+    const res = await GET(makeGetRequest())
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.properties).toEqual([])
@@ -85,7 +90,7 @@ describe('GET /api/properties', () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-B' } } })
     const userBRow = { ...propRow, id: 'prop-B', userId: 'user-B', address: 'User B Property' }
     mocks.mockListProperties.mockResolvedValue([userBRow])
-    const res = await GET()
+    const res = await GET(makeGetRequest())
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.properties).toHaveLength(1)
@@ -96,11 +101,32 @@ describe('GET /api/properties', () => {
     const rowWithLvr = { ...propRow, lvrPercent: 72 }
     const rowWithoutLvr = { ...propRow, id: 'prop-2', lvrPercent: null }
     mocks.mockListProperties.mockResolvedValue([rowWithLvr, rowWithoutLvr])
-    const res = await GET()
+    const res = await GET(makeGetRequest())
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.properties[0].lvrPercent).toBe(72)
     expect(json.properties[1].lvrPercent).toBeNull()
+  })
+
+  it('passes entityId to listProperties when provided', async () => {
+    const entityId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+    mocks.mockListProperties.mockResolvedValue([propRow])
+    const res = await GET(makeGetRequest({ entityId }))
+    expect(res.status).toBe(200)
+    expect(mocks.mockListProperties).toHaveBeenCalledWith('user-123', entityId)
+  })
+
+  it('passes null entityId when param is absent', async () => {
+    mocks.mockListProperties.mockResolvedValue([propRow])
+    await GET(makeGetRequest())
+    expect(mocks.mockListProperties).toHaveBeenCalledWith('user-123', null)
+  })
+
+  it('returns 400 when entityId is not a valid UUID', async () => {
+    const res = await GET(makeGetRequest({ entityId: 'not-a-uuid' }))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/uuid/i)
   })
 })
 

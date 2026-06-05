@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { MetricTile } from '@/components/ui/metric-tile'
 import { Badge } from '@/components/ui/badge'
-import type { Property, Entity } from '@/db/schema'
+import { FilterChip } from '@/components/filter-chip'
+import type { FilterOption } from '@/components/filter-chip'
+import type { Property, Entity, EntityType } from '@/db/schema'
 import { formatCents } from '@/lib/format'
 
 type PropertyWithEntity = Property & { entityName: string | null; lvrPercent: number | null }
@@ -24,72 +26,108 @@ function currentMonthRange(): { from: string; to: string } {
   return { from: `${y}-${m}-01`, to: `${y}-${m}-${String(lastDay).padStart(2, '0')}` }
 }
 
+function entityTypeSubLabel(type: EntityType): string {
+  switch (type) {
+    case 'trust': return 'Discretionary trust'
+    case 'individual': return 'Individual'
+    case 'company': return 'Company'
+    case 'joint': return 'Joint'
+    case 'superannuation': return 'Superannuation'
+  }
+}
+
 export default function PropertiesPage() {
   const router = useRouter()
   const [properties, setProperties] = useState<PropertyWithEntity[]>([])
+  const [allProperties, setAllProperties] = useState<PropertyWithEntity[]>([])
   const [entities, setEntities] = useState<Entity[]>([])
   const [loading, setLoading] = useState(true)
   const [missingStatements, setMissingStatements] = useState<Set<string>>(new Set())
   const [totalValueCents, setTotalValueCents] = useState<number | null>(null)
   const [totalDebtCents, setTotalDebtCents] = useState<number | null>(null)
-  const [entityFilter, setEntityFilter] = useState<string>('all')
+  const [entityFilter, setEntityFilter] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true)
-      try {
-        const propsRes = await fetch('/api/properties')
-        if (propsRes.status === 401) { router.push('/login'); return }
-        const { properties: rawProps = [] } = await propsRes.json() as { properties?: (Property & { lvrPercent: number | null })[] }
+  const loadData = useCallback(async (entityId: string | null) => {
+    setLoading(true)
+    try {
+      const { from, to } = currentMonthRange()
+      const entityQs = entityId ? `?entityId=${entityId}` : ''
+      const ledgerParams = new URLSearchParams({ from, to })
+      if (entityId) ledgerParams.set('entityId', entityId)
 
-        const [entitiesRes, portfolioRes, ledgerRes] = await Promise.all([
-          fetch('/api/entities'),
-          fetch('/api/portfolio/summary'),
-          fetch(`/api/ledger/summary?from=${currentMonthRange().from}&to=${currentMonthRange().to}`),
-        ])
+      // Start the unfiltered properties fetch in parallel when a filter is active
+      const allPropsPromise = entityId ? fetch('/api/properties') : null
 
-        const { entities: rawEntities = [] } = entitiesRes.ok
-          ? await entitiesRes.json() as { entities?: Entity[] }
-          : { entities: [] }
+      const [entRes, propsRes, portfolioRes, ledgerRes] = await Promise.all([
+        fetch('/api/entities'),
+        fetch(`/api/properties${entityQs}`),
+        fetch(`/api/portfolio/summary${entityQs}`),
+        fetch(`/api/ledger/summary?${ledgerParams}`),
+      ])
 
-        const entityMap = new Map(rawEntities.map((e: Entity) => [e.id, e.name]))
+      if (propsRes.status === 401) { router.push('/login'); return }
 
-        setEntities(rawEntities)
-        setProperties(rawProps.map(p => ({
-          ...p,
-          entityName: p.entityId ? (entityMap.get(p.entityId) ?? null) : null,
-        })))
+      const { entities: rawEntities = [] } = entRes.ok
+        ? await entRes.json() as { entities?: Entity[] }
+        : { entities: [] }
 
-        if (portfolioRes.ok) {
-          const { portfolio } = await portfolioRes.json() as { portfolio: { totalValueCents: number; totalDebtCents: number } }
-          setTotalValueCents(portfolio.totalValueCents)
-          setTotalDebtCents(portfolio.totalDebtCents)
-        }
-
-        if (ledgerRes.ok) {
-          const { flags } = await ledgerRes.json() as { flags?: LedgerSummaryFlags }
-          setMissingStatements(new Set(flags?.missingStatements ?? []))
-        }
-      } catch {
-        toast.error('Failed to load properties')
-      } finally {
-        setLoading(false)
+      const { properties: filteredRaw = [] } = await propsRes.json() as {
+        properties?: (Property & { lvrPercent: number | null })[]
       }
+
+      const entityMap = new Map(rawEntities.map(e => [e.id, e]))
+      const decorate = (p: Property & { lvrPercent: number | null }): PropertyWithEntity => ({
+        ...p,
+        entityName: p.entityId ? (entityMap.get(p.entityId)?.name ?? null) : null,
+      })
+
+      setEntities(rawEntities)
+      setProperties(filteredRaw.map(decorate))
+
+      if (entityId && allPropsPromise) {
+        const allRes = await allPropsPromise
+        const { properties: allRaw = [] } = await allRes.json() as {
+          properties?: (Property & { lvrPercent: number | null })[]
+        }
+        setAllProperties(allRaw.map(decorate))
+      } else {
+        setAllProperties(filteredRaw.map(decorate))
+      }
+
+      if (portfolioRes.ok) {
+        const { portfolio } = await portfolioRes.json() as {
+          portfolio: { totalValueCents: number; totalDebtCents: number }
+        }
+        setTotalValueCents(portfolio.totalValueCents)
+        setTotalDebtCents(portfolio.totalDebtCents)
+      }
+
+      if (ledgerRes.ok) {
+        const { flags } = await ledgerRes.json() as { flags?: LedgerSummaryFlags }
+        setMissingStatements(new Set(flags?.missingStatements ?? []))
+      }
+    } catch {
+      toast.error('Failed to load properties')
+    } finally {
+      setLoading(false)
     }
-    load()
   }, [router])
 
-  const filtered = entityFilter === 'all'
-    ? properties
-    : properties.filter(p => p.entityId === entityFilter)
+  useEffect(() => {
+    loadData(entityFilter)
+  }, [entityFilter, loadData])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <span className="text-sm text-foreground-muted">Loading…</span>
-      </div>
-    )
-  }
+  const entityOptions: FilterOption[] = entities.map(e => {
+    const count = allProperties.filter(p => p.entityId === e.id).length
+    return {
+      id: e.id,
+      name: e.name,
+      subLabel: entityTypeSubLabel(e.type),
+      count,
+      entityType: e.type,
+      disabled: count === 0,
+    }
+  })
 
   return (
     <div>
@@ -104,53 +142,39 @@ export default function PropertiesPage() {
       <div className="grid grid-cols-2 gap-3 mb-7">
         <MetricTile
           label="Total value"
-          value={totalValueCents !== null ? formatCents(totalValueCents) : '—'}
+          value={loading ? '…' : totalValueCents !== null ? formatCents(totalValueCents) : '—'}
           foot={<span className="text-xs text-foreground-muted">{properties.length} properties</span>}
         />
         <MetricTile
           label="Total debt"
-          value={totalDebtCents !== null ? formatCents(totalDebtCents) : '—'}
+          value={loading ? '…' : totalDebtCents !== null ? formatCents(totalDebtCents) : '—'}
           secondary
         />
       </div>
 
-      {entities.length > 1 && (
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="text-xs text-foreground-muted font-medium">Filter</span>
-          <button
-            onClick={() => setEntityFilter('all')}
-            className={[
-              'text-xs px-2.5 py-1 rounded-full border transition-colors',
-              entityFilter === 'all'
-                ? 'bg-accent text-white border-accent'
-                : 'border-border text-foreground-muted hover:border-accent hover:text-foreground',
-            ].join(' ')}
-          >
-            All entities
-          </button>
-          {entities.map(e => (
-            <button
-              key={e.id}
-              onClick={() => setEntityFilter(entityFilter === e.id ? 'all' : e.id)}
-              className={[
-                'text-xs px-2.5 py-1 rounded-full border transition-colors',
-                entityFilter === e.id
-                  ? 'bg-accent text-white border-accent'
-                  : 'border-border text-foreground-muted hover:border-accent hover:text-foreground',
-              ].join(' ')}
-            >
-              {e.name}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex items-center gap-2 mb-4">
+        <FilterChip
+          label="Entity"
+          labelPlural="entities"
+          itemLabel="properties"
+          value={entityFilter}
+          options={entityOptions}
+          onChange={setEntityFilter}
+          variant="rich"
+          actionLink={{ href: '/entities', label: 'Add or manage entities' }}
+        />
+      </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="bg-surface border border-border rounded-lg px-5 py-8 text-center text-sm text-foreground-muted">
+          Loading properties…
+        </div>
+      ) : properties.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-sm text-foreground-muted mb-3">
-            {properties.length === 0 ? 'No properties yet.' : 'No properties match the filter.'}
+            {allProperties.length === 0 ? 'No properties yet.' : 'No properties match the filter.'}
           </p>
-          {properties.length === 0 && (
+          {allProperties.length === 0 && (
             <Button size="sm" onClick={() => router.push('/properties/new')}>+ Add your first property</Button>
           )}
         </div>
@@ -166,7 +190,7 @@ export default function PropertiesPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(prop => {
+              {properties.map(prop => {
                 const hasMissing = missingStatements.has(prop.id)
                 const isSold = !!prop.saleDate
                 return (
@@ -208,7 +232,7 @@ export default function PropertiesPage() {
         </div>
       )}
 
-      {filtered.length > 0 && (
+      {properties.length > 0 && (
         <div className="mt-4 text-center">
           <Link href="/properties/new" className="text-xs text-accent hover:underline">+ Add another property</Link>
         </div>
