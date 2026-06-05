@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuSeparator,
+  DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
 import { formatCents, recentMonths } from '@/lib/format'
 import type {
@@ -871,7 +871,7 @@ export default function PropertyDetailPage() {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="px-2.5" aria-label="More options">
+              <Button variant="ghost" size="sm" className="px-2.5" aria-label="More options">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
                   <circle cx="3" cy="8" r="1.5"/>
                   <circle cx="8" cy="8" r="1.5"/>
@@ -879,18 +879,29 @@ export default function PropertyDetailPage() {
                 </svg>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="min-w-[180px] p-1">
+              <DropdownMenuLabel className="px-2 py-1 text-[10px] font-semibold text-foreground-muted uppercase tracking-widest">Lifecycle</DropdownMenuLabel>
               {!isSold && (
-                <DropdownMenuItem onClick={() => setShowSoldModal(true)}>
-                  Mark as sold
+                <DropdownMenuItem className="gap-2" onClick={() => setShowSoldModal(true)}>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="2,8 6,12 14,4"/>
+                  </svg>
+                  Mark as sold…
                 </DropdownMenuItem>
               )}
               {!isSold && <DropdownMenuSeparator />}
               <DropdownMenuItem
-                className="text-negative focus:text-negative focus:bg-negative/8"
+                className="gap-2 text-negative focus:text-negative focus:bg-negative/8"
                 onClick={() => setShowDeleteModal(true)}
               >
-                Delete property
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <polyline points="2,4 14,4"/>
+                  <path d="M5,4V2h6v2"/>
+                  <rect x="3" y="4" width="10" height="10" rx="1"/>
+                  <line x1="6" y1="7" x2="6" y2="11"/>
+                  <line x1="10" y1="7" x2="10" y2="11"/>
+                </svg>
+                Delete property…
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1393,7 +1404,7 @@ export default function PropertyDetailPage() {
             <div className="flex items-center gap-2 flex-shrink-0">
               <Link
                 href="/upload"
-                className="inline-flex items-center gap-1.5 h-8 px-3 text-xs text-foreground-muted border border-input rounded-md hover:text-foreground hover:border-border transition-colors"
+                className="inline-flex items-center gap-1.5 h-7 px-3 text-xs font-medium text-foreground-muted rounded-md hover:text-foreground hover:bg-surface-sunken transition-colors"
               >
                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
                   <path d="M3 8.5V10h6V8.5"/><path d="M6 2.5v5M4 4.5l2-2 2 2"/>
@@ -1401,7 +1412,7 @@ export default function PropertyDetailPage() {
                 Import from PM statement
               </Link>
               <span className="w-px h-4 bg-border" />
-              <Button size="sm" variant="outline" onClick={() => setShowAddEntry(v => !v)}>
+              <Button size="sm" variant="ghost" onClick={() => setShowAddEntry(v => !v)}>
                 {showAddEntry ? 'Cancel' : '+ Add entry'}
               </Button>
             </div>
