@@ -84,7 +84,11 @@ export async function PATCH(
     }
 
     if ('accountReference' in raw) {
-      updates.accountReference = typeof raw.accountReference === 'string' ? raw.accountReference.trim() || null : null
+      const ref = typeof raw.accountReference === 'string' ? raw.accountReference.trim() : ''
+      if (ref.length > 100) {
+        return NextResponse.json({ error: 'accountReference too long (max 100 characters)' }, { status: 400 })
+      }
+      updates.accountReference = ref || null
     }
 
     if ('startDate' in raw) {

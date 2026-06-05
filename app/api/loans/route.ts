@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
-import { listAllInstallmentLoans, createInstallmentLoan } from '@/lib/borrowings'
+import { listAllLoansFlat, createInstallmentLoan } from '@/lib/borrowings'
 import { findPropertyById } from '@/lib/property'
 import { findEntityById } from '@/lib/entities'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
@@ -12,7 +12,7 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const loans = await listAllInstallmentLoans(user.id)
+    const loans = await listAllLoansFlat(user.id)
     return NextResponse.json({ loans })
   } catch (err) {
     captureError(err, { route: 'GET /api/loans' })

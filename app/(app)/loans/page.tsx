@@ -6,18 +6,21 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { MetricTile } from '@/components/ui/metric-tile'
-import type { Property, InstallmentLoan, InstallmentLoanBalance, Entity } from '@/db/schema'
+import type { Entity } from '@/db/schema'
+import type { FlatInstallmentLoan } from '@/lib/borrowings'
 import { formatCents } from '@/lib/format'
 import { pmt, interestOnlyPayment } from '@/lib/aggregate/plan/calculators/rate-sensitivity'
 
-function estimateRepaymentCents(loan: FlatLoan): number | null {
+function estimateRepaymentCents(loan: FlatInstallmentLoan): number | null {
   const balance = loan.latestBalance?.balanceCents
   const ratePct = loan.interestRate != null ? parseFloat(loan.interestRate) : null
   if (!balance || ratePct == null || isNaN(ratePct)) return null
-  if (loan.loanType === 'interest_only') return interestOnlyPayment(ratePct, balance)
+  if (loan.loanType === 'interest_only' || loan.loanType === 'line_of_credit') {
+    return interestOnlyPayment(ratePct, balance)
+  }
   if (loan.loanType === 'principal_and_interest') {
-    const termMonths = loan.loanTermYears ? loan.loanTermYears * 12 : 360
-    return pmt(ratePct, termMonths, balance)
+    if (!loan.loanTermYears) return null
+    return pmt(ratePct, loan.loanTermYears * 12, balance)
   }
   return null
 }
@@ -25,17 +28,11 @@ function estimateRepaymentCents(loan: FlatLoan): number | null {
 function loanTypeLabel(loanType: string | null): string {
   if (loanType === 'interest_only') return 'IO'
   if (loanType === 'principal_and_interest') return 'P&I'
+  if (loanType === 'line_of_credit') return 'LOC'
   return loanType ?? '—'
 }
 
-type LoanWithBalance = InstallmentLoan & {
-  latestBalance: Pick<InstallmentLoanBalance, 'balanceCents' | 'recordedAt'> | null
-}
-
-type FlatLoan = LoanWithBalance & {
-  propertyAddress: string
-  entityName: string | null
-}
+type FlatLoan = FlatInstallmentLoan
 
 export default function LoansPage() {
   const router = useRouter()
@@ -47,39 +44,21 @@ export default function LoansPage() {
   const loadLoans = useCallback(async () => {
     setLoading(true)
     try {
-      const [propsRes, entitiesRes] = await Promise.all([
-        fetch('/api/properties'),
+      const [loansRes, entitiesRes] = await Promise.all([
+        fetch('/api/loans'),
         fetch('/api/entities'),
       ])
 
-      if (propsRes.status === 401 || entitiesRes.status === 401) {
+      if (loansRes.status === 401 || entitiesRes.status === 401) {
         router.push('/login')
         return
       }
 
-      const propsData = await propsRes.json() as { properties?: Property[] }
+      const loansData = await loansRes.json() as { loans?: FlatLoan[] }
       const entitiesData = await entitiesRes.json() as { entities?: Entity[] }
 
-      const properties: Property[] = propsData.properties ?? []
-      const entityList: Entity[] = entitiesData.entities ?? []
-      setEntities(entityList)
-
-      const entityMap = new Map<string, string>(entityList.map(e => [e.id, e.name]))
-
-      const loanArrays = await Promise.all(
-        properties.map(async (prop) => {
-          const res = await fetch(`/api/properties/${prop.id}/loans`)
-          if (!res.ok) return []
-          const data = await res.json() as { loans?: LoanWithBalance[] }
-          return (data.loans ?? []).map((loan): FlatLoan => ({
-            ...loan,
-            propertyAddress: prop.nickname ?? prop.address,
-            entityName: loan.entityId ? (entityMap.get(loan.entityId) ?? null) : null,
-          }))
-        })
-      )
-
-      setLoans(loanArrays.flat())
+      setLoans(loansData.loans ?? [])
+      setEntities(entitiesData.entities ?? [])
     } catch {
       toast.error('Failed to load loans')
     } finally {
@@ -223,7 +202,7 @@ export default function LoansPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-foreground-muted">{loan.entityName ?? '—'}</td>
-                        <td className="px-4 py-3 text-foreground-muted">{loan.propertyAddress}</td>
+                        <td className="px-4 py-3 text-foreground-muted">{loan.propertyAddress ?? '—'}</td>
                         <td className="px-4 py-3 text-right tabular-nums font-medium">
                           {loan.latestBalance ? formatCents(loan.latestBalance.balanceCents) : '—'}
                         </td>

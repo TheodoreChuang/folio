@@ -1,5 +1,6 @@
 export {
   listAllInstallmentLoans,
+  listAllLoansFlat,
   listInstallmentLoans,
   findInstallmentLoanById,
   findInstallmentLoanDetail,
@@ -8,7 +9,7 @@ export {
   updateInstallmentLoanById,
   endInstallmentLoan,
 } from './repositories/loans'
-export type { InstallmentLoanDetail } from './repositories/loans'
+export type { InstallmentLoanDetail, FlatInstallmentLoan } from './repositories/loans'
 export {
   listInstallmentLoanBalances,
   createInstallmentLoanBalance,

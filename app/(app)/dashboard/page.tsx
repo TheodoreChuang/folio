@@ -210,7 +210,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Serviceability */}
-      {(personalSurplus !== null || portfolioCashflow !== null) && (
+      {portfolioCashflow !== null && (
         <div>
           <SectionLabel>
             Serviceability · monthly
@@ -218,35 +218,52 @@ export default function DashboardPage() {
               — can the household carry the portfolio?
             </span>
           </SectionLabel>
-          <div className="flex items-stretch gap-3">
-            <MetricTile
-              label="Personal surplus"
-              value={personalSurplus !== null ? formatMoney(personalSurplus) : '—'}
-              valueClassName={personalSurplus !== null && personalSurplus < 0 ? 'text-negative' : undefined}
-              foot={personalSurplus !== null ? <span className="tag-est text-[10px] font-medium text-foreground-muted">Estimated · from Household</span> : undefined}
-              className="flex-1"
-            />
-            <div className="flex items-center text-2xl font-light text-foreground-subtle px-1">+</div>
-            <MetricTile
-              label="Portfolio cashflow"
-              value={portfolioCashflow !== null ? formatMoney(portfolioCashflow) : '—'}
-              valueClassName={portfolioCashflow !== null && portfolioCashflow < 0 ? 'text-negative' : undefined}
-              foot={<span className="text-foreground-muted">after loan repayments</span>}
-              className="flex-1"
-            />
-            <div className="flex items-center text-2xl font-light text-foreground-subtle px-1">=</div>
-            <MetricTile
-              label="Total surplus"
-              value={totalSurplus !== null ? formatMoney(totalSurplus) : '—'}
-              valueClassName={totalSurplus !== null && totalSurplus < 0 ? 'text-negative' : undefined}
-              foot={totalSurplus !== null ? (
-                <span className="text-foreground-muted">
-                  {totalSurplus >= 0 ? '+' : ''}{formatMoney(totalSurplus * 12)} / yr
-                </span>
-              ) : undefined}
-              className="flex-1 border-accent/35 bg-accent-soft/50"
-            />
-          </div>
+          {personalSurplus !== null ? (
+            <div className="flex items-stretch gap-3">
+              <MetricTile
+                label="Personal surplus"
+                value={formatMoney(personalSurplus)}
+                valueClassName={personalSurplus < 0 ? 'text-negative' : undefined}
+                foot={<span className="tag-est text-[10px] font-medium text-foreground-muted">Estimated · from Household</span>}
+                className="flex-1"
+              />
+              <div className="flex items-center text-2xl font-light text-foreground-subtle px-1">+</div>
+              <MetricTile
+                label="Portfolio cashflow"
+                value={formatMoney(portfolioCashflow)}
+                valueClassName={portfolioCashflow < 0 ? 'text-negative' : undefined}
+                foot={<span className="text-foreground-muted">after loan repayments</span>}
+                className="flex-1"
+              />
+              <div className="flex items-center text-2xl font-light text-foreground-subtle px-1">=</div>
+              <MetricTile
+                label="Total surplus"
+                value={formatMoney(totalSurplus!)}
+                valueClassName={totalSurplus! < 0 ? 'text-negative' : undefined}
+                foot={
+                  <span className="text-foreground-muted">
+                    {totalSurplus! >= 0 ? '+' : ''}{formatMoney(totalSurplus! * 12)} / yr
+                  </span>
+                }
+                className="flex-1 border-accent/35 bg-accent-soft/50"
+              />
+            </div>
+          ) : (
+            <div className="flex items-stretch gap-3">
+              <MetricTile
+                label="Portfolio cashflow"
+                value={formatMoney(portfolioCashflow)}
+                valueClassName={portfolioCashflow < 0 ? 'text-negative' : undefined}
+                foot={<span className="text-foreground-muted">after loan repayments</span>}
+                className="flex-1"
+              />
+              <div className="flex-1 flex items-center">
+                <p className="text-sm text-foreground-muted">
+                  Add a <a href="/household" className="text-accent hover:underline">household budget</a> to see your full serviceability picture.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
