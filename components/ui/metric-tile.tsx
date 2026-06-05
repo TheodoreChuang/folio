@@ -16,7 +16,7 @@ function MetricTile({ label, value, valueClassName, foot, secondary, className }
       className={cn(
         'flex flex-col gap-3 min-h-[104px] rounded-[7px] border p-5',
         secondary
-          ? 'bg-transparent border-dashed border-border'
+          ? 'bg-surface border-dashed border-border'
           : 'bg-surface border-border',
         className,
       )}
