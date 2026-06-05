@@ -572,14 +572,18 @@ a:hover { text-decoration: underline; }
   background: hsl(var(--surface-sunken));
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid hsl(var(--border));
-  cursor: pointer;
+  white-space: nowrap;
   user-select: none;
 }
-.table thead th.is-sorted { color: hsl(var(--foreground)); }
+.table thead th.num { text-align: right; }
+/* Sortable headers opt in explicitly — only they get the pointer + hover
+   affordance. Non-interactive headers (e.g. the loans list) read as labels. */
+.table thead th.is-sortable { cursor: pointer; }
+.table thead th.is-sortable:hover { color: hsl(var(--foreground-muted)); }
+.table thead th.is-sorted { color: hsl(var(--foreground)); cursor: pointer; }
 .table thead th .sort-glyph {
   display: inline-block; margin-left: 4px; opacity: 0.7;
 }
-.table thead th.num { text-align: right; }
 .table tbody td {
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid hsl(var(--rule));
@@ -592,14 +596,49 @@ a:hover { text-decoration: underline; }
 .table .muted { color: hsl(var(--foreground-muted)); }
 .table .positive { color: hsl(var(--positive)); }
 .table .negative { color: hsl(var(--negative)); }
-.table tbody tr:hover td { background: hsl(var(--surface-sunken) / 0.6); cursor: pointer; }
+.table tbody tr:hover td { background: hsl(var(--surface-sunken) / 0.6); }
+.table tbody tr[data-goto] { cursor: pointer; }
 .table tbody tr.expanded td { background: hsl(var(--surface-sunken) / 0.4); }
+
+/* --- Shared cell vocabulary -----------------------------------------
+   Use these inside any .table so every page reads the same way, instead
+   of each screen re-styling its own cells. */
+
+/* Lead cell: a bold primary line over a subtle secondary line.
+   Property address + entity, loan nickname + account number, etc. */
+.table .cell-lead { line-height: 1.2; }
+.table .cell-lead .name { font-weight: 600; }
+.table .cell-lead .sub {
+  font-size: var(--text-xs);
+  color: hsl(var(--foreground-subtle));
+  margin-top: 1px;
+}
+/* Strong identifier cell — lender, ticker, code. */
+.table .strong { font-weight: 600; }
+/* Estimated / provenance tag sitting after a value (see .tag-est). */
+.table .num .tag-est { margin-left: var(--space-2); }
+
+/* Density modifier — tighter rows for long ledgers. */
+.table--compact tbody td { height: 30px; padding-top: var(--space-2); padding-bottom: var(--space-2); }
+.table--compact thead th { padding-top: var(--space-2); padding-bottom: var(--space-2); }
 
 .table-foot {
   margin-top: var(--space-3);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-5);
   font-size: var(--text-xs);
   color: hsl(var(--foreground-subtle));
 }
+
+/* Loans table — fixed column proportions (set via the <colgroup> in the
+   markup) so long entity / nickname text stays on one or two lines and the
+   table never out-grows its container. Numbers never wrap. */
+.table.loans { table-layout: fixed; }
+.table.loans th { overflow: hidden; text-overflow: ellipsis; }
+.table.loans .num { white-space: nowrap; }
+.table.loans .cell-lead .name,
+.table.loans .cell-lead .sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* =====================================================================
    CARD
@@ -671,13 +710,8 @@ a:hover { text-decoration: underline; }
   gap: var(--space-7);
 }
 
-/* Property performance row — entity sub-line, status badge */
-.table.properties .addr-cell { line-height: 1.2; }
-.table.properties .addr-cell .name { font-weight: 600; }
-.table.properties .addr-cell .ent {
-  font-size: var(--text-xs); color: hsl(var(--foreground-subtle));
-  margin-top: 1px;
-}
+/* Property performance row — inline LVR meter lives in .cell-lvr below;
+   the address/entity cell now uses the shared .cell-lead pattern. */
 
 /* Inline mini-meter inside cell */
 .cell-lvr {
@@ -2325,101 +2359,9 @@ a:hover { text-decoration: underline; }
   gap: var(--space-3);
 }
 
-.loan-list {
-  background: hsl(var(--surface));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-.loan-row {
-  display: grid;
-  grid-template-columns: 90px 1.4fr 1.1fr 1.1fr 1fr 0.8fr 0.6fr 1.1fr 24px;
-  gap: var(--space-4);
-  align-items: center;
-  padding: var(--space-4) var(--space-5);
-  font-size: var(--text-sm);
-  border-bottom: 1px solid hsl(var(--rule));
-  cursor: pointer;
-}
-.loan-row:last-of-type { border-bottom: none; }
-.loan-row.header {
-  background: hsl(var(--surface-sunken));
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: hsl(var(--foreground-subtle));
-  font-weight: 500;
-  padding: var(--space-3) var(--space-5);
-  cursor: default;
-}
-.loan-row .lender {
-  font-weight: 600; font-size: var(--text-sm);
-}
-.loan-row .nickname { font-weight: 600; }
-.loan-row .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
-.loan-row .num.balance { font-weight: 600; }
-.loan-row.expanded {
-  background: hsl(var(--surface-sunken) / 0.4);
-  border-bottom: 1px solid hsl(var(--border));
-}
-.loan-row .chev {
-  color: hsl(var(--foreground-subtle));
-  font-size: var(--text-xs);
-  text-align: center;
-  transition: transform 120ms;
-}
-.loan-row.expanded .chev { transform: rotate(180deg); color: hsl(var(--accent)); }
-
-.loan-expand {
-  background: hsl(var(--background));
-  border-bottom: 1px solid hsl(var(--rule));
-  padding: var(--space-7) var(--space-7) var(--space-6) calc(90px + var(--space-5) + var(--space-4));
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: var(--space-7);
-}
-.loan-expand .col h4 {
-  font-size: var(--text-2xs);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: hsl(var(--foreground-subtle));
-  font-weight: 500;
-  margin-bottom: var(--space-4);
-}
-.loan-expand .field-list .field-row {
-  grid-template-columns: 130px 1fr;
-}
-.loan-expand .history { display: flex; flex-direction: column; }
-.loan-expand .history .snap {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid hsl(var(--rule));
-  font-size: var(--text-sm);
-}
-.loan-expand .history .snap:last-of-type { border-bottom: none; }
-.loan-expand .history .snap .when {
-  color: hsl(var(--foreground-muted));
-  font-size: var(--text-xs);
-}
-.loan-expand .history .snap .amt {
-  font-variant-numeric: tabular-nums; font-weight: 600;
-}
-.loan-expand .history .snap.is-current .amt {
-  color: hsl(var(--accent));
-}
-.loan-expand .add-snap {
-  margin-top: var(--space-4);
-  font-size: var(--text-sm); color: hsl(var(--accent));
-  display: inline-flex; align-items: center; gap: var(--space-2);
-}
-.loan-expand .row-actions {
-  grid-column: 1 / -1;
-  display: flex; justify-content: space-between; align-items: center;
-  padding-top: var(--space-5);
-  margin-top: var(--space-3);
-  border-top: 1px solid hsl(var(--rule));
-}
-.loan-expand .row-actions .right { display: flex; gap: var(--space-3); }
+/* The loans list is a real .table.loans (see DATA TABLE above) — it shares
+   the canonical table component instead of a bespoke grid. Loan-specific
+   cells (lender glyph, nickname/account lead cell) reuse .cell-lead/.strong. */
 
 /* ---  CHART (cashflow) ------------------------------------------- */
 .cashflow-svg {

@@ -196,7 +196,7 @@
                   </div>
 
                   <div className="calc-input-row" style={{ marginTop: 'var(--space-4)' }}>
-                    <label>Depreciation claimed<span className="hint">Div 40 — added back to the gain</span></label>
+                    <label>Depreciation claimed<span className="hint">reduces cost base</span></label>
                     <Money value={input.cgtDepreciation} allowBlank onChange={(v) => setField('cgtDepreciation', v)} placeholder="0" />
                   </div>
 
