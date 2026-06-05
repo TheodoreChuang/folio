@@ -32,7 +32,7 @@ function NavItem({
         'relative flex items-center gap-[10px] h-[34px] px-3 rounded-[5px] text-[0.875rem] w-full transition-colors',
         active
           ? 'bg-accent-soft text-accent font-medium before:content-[""] before:absolute before:-left-1 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-sm before:bg-accent'
-          : 'text-muted hover:bg-surface hover:text-ink',
+          : 'text-foreground-muted hover:bg-surface hover:text-foreground',
         className,
       )}
     >
@@ -107,7 +107,7 @@ function NavSection({
             'relative flex flex-1 items-center gap-[10px] h-[34px] px-3 rounded-[5px] text-[0.875rem] min-w-0 transition-colors',
             active
               ? 'bg-accent-soft text-accent font-medium before:content-[""] before:absolute before:-left-1 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-sm before:bg-accent'
-              : 'text-muted hover:bg-surface hover:text-ink',
+              : 'text-foreground-muted hover:bg-surface hover:text-foreground',
           )}
         >
           {icon}
@@ -116,7 +116,7 @@ function NavSection({
         <button
           onClick={onToggle}
           aria-label={`${open ? 'Collapse' : 'Expand'} ${label}`}
-          className="flex-shrink-0 w-[26px] h-[26px] flex items-center justify-center rounded-[4px] text-muted hover:bg-surface hover:text-ink transition-colors mr-1"
+          className="flex-shrink-0 w-[26px] h-[26px] flex items-center justify-center rounded-[4px] text-foreground-muted hover:bg-surface hover:text-foreground transition-colors mr-1"
         >
           <span
             className="block w-[7px] h-[7px] border-r-[1.4px] border-b-[1.4px] border-current transition-transform duration-120"
@@ -184,7 +184,7 @@ export function Sidebar() {
       {/* Brand */}
       <div className="font-display text-2xl tracking-tight leading-none px-3 pb-6">
         Folio
-        <em className="not-italic font-light text-muted ml-1" style={{ fontSize: '0.7em' }}>
+        <em className="not-italic font-light text-foreground-muted ml-1" style={{ fontSize: '0.7em' }}>
           · beta
         </em>
       </div>
@@ -270,7 +270,7 @@ export function Sidebar() {
       </div>
 
       {/* Footer — avatar + sign out */}
-      <div className="mt-auto pt-5 border-t border-ruled flex items-center gap-3 px-3 relative" ref={menuRef}>
+      <div className="mt-auto pt-5 border-t border-rule flex items-center gap-3 px-3 relative" ref={menuRef}>
         <button
           data-testid="user-avatar"
           onClick={() => setMenuOpen(v => !v)}
@@ -280,20 +280,20 @@ export function Sidebar() {
         >
           {initials}
         </button>
-        <div className="text-sm font-medium text-ink truncate flex-1 min-w-0">
+        <div className="text-sm font-medium text-foreground truncate flex-1 min-w-0">
           {email ?? '…'}
         </div>
 
         {menuOpen && (
           <div className="absolute bottom-full left-0 right-0 mb-2 z-50 rounded-lg border border-border bg-white shadow-md py-1">
             {email && (
-              <div className="px-3 py-2 text-xs text-muted truncate border-b border-border mb-1">
+              <div className="px-3 py-2 text-xs text-foreground-muted truncate border-b border-border mb-1">
                 {email}
               </div>
             )}
             <button
               onClick={handleSignOut}
-              className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-screen-bg transition-colors"
+              className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-background transition-colors"
             >
               Sign out
             </button>

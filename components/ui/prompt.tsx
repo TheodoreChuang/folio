@@ -14,7 +14,7 @@ const toneLabelStyles: Record<PromptTone, string> = {
   action:   'text-negative',
   'heads-up': 'text-warning',
   complete: 'text-positive',
-  default:  'text-muted',
+  default:  'text-foreground-muted',
 }
 
 interface PromptProps {
@@ -56,7 +56,7 @@ function Prompt({ tone = 'default', severity, message, context, actions, classNa
         </div>
 
         {/* Message */}
-        <div className="font-display text-xl leading-snug tracking-[-0.005em] text-ink text-pretty max-w-[60ch]">
+        <div className="font-display text-xl leading-snug tracking-[-0.005em] text-foreground text-pretty max-w-[60ch]">
           {message}
         </div>
 
@@ -69,7 +69,7 @@ function Prompt({ tone = 'default', severity, message, context, actions, classNa
 
         {/* Context */}
         {context && (
-          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted mt-4">
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-foreground-muted mt-4">
             {context}
           </div>
         )}

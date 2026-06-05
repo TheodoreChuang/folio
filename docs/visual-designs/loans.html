@@ -200,69 +200,79 @@
         <div>
           <div class="section-label">All loans</div>
 
-          <div class="loan-list">
-            <div class="loan-row header">
-              <div>Lender</div>
-              <div>Nickname / Account</div>
-              <div>Entity</div>
-              <div>Security</div>
-              <div class="num">Balance</div>
-              <div class="num">Rate</div>
-              <div>Type</div>
-              <div class="num">Repayment</div>
-              <div></div>
-            </div>
+          <table class="table loans">
+            <colgroup>
+              <col style="width: 9%;" />
+              <col style="width: 21%;" />
+              <col style="width: 17%;" />
+              <col style="width: 13%;" />
+              <col style="width: 13%;" />
+              <col style="width: 8%;" />
+              <col style="width: 7%;" />
+              <col style="width: 12%;" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Lender</th>
+                <th>Nickname</th>
+                <th>Entity</th>
+                <th>Security</th>
+                <th class="num">Balance</th>
+                <th class="num">Rate</th>
+                <th>Type</th>
+                <th class="num">Repayment</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-goto="loan">
+                <td class="strong">CBA</td>
+                <td>
+                  <div class="cell-lead">
+                    <div class="name">Inv Loan · Elm St</div>
+                    <div class="sub">acct ending 4821</div>
+                  </div>
+                </td>
+                <td>Okafor Family Trust</td>
+                <td>14 Elm St</td>
+                <td class="num" title="as of 1 Mar 2026">$615,000</td>
+                <td class="num">6.35%</td>
+                <td>IO</td>
+                <td class="num">$2,167 <span class="tag-est">est</span></td>
+              </tr>
+              <tr data-goto="loan">
+                <td class="strong">CBA</td>
+                <td>
+                  <div class="cell-lead">
+                    <div class="name">Inv Loan · Daley St</div>
+                    <div class="sub">acct ending 5102</div>
+                  </div>
+                </td>
+                <td>Okafor Family Trust</td>
+                <td>8 Daley St</td>
+                <td class="num" title="as of 1 Mar 2026">$480,000</td>
+                <td class="num">6.35%</td>
+                <td>IO</td>
+                <td class="num">$1,690 <span class="tag-est">est</span></td>
+              </tr>
+              <tr data-goto="loan" style="opacity: 0.4;">
+                <td class="strong">Westpac</td>
+                <td>
+                  <div class="cell-lead">
+                    <div class="name">Line of Credit</div>
+                    <div class="sub">acct ending 9217</div>
+                  </div>
+                </td>
+                <td>Personal · Theo</td>
+                <td class="muted">Unsecured</td>
+                <td class="num" title="as of 18 Feb 2026">$45,000</td>
+                <td class="num">8.20%</td>
+                <td>P&amp;I</td>
+                <td class="num">$890 <span class="tag-est">est</span></td>
+              </tr>
+            </tbody>
+          </table>
 
-            <!-- Row 1 -->
-            <div class="loan-row" data-goto="loan">
-              <div class="lender">CBA</div>
-              <div>
-                <div class="nickname">Inv Loan · Elm St</div>
-                <div class="muted" style="font-size: var(--text-xs);">acct ending 4821</div>
-              </div>
-              <div>Okafor Family Trust</div>
-              <div>14 Elm St</div>
-              <div class="num balance" title="as of 1 Mar 2026">$615,000</div>
-              <div class="num">6.35%</div>
-              <div>IO</div>
-              <div class="num">$2,167 <span class="tag-est">est</span></div>
-              <div class="chev">›</div>
-            </div>
-
-            <!-- Row 2 -->
-            <div class="loan-row" data-goto="loan">
-              <div class="lender">CBA</div>
-              <div>
-                <div class="nickname">Inv Loan · Daley St</div>
-                <div class="muted" style="font-size: var(--text-xs);">acct ending 5102</div>
-              </div>
-              <div>Okafor Family Trust</div>
-              <div>8 Daley St</div>
-              <div class="num balance" title="as of 1 Mar 2026">$480,000</div>
-              <div class="num">6.35%</div>
-              <div>IO</div>
-              <div class="num">$1,690 <span class="tag-est">est</span></div>
-              <div class="chev">›</div>
-            </div>
-
-            <!-- Row 3 - hidden by filter, shown faded -->
-            <div class="loan-row" data-goto="loan" style="opacity: 0.4;">
-              <div class="lender">Westpac</div>
-              <div>
-                <div class="nickname">Line of Credit</div>
-                <div class="muted" style="font-size: var(--text-xs);">acct ending 9217</div>
-              </div>
-              <div>Personal · Theo</div>
-              <div class="muted">Unsecured</div>
-              <div class="num balance" title="as of 18 Feb 2026">$45,000</div>
-              <div class="num">8.20%</div>
-              <div>P&amp;I</div>
-              <div class="num">$890 <span class="tag-est">est</span></div>
-              <div class="chev">›</div>
-            </div>
-          </div>
-
-          <div class="table-foot" style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="table-foot">
             <span>Filtered: 1 loan hidden by entity filter.</span>
           </div>
         </div>

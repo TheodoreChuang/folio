@@ -99,21 +99,10 @@
     });
   });
 
-  // --- Property table row → property detail -------------------------
-  document.querySelectorAll('.table.properties tbody tr').forEach(tr => {
-    tr.addEventListener('click', () => { window.location.href = 'property.html'; });
-  });
-
-  // --- Loan row expand toggle ---------------------------------------
-  document.querySelectorAll('.loan-row:not(.header)').forEach(r => {
-    r.addEventListener('click', () => {
-      const next = r.nextElementSibling;
-      if (next && next.classList.contains('loan-expand')) {
-        r.classList.toggle('expanded');
-        next.style.display = r.classList.contains('expanded') ? '' : 'none';
-      }
-    });
-  });
+  // --- Table rows that navigate -------------------------------------
+  // Both the properties and loans tables use [data-goto] on each <tr>,
+  // handled by the global delegated click handler above. No per-table
+  // wiring needed.
 
   // --- Entity filter dropdown (properties page) ---------------------
   // Click the chip to toggle the menu; click outside or Esc to close.

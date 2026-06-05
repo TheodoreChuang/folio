@@ -218,7 +218,7 @@ function StepHeader({ n, title }: { n: number; title: string }) {
       <span className="flex-shrink-0 w-7 h-7 rounded-full bg-accent/10 text-accent text-xs font-semibold flex items-center justify-center">
         {n}
       </span>
-      <span className="text-sm font-semibold text-ink">{title}</span>
+      <span className="text-sm font-semibold text-foreground">{title}</span>
     </div>
   )
 }
@@ -247,7 +247,7 @@ function Collapsible({
         <svg className={`w-3 h-3 text-foreground-muted transition-transform ${open ? 'rotate-90' : ''}`} viewBox="0 0 12 12" fill="currentColor">
           <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <span className="text-sm font-medium text-ink flex-1">{title}</span>
+        <span className="text-sm font-medium text-foreground flex-1">{title}</span>
         {summary && <span className="text-xs text-foreground-subtle">{summary}</span>}
       </button>
       {open && <div className="px-4 py-4 border-t border-rule bg-surface">{children}</div>}
@@ -273,10 +273,10 @@ function LedgerRow({
   return (
     <div className={`flex items-baseline justify-between px-4 py-2.5 ${total ? 'border-t border-rule font-semibold' : 'border-b border-rule/60'}`}>
       <div>
-        <span className={`text-sm ${total ? 'text-ink' : 'text-foreground-muted'}`}>{label}</span>
+        <span className={`text-sm ${total ? 'text-foreground' : 'text-foreground-muted'}`}>{label}</span>
         {sub && <span className="block text-[11px] text-foreground-subtle">{sub}</span>}
       </div>
-      <span className={`text-sm tabular-nums ${total ? (positive ? 'text-positive' : 'text-ink') : 'text-ink'}`}>
+      <span className={`text-sm tabular-nums ${total ? (positive ? 'text-positive' : 'text-foreground') : 'text-foreground'}`}>
         {value}
       </span>
     </div>
@@ -306,11 +306,11 @@ function CompareTile({
         <span className="text-xs text-foreground-muted">{label}</span>
       </div>
       <div className="py-2.5 px-2 border-l border-rule/60">
-        <span className="text-sm tabular-nums text-ink font-medium">{hold}</span>
+        <span className="text-sm tabular-nums text-foreground font-medium">{hold}</span>
         {holdSub && <span className="block text-[11px] text-foreground-subtle">{holdSub}</span>}
       </div>
       <div className="py-2.5 px-2 border-l border-rule/60">
-        <span className="text-sm tabular-nums text-ink font-medium">{reinvest}</span>
+        <span className="text-sm tabular-nums text-foreground font-medium">{reinvest}</span>
         {reinvestSub && <span className="block text-[11px] text-foreground-subtle">{reinvestSub}</span>}
       </div>
     </div>
@@ -360,7 +360,7 @@ function InputsPanel({
             <p className="text-sm text-foreground-subtle italic">No properties in portfolio yet.</p>
           ) : (
             <select
-              className="w-full border border-border rounded bg-surface text-sm px-3 py-2 text-ink outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50"
+              className="w-full border border-border rounded bg-surface text-sm px-3 py-2 text-foreground outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/50"
               value={inputs.selectedPropertyId}
               onChange={e => {
                 const id = e.target.value
@@ -432,7 +432,7 @@ function InputsPanel({
               <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle pt-0.5">
                 {inputs.cgtMode === 'manual' ? 'CGT — your figure' : 'Estimated CGT'}
               </p>
-              <span className="text-sm font-semibold tabular-nums text-ink">
+              <span className="text-sm font-semibold tabular-nums text-foreground">
                 {inputs.cgtMode === 'estimate'
                   ? (cgtEstimate ? fmtMo(cgtCents) : '—')
                   : (inputs.cgtManualAud > 0 ? fmtMo(Math.round(inputs.cgtManualAud * 100)) : '—')}
@@ -541,7 +541,7 @@ function InputsPanel({
         <div className="flex items-start justify-between mb-4 px-3 py-2.5 rounded-lg bg-surface-sunken/60">
           <span className="text-xs text-foreground-muted">New purchase price</span>
           <div className="text-right">
-            <span className="text-sm font-semibold tabular-nums text-ink">
+            <span className="text-sm font-semibold tabular-nums text-foreground">
               {inputs.salePriceAud > 0 ? fmtMo(Math.round(inputs.salePriceAud * 100)) : '—'}
             </span>
             <span className="block text-[10px] text-foreground-subtle">Fixed to sale price</span>
@@ -599,7 +599,7 @@ function InputsPanel({
               <div className="flex items-start gap-2 mb-3">
                 <span className="flex-shrink-0 px-2 py-0.5 rounded text-[11px] font-semibold bg-negative/10 text-negative">LMI likely</span>
                 <p className="text-xs text-foreground-muted">
-                  New loan is <strong className="text-ink">{fmtPct((result?.reinvestSummary.lvrRatio ?? 0) * 100, 1)}</strong> of the purchase price — over the 80% threshold.
+                  New loan is <strong className="text-foreground">{fmtPct((result?.reinvestSummary.lvrRatio ?? 0) * 100, 1)}</strong> of the purchase price — over the 80% threshold.
                 </p>
               </div>
               <InputRow label="LMI estimate" hint="Added to the new loan">
@@ -832,21 +832,28 @@ function SummariesPanel({
           <div className="grid grid-cols-2 gap-2 mt-2">
             <div className="border border-border rounded-lg p-3 bg-surface-raised">
               <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-1">New loan</p>
-              <p className="text-base font-semibold tabular-nums text-ink">{fmtShort(reinvestSummary.effectiveNewLoanCents)}</p>
-              {result.showLmi && inputs.lmiAud > 0 && (
-                <p className="text-[11px] text-foreground-subtle">incl. {fmtShort(Math.round(inputs.lmiAud * 100))} LMI</p>
-              )}
+              <p className="text-base font-semibold tabular-nums text-foreground">{fmtShort(reinvestSummary.newLoanCents)}</p>
             </div>
             <div className={`border rounded-lg p-3 bg-surface-raised ${result.showLmi ? 'border-negative/40' : 'border-border'}`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-1">LVR</p>
-              <p className={`text-base font-semibold tabular-nums ${result.showLmi ? 'text-negative' : 'text-ink'}`}>
+              <p className={`text-base font-semibold tabular-nums ${result.showLmi ? 'text-negative' : 'text-foreground'}`}>
                 {fmtPct(reinvestSummary.lvrRatio * 100)}
               </p>
               {result.showLmi && <p className="text-[11px] text-negative/80">LMI territory</p>}
             </div>
+            {result.showLmi && (
+              <div className="border border-border rounded-lg p-3 bg-surface-raised">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-1">LMI</p>
+                <p className="text-base font-semibold tabular-nums text-foreground">{fmtShort(Math.round(inputs.lmiAud * 100))}</p>
+              </div>
+            )}
+            <div className={`border border-accent/30 rounded-lg p-3 bg-accent-soft/50 ${result.showLmi ? '' : 'col-span-2'}`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-1">Effective new loan</p>
+              <p className="text-base font-semibold tabular-nums text-foreground">{fmtShort(reinvestSummary.effectiveNewLoanCents)}</p>
+            </div>
             <div className="border border-border rounded-lg p-3 bg-surface-raised col-span-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-1">New repayment</p>
-              <p className="text-base font-semibold tabular-nums text-ink">
+              <p className="text-base font-semibold tabular-nums text-foreground">
                 {fmtMo(reinvestSummary.newLoanRepaymentMonthlyCents)}<span className="text-sm font-normal text-foreground-muted"> / mo</span>
               </p>
             </div>
@@ -885,14 +892,14 @@ function AnalysisSection({
         <div className="flex items-start gap-4">
           <div className="flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle mb-1">Switching cost</p>
-            <p className="text-2xl font-display tabular-nums text-ink">{fmtMo(result.frictionCents)}</p>
+            <p className="text-2xl font-display tabular-nums text-foreground">{fmtMo(result.frictionCents)}</p>
             <p className="text-xs text-foreground-muted mt-0.5">{fmtPct(result.frictionPct)} of property value — equity gap reinvesting must recover to outperform holding</p>
           </div>
           <div className="text-right flex-shrink-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-foreground-subtle mb-1">Break-even</p>
             {result.breakEvenYear !== null ? (
               <>
-                <p className="text-2xl font-display text-ink">Yr {result.breakEvenYear}</p>
+                <p className="text-2xl font-display text-foreground">Yr {result.breakEvenYear}</p>
                 <p className="text-xs text-foreground-muted mt-0.5">reinvest overtakes hold</p>
               </>
             ) : (
@@ -979,14 +986,14 @@ function AnalysisSection({
 
       {/* Assumptions */}
       <div className="border border-border rounded-xl bg-surface-raised px-5 py-4">
-        <p className="text-xs font-semibold text-ink mb-3">
+        <p className="text-xs font-semibold text-foreground mb-3">
           Modelling assumptions
           <span className="ml-2 text-[11px] font-normal text-foreground-subtle">load-bearing for these projections</span>
         </p>
         <div className="grid grid-cols-1 gap-3">
           {ASSUMPTIONS.map(([title, body]) => (
             <div key={title}>
-              <p className="text-xs font-medium text-ink">{title}</p>
+              <p className="text-xs font-medium text-foreground">{title}</p>
               <p className="text-[11px] text-foreground-muted leading-relaxed">{body}</p>
             </div>
           ))}
@@ -1056,7 +1063,7 @@ export default function HoldReinvestPage() {
     return (
       <div>
         <BackToScenarios />
-        <div className="flex items-center justify-center py-24 text-sm text-muted">Loading…</div>
+        <div className="flex items-center justify-center py-24 text-sm text-foreground-muted">Loading…</div>
       </div>
     )
   }
@@ -1065,7 +1072,7 @@ export default function HoldReinvestPage() {
     return (
       <div>
         <BackToScenarios />
-        <p className="text-sm text-muted py-8">Failed to load. Refresh to try again.</p>
+        <p className="text-sm text-foreground-muted py-8">Failed to load. Refresh to try again.</p>
       </div>
     )
   }
@@ -1143,7 +1150,7 @@ export default function HoldReinvestPage() {
       <div className="border border-border rounded-xl bg-surface overflow-clip">
         {/* Header */}
         <div className="px-6 py-5 border-b border-rule">
-          <h1 className="font-display text-xl text-ink">Hold vs Sell and Reinvest</h1>
+          <h1 className="font-display text-xl text-foreground">Hold vs Sell and Reinvest</h1>
           <p className="text-sm text-foreground-muted mt-0.5">
             Would your capital work harder in a different market — after the cost of getting there?
           </p>

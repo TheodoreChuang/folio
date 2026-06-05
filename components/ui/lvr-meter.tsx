@@ -22,7 +22,7 @@ function LvrMeter({ value, className }: LvrMeterProps) {
       />
       {/* Pip */}
       <div
-        className="absolute top-1/2 w-0.5 h-2.5 bg-ink rounded-sm -translate-y-1/2 -translate-x-1/2"
+        className="absolute top-1/2 w-0.5 h-2.5 bg-foreground rounded-sm -translate-y-1/2 -translate-x-1/2"
         style={{ left: `${pct}%` }}
       />
     </div>

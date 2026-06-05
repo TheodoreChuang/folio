@@ -48,8 +48,8 @@ function SegToggle({
           className={[
             'px-4 py-1.5 text-xs font-medium transition-colors',
             value === opt.value
-              ? 'bg-ink text-white'
-              : 'bg-surface text-muted hover:bg-screen-bg',
+              ? 'bg-foreground text-white'
+              : 'bg-surface text-foreground-muted hover:bg-background',
           ].join(' ')}
         >
           {opt.label}
@@ -61,20 +61,20 @@ function SegToggle({
 
 function FieldLabel({ children, optional }: { children: React.ReactNode; optional?: boolean }) {
   return (
-    <label className="text-xs font-medium text-ink">
+    <label className="text-xs font-medium text-foreground">
       {children}
-      {optional && <span className="ml-1.5 text-muted font-normal">(optional)</span>}
+      {optional && <span className="ml-1.5 text-foreground-muted font-normal">(optional)</span>}
     </label>
   )
 }
 
 function HelpText({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-muted mt-0.5">{children}</p>
+  return <p className="text-xs text-foreground-muted mt-0.5">{children}</p>
 }
 
 function StepBadge({ n }: { n: number }) {
   return (
-    <span className="w-[22px] h-[22px] rounded-full bg-screen-bg border border-border text-muted text-xs font-semibold flex items-center justify-center flex-shrink-0 tabular-nums">
+    <span className="w-[22px] h-[22px] rounded-full bg-background border border-border text-foreground-muted text-xs font-semibold flex items-center justify-center flex-shrink-0 tabular-nums">
       {n}
     </span>
   )
@@ -96,8 +96,8 @@ function SectionHead({
       <div className="flex items-center gap-3">
         <StepBadge n={step} />
         <div>
-          <h3 className="text-sm font-semibold text-ink">{title}</h3>
-          <p className="text-xs text-muted mt-px">{sub}</p>
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          <p className="text-xs text-foreground-muted mt-px">{sub}</p>
         </div>
       </div>
       {right}
@@ -232,12 +232,12 @@ export default function NewLoanPage() {
   const showIoPi = repayment !== 'loc'
 
   return (
-    <div className="min-h-screen bg-screen-bg">
+    <div className="min-h-screen bg-background">
       <div className="max-w-[880px] mx-auto px-4 py-8">
 
         <Link
           href="/loans"
-          className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-ink mb-5 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-foreground-muted hover:text-foreground mb-5 transition-colors"
         >
           <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden>
             <polyline points="6,2 2,5 6,8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -246,8 +246,8 @@ export default function NewLoanPage() {
         </Link>
 
         <div className="mb-8">
-          <h1 className="font-display text-2xl text-ink">Add a loan</h1>
-          <p className="text-sm text-muted mt-0.5">
+          <h1 className="font-display text-2xl text-foreground">Add a loan</h1>
+          <p className="text-sm text-foreground-muted mt-0.5">
             A snapshot is enough. Folio takes the running balance from your statements.
           </p>
         </div>
@@ -272,7 +272,7 @@ export default function NewLoanPage() {
                         'flex items-center gap-0 border rounded-md text-sm transition-colors',
                         selectedLender === preset.value
                           ? 'border-accent bg-accent-soft'
-                          : 'border-border bg-surface hover:bg-screen-bg',
+                          : 'border-border bg-surface hover:bg-background',
                       ].join(' ')}
                     >
                       <span className={[
@@ -283,7 +283,7 @@ export default function NewLoanPage() {
                       </span>
                       <span className={[
                         'px-3 text-sm',
-                        selectedLender === preset.value ? 'font-medium text-ink' : 'text-muted',
+                        selectedLender === preset.value ? 'font-medium text-foreground' : 'text-foreground-muted',
                       ].join(' ')}>
                         {preset.value === 'Other' ? 'Other' : preset.value}
                       </span>
@@ -358,13 +358,13 @@ export default function NewLoanPage() {
                   <FieldLabel>Property securing this loan</FieldLabel>
                   <div className="mt-3 divide-y divide-border border border-border rounded-lg overflow-hidden">
                     {loadingProps ? (
-                      <div className="px-4 py-3 text-sm text-muted">Loading properties…</div>
+                      <div className="px-4 py-3 text-sm text-foreground-muted">Loading properties…</div>
                     ) : properties.length === 0 ? (
                       <Link
                         href="/properties/new"
-                        className="flex items-center gap-3 px-4 py-3 text-sm text-accent hover:bg-screen-bg transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-accent hover:bg-background transition-colors"
                       >
-                        <span className="w-5 h-5 rounded border border-dashed border-border flex items-center justify-center text-muted">+</span>
+                        <span className="w-5 h-5 rounded border border-dashed border-border flex items-center justify-center text-foreground-muted">+</span>
                         Add a new property first
                       </Link>
                     ) : (
@@ -378,7 +378,7 @@ export default function NewLoanPage() {
                               onClick={() => setSelectedPropertyId(isSelected ? null : prop.id)}
                               className={[
                                 'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
-                                isSelected ? 'bg-accent-soft' : 'hover:bg-screen-bg',
+                                isSelected ? 'bg-accent-soft' : 'hover:bg-background',
                               ].join(' ')}
                             >
                               <span className={[
@@ -392,15 +392,15 @@ export default function NewLoanPage() {
                                 )}
                               </span>
                               <div>
-                                <p className="text-sm font-medium text-ink">{prop.address}</p>
-                                {prop.nickname && <p className="text-xs text-muted">{prop.nickname}</p>}
+                                <p className="text-sm font-medium text-foreground">{prop.address}</p>
+                                {prop.nickname && <p className="text-xs text-foreground-muted">{prop.nickname}</p>}
                               </div>
                             </button>
                           )
                         })}
                         <Link
                           href="/properties/new"
-                          className="flex items-center gap-3 px-4 py-3 text-sm text-muted hover:bg-screen-bg transition-colors"
+                          className="flex items-center gap-3 px-4 py-3 text-sm text-foreground-muted hover:bg-background transition-colors"
                         >
                           <span className="w-5 h-5 rounded border border-dashed border-border flex items-center justify-center">+</span>
                           Add a new property first
@@ -415,7 +415,7 @@ export default function NewLoanPage() {
               <div className="max-w-sm">
                 <FieldLabel>Entity holding the loan</FieldLabel>
                 <select
-                  className="mt-1.5 w-full h-9 rounded-md border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/40"
+                  className="mt-1.5 w-full h-9 rounded-md border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
                   value={selectedEntityId ?? ''}
                   onChange={e => setSelectedEntityId(e.target.value || null)}
                 >
@@ -485,7 +485,7 @@ export default function NewLoanPage() {
                         value={loanTermYears}
                         onChange={e => setLoanTermYears(e.target.value)}
                       />
-                      <span className="flex items-center px-3 text-sm text-muted bg-screen-bg border border-l-0 border-border rounded-r-md">years</span>
+                      <span className="flex items-center px-3 text-sm text-foreground-muted bg-background border border-l-0 border-border rounded-r-md">years</span>
                     </div>
                     <HelpText>Total contract length.</HelpText>
                   </div>
@@ -496,7 +496,7 @@ export default function NewLoanPage() {
                     {repayment === 'loc' ? 'Credit limit' : 'Original loan amount'}
                   </FieldLabel>
                   <div className="mt-1.5 flex">
-                    <span className="flex items-center px-3 text-sm text-muted bg-screen-bg border border-r-0 border-border rounded-l-md">$</span>
+                    <span className="flex items-center px-3 text-sm text-foreground-muted bg-background border border-r-0 border-border rounded-l-md">$</span>
                     <Input
                       className="rounded-l-none"
                       type="text"
@@ -537,7 +537,7 @@ export default function NewLoanPage() {
                       value={interestRate}
                       onChange={e => setInterestRate(e.target.value)}
                     />
-                    <span className="flex items-center px-3 text-sm text-muted bg-screen-bg border border-l-0 border-border rounded-r-md whitespace-nowrap">% p.a.</span>
+                    <span className="flex items-center px-3 text-sm text-foreground-muted bg-background border border-l-0 border-border rounded-r-md whitespace-nowrap">% p.a.</span>
                   </div>
                   <HelpText>Current variable or fixed rate.</HelpText>
                 </div>
@@ -545,7 +545,7 @@ export default function NewLoanPage() {
                 <div>
                   <FieldLabel>Rate type</FieldLabel>
                   <select
-                    className="mt-1.5 w-full h-9 rounded-md border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/40"
+                    className="mt-1.5 w-full h-9 rounded-md border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
                     value={rateType}
                     onChange={e => setRateType(e.target.value as 'variable' | 'fixed' | '')}
                   >
@@ -572,7 +572,7 @@ export default function NewLoanPage() {
                 <div>
                   <FieldLabel>Current balance</FieldLabel>
                   <div className="mt-1.5 flex">
-                    <span className="flex items-center px-3 text-sm text-muted bg-screen-bg border border-r-0 border-border rounded-l-md">$</span>
+                    <span className="flex items-center px-3 text-sm text-foreground-muted bg-background border border-r-0 border-border rounded-l-md">$</span>
                     <Input
                       className="rounded-l-none"
                       type="text"
@@ -597,9 +597,9 @@ export default function NewLoanPage() {
               </div>
 
               {balanceDollars && balanceDate && !isNaN(parseFloat(balanceDollars.replace(/,/g, ''))) && (
-                <p className="mt-4 text-xs text-muted bg-screen-bg rounded px-3 py-2">
+                <p className="mt-4 text-xs text-foreground-muted bg-background rounded px-3 py-2">
                   Will record{' '}
-                  <span className="font-semibold text-ink">
+                  <span className="font-semibold text-foreground">
                     {formatCents(Math.round(parseFloat(balanceDollars.replace(/,/g, '')) * 100))}
                   </span>{' '}
                   as of {balanceDate}.
@@ -610,16 +610,16 @@ export default function NewLoanPage() {
 
           {/* ===== Commit footer ===== */}
           <div className="flex items-center justify-between gap-4 pt-2">
-            <p className="text-sm text-muted">
+            <p className="text-sm text-foreground-muted">
               {lenderValue && (
                 <>
-                  Will add <strong className="text-ink">{lenderValue}{nickname ? ` · ${nickname}` : ''}</strong>
+                  Will add <strong className="text-foreground">{lenderValue}{nickname ? ` · ${nickname}` : ''}</strong>
                   {securityMode === 'secured' && selectedPropertyId && (() => {
                     const prop = properties.find(p => p.id === selectedPropertyId)
-                    return prop ? <> secured by <strong className="text-ink">{prop.nickname ?? prop.address}</strong></> : null
+                    return prop ? <> secured by <strong className="text-foreground">{prop.nickname ?? prop.address}</strong></> : null
                   })()}
                   {balanceDollars && !isNaN(parseFloat(balanceDollars.replace(/,/g, ''))) && (
-                    <span className="text-muted"> · {formatCents(Math.round(parseFloat(balanceDollars.replace(/,/g, '')) * 100))} balance</span>
+                    <span className="text-foreground-muted"> · {formatCents(Math.round(parseFloat(balanceDollars.replace(/,/g, '')) * 100))} balance</span>
                   )}
                 </>
               )}
@@ -629,7 +629,7 @@ export default function NewLoanPage() {
                 type="button"
                 onClick={() => router.push('/loans')}
                 disabled={saving}
-                className="px-4 py-2 text-sm border border-border rounded-md text-muted hover:text-ink hover:bg-screen-bg transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm border border-border rounded-md text-foreground-muted hover:text-foreground hover:bg-background transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -637,7 +637,7 @@ export default function NewLoanPage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={!isValid || saving}
-                className="px-5 py-2 text-sm font-medium bg-ink text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-40"
+                className="px-5 py-2 text-sm font-medium bg-foreground text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-40"
               >
                 {saving ? 'Saving…' : 'Add loan'}
               </button>

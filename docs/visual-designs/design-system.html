@@ -9,107 +9,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,30..100&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   /* =====================================================================
-     FOLIO DESIGN TOKENS
-     Every value in this system is a variable.
-     HSL channels are stored unwrapped so Tailwind's hsl(var(--token) / α)
-     pattern works without modification.
+     FOLIO DESIGN TOKENS — imported from the canonical source.
+     Edit tokens in tokens.css; this page and folio.css both read it.
      ===================================================================== */
-  :root {
-    /* ── Color: surfaces ────────────────────────────────────────────── */
-    --background:        40  30% 97%;   /* warm off-white, app canvas    */
-    --surface:           40  35% 99%;   /* cards, panels                 */
-    --surface-sunken:    38  22% 94%;   /* pill backgrounds, table heads */
-    --surface-raised:    0    0% 100%;  /* modals, popovers              */
-
-    /* ── Color: ink (text) ──────────────────────────────────────────── */
-    --foreground:        30  10% 12%;   /* primary text                  */
-    --foreground-muted:  32   6% 38%;   /* secondary text, labels        */
-    --foreground-subtle: 34   5% 56%;   /* tertiary, placeholders        */
-    --foreground-faint:  36   8% 72%;   /* disabled, chart gridlines     */
-
-    /* ── Color: lines ───────────────────────────────────────────────── */
-    --border:            36  12% 86%;   /* default borders               */
-    --border-strong:     34  10% 74%;   /* focused inputs, hover         */
-    --rule:              36  14% 90%;   /* row dividers ("ruled paper")  */
-
-    /* ── Color: accent (teal-slate) ─────────────────────────────────── */
-    --accent:            188 32% 32%;   /* primary actions, links        */
-    --accent-hover:      188 36% 26%;
-    --accent-soft:       186 28% 92%;   /* hover fills, active nav       */
-    --accent-foreground:   0   0% 100%;
-
-    /* ── Color: semantic ────────────────────────────────────────────── */
-    --positive:          152 38% 30%;   /* up arrows, healthy            */
-    --positive-soft:     148 30% 92%;
-    --negative:           14 58% 42%;   /* down, attention               */
-    --negative-soft:      18 58% 94%;
-    --warning:            34 70% 42%;   /* heads-up                      */
-    --warning-soft:       38 76% 93%;
-
-    /* ── Type: families ─────────────────────────────────────────────── */
-    --font-display: "Fraunces", "Lora", ui-serif, Georgia, serif;
-    --font-data:    "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-
-    /* Micro-labels (section markers, timestamps, token names) reuse --font-data
-       at 11px / uppercase / 0.10–0.14em tracking. No third face.
-       --font-mono is kept as an alias so component rules don't all need to change;
-       it now resolves to Inter with tabular numerics applied at the use site. */
-    --font-micro:   var(--font-data);
-    --font-mono:    var(--font-data);
-
-    /* ── Type: scale (px → rem at 16px root) ────────────────────────── */
-    --text-2xs: 0.6875rem;   /* 11px — micro labels, all-caps  */
-    --text-xs:  0.75rem;     /* 12px — table cells, badges     */
-    --text-sm:  0.8125rem;   /* 13px — secondary body          */
-    --text-md:  0.875rem;    /* 14px — primary body, controls  */
-    --text-lg:  1rem;        /* 16px — emphasised body         */
-    --text-xl:  1.25rem;     /* 20px — section titles          */
-    --text-2xl: 1.5rem;      /* 24px — card metric value       */
-    --text-3xl: 1.875rem;    /* 30px — page title              */
-    --text-4xl: 2.5rem;      /* 40px — hero metric             */
-    --text-5xl: 3.5rem;      /* 56px — display only            */
-
-    /* ── Type: line-height ──────────────────────────────────────────── */
-    --leading-tight:  1.15;
-    --leading-snug:   1.3;
-    --leading-normal: 1.5;
-    --leading-loose:  1.65;
-
-    /* ── Spacing (4px base) ─────────────────────────────────────────── */
-    --space-0:   0;
-    --space-px:  1px;
-    --space-1:   0.25rem;   /* 4px  */
-    --space-2:   0.375rem;  /* 6px  */
-    --space-3:   0.5rem;    /* 8px  */
-    --space-4:   0.75rem;   /* 12px */
-    --space-5:   1rem;      /* 16px */
-    --space-6:   1.25rem;   /* 20px */
-    --space-7:   1.5rem;    /* 24px */
-    --space-8:   2rem;      /* 32px */
-    --space-9:   2.5rem;    /* 40px */
-    --space-10:  3rem;      /* 48px */
-
-    /* ── Density (component heights) ────────────────────────────────── */
-    --density-row:    34px;  /* table row, nav item                   */
-    --density-control:36px;  /* inputs, secondary buttons             */
-    --density-cta:    40px;  /* primary CTA                           */
-    --density-tile:  104px;  /* metric card minimum height            */
-
-    /* ── Radius ─────────────────────────────────────────────────────── */
-    --radius-xs: 3px;
-    --radius-sm: 5px;
-    --radius:    7px;        /* default (cards, inputs, buttons)      */
-    --radius-md: 10px;
-    --radius-lg: 14px;
-    --radius-pill: 999px;
-
-    /* ── Shadow (used sparingly) ────────────────────────────────────── */
-    --shadow-flat:   0 0 0 1px hsl(var(--border));
-    --shadow-rest:   0 1px 0 hsl(36 12% 90%);
-    --shadow-pop:    0 1px 2px hsl(30 10% 12% / 0.06),
-                     0 4px 12px hsl(30 10% 12% / 0.04);
-    --shadow-focus:  0 0 0 3px hsl(var(--accent) / 0.18);
-  }
+  @import "tokens.css";
 
   /* =====================================================================
      RESET / BASE
@@ -195,6 +98,54 @@
     color: hsl(var(--foreground-subtle));
     padding-top: 4px;
   }
+
+  /* =====================================================================
+     LAYER TAXONOMY — every section is labelled by the layer it belongs to,
+     so future work can tell a reusable primitive from a Folio-specific
+     composition at a glance.
+     ===================================================================== */
+  .kind {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground-muted));
+    background: hsl(var(--surface-sunken));
+    white-space: nowrap;
+  }
+  .kind--foundation { background: transparent; color: hsl(var(--foreground-subtle)); border-color: hsl(var(--border)); }
+  .kind--primitive  { background: hsl(var(--accent-soft)); color: hsl(var(--accent)); border-color: hsl(var(--accent) / 0.2); }
+  .kind--domain     { background: hsl(var(--foreground)); color: hsl(var(--surface-raised)); border-color: transparent; }
+  .kind--pattern    { background: transparent; color: hsl(var(--foreground-muted)); border-style: dashed; }
+  .sys-head .label .kind { display: inline-flex; margin-top: var(--space-3); }
+
+  .taxonomy-legend {
+    grid-column: 1 / -1;
+    margin-top: var(--space-6);
+    padding-top: var(--space-5);
+    border-top: 1px solid hsl(var(--rule));
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-6);
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-muted));
+  }
+  .taxonomy-legend .how {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: hsl(var(--foreground-subtle));
+    width: 100%;
+    margin-bottom: var(--space-2);
+  }
+  .taxonomy-legend .item { display: inline-flex; align-items: center; gap: var(--space-3); }
   .sys-head h2 {
     font-family: var(--font-display);
     font-weight: 400;
@@ -680,17 +631,75 @@
     background: hsl(var(--surface-sunken));
     padding: var(--space-3) var(--space-5);
     border-bottom: 1px solid hsl(var(--border));
+    white-space: nowrap;
+    user-select: none;
   }
+  .table thead th.num { text-align: right; }
+  .table thead th.is-sortable { cursor: pointer; }
+  .table thead th.is-sortable:hover { color: hsl(var(--foreground-muted)); }
+  .table thead th.is-sorted { color: hsl(var(--foreground)); cursor: pointer; }
+  .table thead th .sort-glyph { display: inline-block; margin-left: 4px; opacity: 0.7; }
   .table tbody td {
     padding: var(--space-3) var(--space-5);
     border-bottom: 1px solid hsl(var(--rule));
     height: var(--density-row);
     color: hsl(var(--foreground));
+    vertical-align: middle;
   }
   .table tbody tr:last-child td { border-bottom: none; }
   .table .num { font-variant-numeric: tabular-nums; text-align: right; }
   .table .muted { color: hsl(var(--foreground-muted)); }
+  .table .positive { color: hsl(var(--positive)); }
+  .table .negative { color: hsl(var(--negative)); }
+  .table .strong { font-weight: 600; }
   .table tbody tr:hover td { background: hsl(var(--surface-sunken) / 0.6); }
+  .table tbody tr[data-goto] { cursor: pointer; }
+  .table .cell-lead { line-height: 1.2; }
+  .table .cell-lead .name { font-weight: 600; }
+  .table .cell-lead .sub { font-size: var(--text-xs); color: hsl(var(--foreground-subtle)); margin-top: 1px; }
+  .table .num .tag-est { margin-left: var(--space-2); }
+  .table--compact tbody td { height: 30px; padding-top: var(--space-2); padding-bottom: var(--space-2); }
+  .table--compact thead th { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+
+  /* Inline LVR meter inside a cell (used in the portfolio table demo) */
+  .cell-lvr { display: flex; align-items: center; gap: var(--space-3); justify-content: flex-end; }
+  .cell-lvr .mini-meter {
+    position: relative; width: 60px; height: 4px;
+    background: hsl(var(--surface-sunken)); border-radius: 2px; overflow: hidden;
+  }
+  .cell-lvr .mini-meter .bands {
+    position: absolute; inset: 0;
+    background: linear-gradient(to right,
+      hsl(var(--positive) / 0.28) 0 60%,
+      hsl(var(--warning) / 0.28) 60% 80%,
+      hsl(var(--negative) / 0.28) 80% 100%);
+  }
+  .cell-lvr .mini-meter .pip {
+    position: absolute; top: -2px; width: 2px; height: 8px;
+    background: hsl(var(--foreground)); border-radius: 1px; transform: translateX(-50%);
+  }
+
+  /* Estimated / provenance tag (mirrors .tag-est in folio.css) */
+  .tag-est {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: hsl(var(--foreground-subtle));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius-xs);
+    padding: 0 4px;
+    vertical-align: middle;
+  }
+
+  .table-foot {
+    margin-top: var(--space-3);
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-5);
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-subtle));
+  }
 
   /* Navigation */
   .nav {
@@ -1238,6 +1247,13 @@
         A calm decision surface for residential property investors. Tokens, type,
         components — the single source of truth for everything Folio shows.
       </p>
+      <div class="taxonomy-legend">
+        <span class="how">How this system is organised</span>
+        <span class="item"><span class="kind kind--foundation">Foundation</span> tokens &amp; rules every screen inherits</span>
+        <span class="item"><span class="kind kind--primitive">Primitive</span> reusable components</span>
+        <span class="item"><span class="kind kind--domain">Domain composition</span> primitives assembled for a Folio job</span>
+        <span class="item"><span class="kind kind--pattern">Pattern</span> behaviour, not just looks</span>
+      </div>
     </header>
 
     <!-- ================================================================
@@ -1245,7 +1261,7 @@
          ================================================================ -->
     <section class="sys" id="principles">
       <div class="sys-head">
-        <div class="label">01 — Principles</div>
+        <div class="label">01 — Principles<span class="kind kind--foundation">Foundation</span></div>
         <div>
           <h2>The UI recedes. Data is the focus.</h2>
           <p>
@@ -1300,7 +1316,7 @@
          ================================================================ -->
     <section class="sys" id="color">
       <div class="sys-head">
-        <div class="label">02 — Color</div>
+        <div class="label">02 — Color<span class="kind kind--foundation">Foundation</span></div>
         <div>
           <h2>Warm neutrals first; teal-slate for action.</h2>
           <p>
@@ -1391,7 +1407,7 @@
          ================================================================ -->
     <section class="sys" id="type">
       <div class="sys-head">
-        <div class="label">03 — Typography</div>
+        <div class="label">03 — Typography<span class="kind kind--foundation">Foundation</span></div>
         <div>
           <h2>Two faces. Folio speaks in serif; data reads in sans.</h2>
           <p>
@@ -1488,7 +1504,7 @@
          ================================================================ -->
     <section class="sys" id="spacing">
       <div class="sys-head">
-        <div class="label">04 — Spacing &amp; density</div>
+        <div class="label">04 — Spacing &amp; density<span class="kind kind--foundation">Foundation</span></div>
         <div>
           <h2>A 4-pixel rhythm. Padding is deliberate, not generous.</h2>
           <p>
@@ -1699,7 +1715,7 @@
 
     <section class="sys" id="icons">
       <div class="sys-head">
-        <div class="label">04a — Iconography</div>
+        <div class="label">04a — Iconography<span class="kind kind--foundation">Foundation</span></div>
         <div>
           <h2>One line-icon family. Quiet, 1.5-weight, never decorative.</h2>
           <p>
@@ -1929,7 +1945,7 @@
          ================================================================ -->
     <section class="sys" id="prompt">
       <div class="sys-head">
-        <div class="label">05 — Prompt</div>
+        <div class="label">05 — Prompt<span class="kind kind--domain">Domain composition</span></div>
         <div>
           <h2>The primary intelligence object.</h2>
           <p>
@@ -2013,7 +2029,7 @@
          ================================================================ -->
     <section class="sys" id="metric">
       <div class="sys-head">
-        <div class="label">06 — Metric card</div>
+        <div class="label">06 — Metric card<span class="kind kind--primitive">Primitive</span></div>
         <div>
           <h2>One number, one label, a quiet trend.</h2>
           <p>
@@ -2086,11 +2102,11 @@
     </section>
 
     <!-- ================================================================
-         07 — PROPERTY CARD + DATA TABLE
+         07 — PROPERTY CARD
          ================================================================ -->
     <section class="sys" id="property">
       <div class="sys-head">
-        <div class="label">07 — Property card &amp; table</div>
+        <div class="label">07 — Property card<span class="kind kind--domain">Domain composition</span></div>
         <div>
           <h2>Compact rows. One property per row. One row per truth.</h2>
           <p>
@@ -2150,55 +2166,242 @@
             </div>
           </div>
 
+          <p class="footnote" style="color: hsl(var(--foreground-muted)); text-transform: none; letter-spacing: 0; font-family: var(--font-data);">
+            Tabular data (the transaction ledger, the loans list) is its own primitive —
+            see <a href="#tables" style="color: hsl(var(--accent));">07a · Tables</a>.
+          </p>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
+         07a — TABLES
+         ================================================================ -->
+    <section class="sys" id="tables">
+      <div class="sys-head">
+        <div class="label">07a — Tables<span class="kind kind--primitive">Primitive</span></div>
+        <div>
+          <h2>One table component. Real rows, shared cells.</h2>
+          <p>
+            Every tabular surface in Folio is the same <code style="font-family:var(--font-mono); font-size:0.9em;">.table</code> —
+            a real <code style="font-family:var(--font-mono); font-size:0.9em;">&lt;table&gt;</code>, never a grid of divs.
+            Pages don't restyle their own rows; they assemble a fixed vocabulary of cells. That's
+            what keeps Properties, Loans and every ledger reading as one product.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Element</dt><dd>Semantic <code>&lt;table&gt;</code> — <code>thead</code> / <code>tbody</code> / <code>tr</code> / <code>td</code>. Accessible, copy-pasteable, sortable.</dd>
+          <dt>Alignment</dt><dd>Labels &amp; names left. Numbers right, always tabular.</dd>
+          <dt>Row height</dt><dd>34px (density.row). <code>.table--compact</code> → 30px for long ledgers.</dd>
+          <dt>Color</dt><dd>Numbers stay ink. Semantic color (<code>.positive</code>/<code>.negative</code>) only when direction is the point.</dd>
+          <dt>Foot</dt><dd><code>.table-foot</code> — provenance left, hint right. Never inside the table border.</dd>
+        </dl>
+        <div class="stack-7">
+
+          <!-- ANATOMY — full portfolio table -->
           <div>
+            <div class="footnote" style="margin-bottom: var(--space-4);">Anatomy · the portfolio table (Properties)</div>
+            <table class="table properties">
+              <thead>
+                <tr>
+                  <th class="is-sortable">Property</th>
+                  <th class="is-sortable">Type</th>
+                  <th class="num is-sortable">Value</th>
+                  <th class="num is-sortable">Growth</th>
+                  <th class="num is-sorted">Monthly CF <span class="sort-glyph">↑</span></th>
+                  <th class="num is-sortable">LVR</th>
+                  <th class="is-sortable">Statement</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr data-goto="property">
+                  <td>
+                    <div class="cell-lead">
+                      <div class="name">8 Daley Street</div>
+                      <div class="sub">Marrickville · Okafor Family Trust</div>
+                    </div>
+                  </td>
+                  <td class="muted">Unit · 2 bed</td>
+                  <td class="num">$640,000</td>
+                  <td class="num positive">+18.5%</td>
+                  <td class="num negative">−$890</td>
+                  <td>
+                    <div class="cell-lvr">
+                      <span class="num">75%</span>
+                      <div class="mini-meter"><div class="bands"></div><div class="pip" style="left: 75%;"></div></div>
+                    </div>
+                  </td>
+                  <td><span class="badge badge--partial"><span class="dot"></span>Partial</span></td>
+                </tr>
+                <tr data-goto="property">
+                  <td>
+                    <div class="cell-lead">
+                      <div class="name">14 Elm Street</div>
+                      <div class="sub">Randwick · Okafor Family Trust</div>
+                    </div>
+                  </td>
+                  <td class="muted">House · 3 bed</td>
+                  <td class="num">$920,000</td>
+                  <td class="num positive">+41.5%</td>
+                  <td class="num negative">−$340</td>
+                  <td>
+                    <div class="cell-lvr">
+                      <span class="num">67%</span>
+                      <div class="mini-meter"><div class="bands"></div><div class="pip" style="left: 67%;"></div></div>
+                    </div>
+                  </td>
+                  <td><span class="badge badge--missing"><span class="dot"></span>Missing · Apr</span></td>
+                </tr>
+                <tr data-goto="property">
+                  <td>
+                    <div class="cell-lead">
+                      <div class="name">Sutherland Court</div>
+                      <div class="sub">Kingsford · Personal · Theo</div>
+                    </div>
+                  </td>
+                  <td class="muted">House · 4 bed</td>
+                  <td class="num">$510,000</td>
+                  <td class="num positive">+27.5%</td>
+                  <td class="num positive">+$120</td>
+                  <td><div class="cell-lvr"><span class="num muted">—</span></div></td>
+                  <td><span class="badge badge--complete"><span class="dot"></span>Complete</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="table-foot">
+              <span>Trailing 12 months · sorted by monthly cashflow.</span>
+              <span>Rows with a destination are clickable — hover to confirm.</span>
+            </div>
+          </div>
+
+          <!-- CELL VOCABULARY -->
+          <div>
+            <div class="footnote" style="margin-bottom: var(--space-4);">Cell vocabulary · the only building blocks a page assembles</div>
             <table class="table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Property</th>
-                  <th>Description</th>
-                  <th class="num">Amount</th>
-                  <th>Status</th>
+                  <th style="width: 200px;">Class</th>
+                  <th>Renders as</th>
+                  <th>When to use</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td class="muted">02 Apr 2026</td>
-                  <td>14 Elm St</td>
-                  <td>Rent — week 14</td>
-                  <td class="num">$2,150.00</td>
-                  <td><span class="badge badge--complete"><span class="dot"></span>Cleared</span></td>
+                  <td><code style="font-family:var(--font-mono); font-size:var(--text-xs);">td</code></td>
+                  <td>14 Elm Street</td>
+                  <td class="muted">Default — primary text, left-aligned.</td>
                 </tr>
                 <tr>
-                  <td class="muted">04 Apr 2026</td>
-                  <td>9 Randwick Rd</td>
-                  <td>Strata levy — Q2</td>
-                  <td class="num" style="color:hsl(var(--negative))">− $814.20</td>
-                  <td><span class="badge badge--complete"><span class="dot"></span>Cleared</span></td>
+                  <td><code style="font-family:var(--font-mono); font-size:var(--text-xs);">.muted</code></td>
+                  <td class="muted">House · 3 bed</td>
+                  <td class="muted">Secondary / supporting text.</td>
                 </tr>
                 <tr>
-                  <td class="muted">11 Apr 2026</td>
-                  <td>22A Park Ln</td>
-                  <td>Plumbing — emergency callout</td>
-                  <td class="num" style="color:hsl(var(--negative))">− $1,240.00</td>
-                  <td><span class="badge badge--partial"><span class="dot"></span>Unmatched</span></td>
+                  <td><code style="font-family:var(--font-mono); font-size:var(--text-xs);">.cell-lead</code></td>
+                  <td>
+                    <div class="cell-lead">
+                      <div class="name">Inv Loan · Elm St</div>
+                      <div class="sub">acct ending 4821</div>
+                    </div>
+                  </td>
+                  <td class="muted">Bold primary line over a subtle sub-line (name + entity, nickname + account).</td>
                 </tr>
                 <tr>
-                  <td class="muted">15 Apr 2026</td>
-                  <td>Sutherland Ct</td>
-                  <td>Rent — week 15 <span class="muted">· estimated</span></td>
-                  <td class="num">$1,640.00</td>
-                  <td><span class="badge badge--estimated"><span class="dot"></span>Estimated</span></td>
+                  <td><code style="font-family:var(--font-mono); font-size:var(--text-xs);">.strong</code></td>
+                  <td class="strong">CBA</td>
+                  <td class="muted">Strong identifier — lender, ticker, code.</td>
                 </tr>
                 <tr>
-                  <td class="muted">22 Apr 2026</td>
-                  <td>14 Elm St</td>
-                  <td>Insurance — annual premium</td>
-                  <td class="num" style="color:hsl(var(--negative))">− $1,485.00</td>
-                  <td><span class="badge badge--complete"><span class="dot"></span>Cleared</span></td>
+                  <td><code style="font-family:var(--font-mono); font-size:var(--text-xs);">.num</code></td>
+                  <td class="num">$615,000</td>
+                  <td class="muted">Numbers — right-aligned, tabular figures.</td>
+                </tr>
+                <tr>
+                  <td><code style="font-family:var(--font-mono); font-size:var(--text-xs);">.num.positive / .negative</code></td>
+                  <td class="num"><span class="positive">+$120</span> / <span class="negative">−$890</span></td>
+                  <td class="muted">Signed value where direction carries meaning.</td>
+                </tr>
+                <tr>
+                  <td><code style="font-family:var(--font-mono); font-size:var(--text-xs);">.num + .tag-est</code></td>
+                  <td class="num">$2,167 <span class="tag-est">est</span></td>
+                  <td class="muted">Estimated / derived value — provenance travels with the number.</td>
+                </tr>
+                <tr>
+                  <td><code style="font-family:var(--font-mono); font-size:var(--text-xs);">.cell-lvr</code></td>
+                  <td><div class="cell-lvr"><span class="num">67%</span><div class="mini-meter"><div class="bands"></div><div class="pip" style="left:67%;"></div></div></div></td>
+                  <td class="muted">Inline micro-meter beside a ratio (LVR, utilisation).</td>
+                </tr>
+                <tr>
+                  <td><code style="font-family:var(--font-mono); font-size:var(--text-xs);">.badge</code></td>
+                  <td><span class="badge badge--complete"><span class="dot"></span>Complete</span></td>
+                  <td class="muted">Status — uses the shared status language (§11).</td>
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- SORTABLE HEADERS + DENSITY -->
+          <div class="grid-2" style="align-items: start;">
+            <div>
+              <div class="footnote" style="margin-bottom: var(--space-4);">Sortable headers</div>
+              <p style="color: hsl(var(--foreground-muted)); font-size: var(--text-sm); margin: 0 0 var(--space-4); max-width: 44ch;">
+                Sorting is opt-in. A header earns the pointer only with <code style="font-family:var(--font-mono); font-size:var(--text-2xs);">.is-sortable</code>;
+                the active column adds <code style="font-family:var(--font-mono); font-size:var(--text-2xs);">.is-sorted</code> + a
+                <code style="font-family:var(--font-mono); font-size:var(--text-2xs);">.sort-glyph</code>. Plain label headers stay quiet.
+              </p>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th class="is-sortable">Sortable</th>
+                    <th class="num is-sorted">Active <span class="sort-glyph">↓</span></th>
+                    <th>Label only</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>Hover the heads →</td><td class="num">2,150</td><td class="muted">no pointer</td></tr>
+                  <tr><td>Pointer + ink shift</td><td class="num">1,980</td><td class="muted">no pointer</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <div class="footnote" style="margin-bottom: var(--space-4);">Density · <code style="font-family:var(--font-mono); font-size:var(--text-2xs);">.table--compact</code></div>
+              <p style="color: hsl(var(--foreground-muted)); font-size: var(--text-sm); margin: 0 0 var(--space-4); max-width: 44ch;">
+                34px rows by default. Drop to 30px for long, scan-heavy ledgers (repayment
+                schedules, transaction history) — same cells, tighter rhythm.
+              </p>
+              <table class="table table--compact">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th class="num">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td class="muted">01 Oct</td><td>Repayment</td><td class="num negative">−$2,167.00</td></tr>
+                  <tr><td class="muted">01 Sep</td><td>Repayment</td><td class="num negative">−$2,167.00</td></tr>
+                  <tr><td class="muted">01 Aug</td><td>Repayment</td><td class="num negative">−$2,167.00</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ADOPTION / AUDIT NOTE -->
+          <div class="pattern-note">
+            <span class="tag">Audit</span>
+            <div>
+              <strong>Properties</strong> and the <strong>Loans</strong> list now share this one
+              <code style="font-family:var(--font-mono); font-size:0.9em;">.table</code> — the old
+              hand-built <code style="font-family:var(--font-mono); font-size:0.9em;">.loan-row</code> CSS grid was retired so both
+              read identically. A few detail-screen ledgers still ride bespoke grids
+              (<code style="font-family:var(--font-mono); font-size:0.9em;">.repayment-list</code>,
+              <code style="font-family:var(--font-mono); font-size:0.9em;">.tx-list</code>,
+              <code style="font-family:var(--font-mono); font-size:0.9em;">.valuation-list</code>) — these are the next migration
+              candidates onto <code style="font-family:var(--font-mono); font-size:0.9em;">.table</code> + <code style="font-family:var(--font-mono); font-size:0.9em;">.table--compact</code>.
+            </div>
           </div>
 
         </div>
@@ -2210,7 +2413,7 @@
          ================================================================ -->
     <section class="sys" id="nav">
       <div class="sys-head">
-        <div class="label">08 — Navigation</div>
+        <div class="label">08 — Navigation<span class="kind kind--primitive">Primitive</span></div>
         <div>
           <h2>Left rail. Calm by default; the active item is the only place the accent appears.</h2>
           <p>
@@ -2275,7 +2478,7 @@
          ================================================================ -->
     <section class="sys" id="buttons">
       <div class="sys-head">
-        <div class="label">09 — Buttons</div>
+        <div class="label">09 — Buttons<span class="kind kind--primitive">Primitive</span></div>
         <div>
           <h2>Three roles, three sizes. The primary is the only filled action on a screen.</h2>
           <p>
@@ -2335,7 +2538,7 @@
          ================================================================ -->
     <section class="sys" id="forms">
       <div class="sys-head">
-        <div class="label">10 — Form inputs</div>
+        <div class="label">10 — Form inputs<span class="kind kind--primitive">Primitive</span></div>
         <div>
           <h2>One height. One radius. One focus ring.</h2>
           <p>
@@ -2479,7 +2682,7 @@
          ================================================================ -->
     <section class="sys" id="status">
       <div class="sys-head">
-        <div class="label">11 — Status language</div>
+        <div class="label">11 — Status language<span class="kind kind--foundation">Foundation</span></div>
         <div>
           <h2>Four states. Always named explicitly.</h2>
           <p>
@@ -2756,7 +2959,7 @@
 
     <section class="sys" id="overflow-menu">
       <div class="sys-head">
-        <div class="label">12 — Overflow menu</div>
+        <div class="label">12 — Overflow menu<span class="kind kind--primitive">Primitive</span></div>
         <div>
           <h2>Tucks away lifecycle and destructive actions. It never edits.</h2>
           <p>
@@ -3014,7 +3217,7 @@
 
     <section class="sys" id="tooltip">
       <div class="sys-head">
-        <div class="label">12a — Tooltip</div>
+        <div class="label">12a — Tooltip<span class="kind kind--primitive">Primitive</span></div>
         <div>
           <h2>Quiet by default. Reveals only what a glance hides.</h2>
           <p>
@@ -3071,7 +3274,7 @@
          ================================================================ -->
     <section class="sys" id="patterns">
       <div class="sys-head">
-        <div class="label">13 — Interaction patterns</div>
+        <div class="label">13 — Interaction patterns<span class="kind kind--pattern">Pattern</span></div>
         <div>
           <h2>How Folio behaves, not just how it looks.</h2>
           <p>

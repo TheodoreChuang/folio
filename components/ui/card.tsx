@@ -10,18 +10,18 @@ function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="card-header"
-      className={cn('flex items-center justify-between px-4 py-3 border-b border-border bg-screen-bg rounded-t-lg', className)}
+      className={cn('flex items-center justify-between px-4 py-3 border-b border-border bg-background rounded-t-lg', className)}
       {...props}
     />
   )
 }
 
 function CardTitle({ className, ...props }: React.ComponentProps<'h3'>) {
-  return <h3 data-slot="card-title" className={cn('text-xs font-semibold text-ink', className)} {...props} />
+  return <h3 data-slot="card-title" className={cn('text-xs font-semibold text-foreground', className)} {...props} />
 }
 
 function CardDescription({ className, ...props }: React.ComponentProps<'p'>) {
-  return <p data-slot="card-description" className={cn('text-[11px] font-mono text-muted mt-0.5', className)} {...props} />
+  return <p data-slot="card-description" className={cn('text-[11px] font-mono text-foreground-muted mt-0.5', className)} {...props} />
 }
 
 function CardContent({ className, ...props }: React.ComponentProps<'div'>) {

@@ -270,7 +270,7 @@ function Collapsible({
         >
           <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <span className="text-sm font-medium text-ink flex-1">{title}</span>
+        <span className="text-sm font-medium text-foreground flex-1">{title}</span>
         {summary && <span className="text-xs text-foreground-subtle">{summary}</span>}
       </button>
       {open && <div className="px-4 py-4 border-t border-rule bg-surface">{children}</div>}
@@ -310,7 +310,7 @@ function ImpactTile({
     return (
       <div className="border border-border rounded p-4 bg-surface-raised">
         <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-2">{label}</p>
-        <p className="text-xl font-semibold text-ink tabular-nums">{fmt(after)}</p>
+        <p className="text-xl font-semibold text-foreground tabular-nums">{fmt(after)}</p>
         {delta && <p className={`text-xs mt-1 tabular-nums ${deltaColor}`}>{delta}</p>}
       </div>
     )
@@ -333,7 +333,7 @@ function ImpactTile({
   return (
     <div className="border border-border rounded p-4 bg-surface-raised">
       <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle mb-2">{label}</p>
-      <p className="text-xl font-semibold text-ink tabular-nums">{fmt(after)}</p>
+      <p className="text-xl font-semibold text-foreground tabular-nums">{fmt(after)}</p>
       <p className="text-xs text-foreground-muted tabular-nums">was {fmt(before)}</p>
       {/* Track bar */}
       <div className="relative h-1.5 bg-surface-sunken rounded-full overflow-hidden mt-3">
@@ -413,7 +413,7 @@ function EquityList({
                 }}
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-ink">{eq.nickname ?? eq.address}</p>
+                <p className="text-sm font-medium text-foreground">{eq.nickname ?? eq.address}</p>
                 {isDepleted ? (
                   <p className="text-xs text-foreground-subtle">Already at 100% LVR</p>
                 ) : (
@@ -604,7 +604,7 @@ function InputsPanel({
 
           {inputs.source === 'mix' && result.cashContributionCents > 0 && (
             <p className="text-xs text-foreground-muted">
-              Remaining <span className="font-medium text-ink">{fmtMo(result.cashContributionCents)}</span> funded by cash
+              Remaining <span className="font-medium text-foreground">{fmtMo(result.cashContributionCents)}</span> funded by cash
             </p>
           )}
 
@@ -804,11 +804,11 @@ function OutputsPanel({
 
         {/* Breakdown */}
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-          <span className="text-foreground-muted">Rent <span className="text-ink tabular-nums">{fmtMo(result.monthlyRentCents)}</span></span>
+          <span className="text-foreground-muted">Rent <span className="text-foreground tabular-nums">{fmtMo(result.monthlyRentCents)}</span></span>
           <span className="text-foreground-subtle">−</span>
-          <span className="text-foreground-muted">Loan <span className="text-ink tabular-nums">{fmtMo(result.newLoanRepaymentMonthlyCents)}</span></span>
+          <span className="text-foreground-muted">Loan <span className="text-foreground tabular-nums">{fmtMo(result.newLoanRepaymentMonthlyCents)}</span></span>
           <span className="text-foreground-subtle">−</span>
-          <span className="text-foreground-muted">Costs <span className="text-ink tabular-nums">{fmtMo(result.runningCostsMonthlyCents)}</span></span>
+          <span className="text-foreground-muted">Costs <span className="text-foreground tabular-nums">{fmtMo(result.runningCostsMonthlyCents)}</span></span>
           <span className="text-foreground-subtle">=</span>
           <span className={`font-semibold tabular-nums ${gearingColor}`}>{fmtSignedMo(result.propertyCashflowMonthlyCents)}</span>
         </div>
@@ -823,17 +823,17 @@ function OutputsPanel({
               <span className="text-foreground-muted">Deposit</span>
               <span className="block text-[11px] text-foreground-subtle">{depositPct}% of price</span>
             </div>
-            <span className="tabular-nums text-ink">{fmtMo(result.depositCents)}</span>
+            <span className="tabular-nums text-foreground">{fmtMo(result.depositCents)}</span>
           </div>
           {purchaseCostItems.map(item => (
             <div key={item.label} className="flex items-center justify-between px-4 py-3 border-b border-rule text-sm">
               <span className="text-foreground-muted">{item.label}</span>
-              <span className="tabular-nums text-ink">{fmtMo(item.aud * 100)}</span>
+              <span className="tabular-nums text-foreground">{fmtMo(item.aud * 100)}</span>
             </div>
           ))}
           <div className="flex items-center justify-between px-4 py-3 text-sm font-semibold">
-            <span className="text-ink">Cash required</span>
-            <span className="tabular-nums text-ink">{fmtMo(result.fundsRequiredCents)}</span>
+            <span className="text-foreground">Cash required</span>
+            <span className="tabular-nums text-foreground">{fmtMo(result.fundsRequiredCents)}</span>
           </div>
         </div>
         {/* Funding source chips */}
@@ -937,7 +937,7 @@ function OutputsPanel({
                   {fmtMo(result.portfolioCashflowAfterMonthlyCents)}/mo
                 </strong>
                 {' '}on top of your{' '}
-                <strong className="font-semibold text-ink tabular-nums">
+                <strong className="font-semibold text-foreground tabular-nums">
                   {fmtMo(result.householdSurplusMonthlyCents)}/mo
                 </strong>
                 {' '}personal surplus, lifting household cashflow to{' '}
@@ -1003,7 +1003,7 @@ export default function ModelPurchasePage() {
     return (
       <div>
         <BackToScenarios />
-        <div className="flex items-center justify-center py-24 text-sm text-muted">Loading…</div>
+        <div className="flex items-center justify-center py-24 text-sm text-foreground-muted">Loading…</div>
       </div>
     )
   }
@@ -1012,7 +1012,7 @@ export default function ModelPurchasePage() {
     return (
       <div>
         <BackToScenarios />
-        <p className="text-sm text-muted py-8">Failed to load. Refresh to try again.</p>
+        <p className="text-sm text-foreground-muted py-8">Failed to load. Refresh to try again.</p>
       </div>
     )
   }
@@ -1081,7 +1081,7 @@ export default function ModelPurchasePage() {
       <div className="border border-border rounded-xl bg-surface overflow-clip">
         {/* Card header */}
         <div className="px-6 py-5 border-b border-rule">
-          <h1 className="font-display text-xl text-ink">Model a purchase</h1>
+          <h1 className="font-display text-xl text-foreground">Model a purchase</h1>
           <p className="text-sm text-foreground-muted mt-0.5">
             Estimate how a property acquisition would affect your portfolio cashflow and LVR.
           </p>

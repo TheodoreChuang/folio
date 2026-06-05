@@ -37,7 +37,7 @@ const mocks = vi.hoisted(() => ({
   mockFindPropertyById:         vi.fn(),
   mockCreateInstallmentLoan:    vi.fn(),
   mockFindEntityById:           vi.fn(),
-  mockListAllInstallmentLoans:  vi.fn(),
+  mockListAllLoansFlat:         vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -51,8 +51,8 @@ vi.mock('@/lib/property', () => ({
 }))
 
 vi.mock('@/lib/borrowings', () => ({
-  listAllInstallmentLoans: mocks.mockListAllInstallmentLoans,
-  createInstallmentLoan:   mocks.mockCreateInstallmentLoan,
+  listAllLoansFlat:      mocks.mockListAllLoansFlat,
+  createInstallmentLoan: mocks.mockCreateInstallmentLoan,
 }))
 
 vi.mock('@/lib/entities', () => ({
@@ -70,8 +70,8 @@ describe('GET /api/loans', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockListAllInstallmentLoans.mockResolvedValue([
-      { id: VALID_LOAN_ID, lender: 'Commonwealth Bank', nickname: 'Inv Loan' },
+    mocks.mockListAllLoansFlat.mockResolvedValue([
+      { ...loanRow, latestBalance: null, propertyAddress: '123 Main St', entityName: null },
     ])
   })
 
@@ -87,7 +87,7 @@ describe('GET /api/loans', () => {
     const json = await res.json() as { loans: { id: string; lender: string }[] }
     expect(json.loans).toHaveLength(1)
     expect(json.loans[0].lender).toBe('Commonwealth Bank')
-    expect(mocks.mockListAllInstallmentLoans).toHaveBeenCalledWith('user-123')
+    expect(mocks.mockListAllLoansFlat).toHaveBeenCalledWith('user-123')
   })
 })
 

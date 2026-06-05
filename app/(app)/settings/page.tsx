@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-xs font-semibold uppercase tracking-wider text-muted mb-3">
+    <div className="text-xs font-semibold uppercase tracking-wider text-foreground-muted mb-3">
       {children}
     </div>
   )
@@ -25,21 +25,21 @@ function SettingsCard({
 }) {
   const inner = (
     <div className="flex items-start gap-4 p-4">
-      <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-surface flex items-center justify-center text-muted">
+      <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-surface flex items-center justify-center text-foreground-muted">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-ink flex items-center gap-2">
+        <div className="text-sm font-medium text-foreground flex items-center gap-2">
           {title}
           {soon && (
-            <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted bg-surface px-1.5 py-0.5 rounded">
+            <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-foreground-muted bg-surface px-1.5 py-0.5 rounded">
               Soon
             </span>
           )}
         </div>
-        <div className="text-xs text-muted mt-0.5 leading-relaxed">{description}</div>
+        <div className="text-xs text-foreground-muted mt-0.5 leading-relaxed">{description}</div>
       </div>
-      <span className="text-muted text-lg leading-none flex-shrink-0 mt-0.5" aria-hidden>›</span>
+      <span className="text-foreground-muted text-lg leading-none flex-shrink-0 mt-0.5" aria-hidden>›</span>
     </div>
   )
 
@@ -65,8 +65,8 @@ export default function SettingsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="font-display text-2xl text-ink">Settings</h1>
-        <p className="text-sm text-muted mt-0.5">
+        <h1 className="font-display text-2xl text-foreground">Settings</h1>
+        <p className="text-sm text-foreground-muted mt-0.5">
           Admin areas that don&apos;t change often. Most live here so they stay out of your way.
         </p>
       </div>

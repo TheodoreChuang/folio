@@ -53,10 +53,10 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-screen-bg">
+    <div className="min-h-screen bg-background">
       <nav className="bg-white border-b border-border flex items-center justify-between px-6 h-[52px]">
-        <span className="font-display text-xl text-ink">Folio</span>
-        <span className="text-sm text-muted">Step 1 of 2</span>
+        <span className="font-display text-xl text-foreground">Folio</span>
+        <span className="text-sm text-foreground-muted">Step 1 of 2</span>
       </nav>
 
       {/* Step progress */}
@@ -68,11 +68,11 @@ export default function OnboardingPage() {
           <div
             key={s.n}
             className={`flex-1 py-2.5 px-4 text-xs flex items-center gap-2 border-r border-border last:border-r-0 ${
-              s.active ? 'bg-white font-semibold text-ink' : 'text-muted'
+              s.active ? 'bg-white font-semibold text-foreground' : 'text-foreground-muted'
             }`}
           >
             <span className={`w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
-              s.active ? 'bg-ink text-white' : 'bg-border text-muted'
+              s.active ? 'bg-foreground text-white' : 'bg-border text-foreground-muted'
             }`}>{s.n}</span>
             {s.label}
           </div>
@@ -83,7 +83,7 @@ export default function OnboardingPage() {
         <h1 className="text-xl font-semibold mb-1">
           {properties.length === 0 ? 'Add your properties' : 'Your properties'}
         </h1>
-        <p className="text-sm text-muted mb-6">
+        <p className="text-sm text-foreground-muted mb-6">
           {properties.length === 0
             ? 'Add each investment property. You can edit these later.'
             : `${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} added.`}
@@ -98,13 +98,13 @@ export default function OnboardingPage() {
                   <div>
                     <div className="text-sm font-semibold">{p.address}</div>
                     {p.nickname && (
-                      <div className="text-xs text-muted mt-0.5">"{p.nickname}"</div>
+                      <div className="text-xs text-foreground-muted mt-0.5">"{p.nickname}"</div>
                     )}
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-muted hover:text-warn"
+                    className="text-foreground-muted hover:text-negative"
                     onClick={async () => {
                       const res = await fetch(`/api/properties/${p.id}`, { method: 'DELETE' })
                       if (!res.ok) {
@@ -124,9 +124,9 @@ export default function OnboardingPage() {
 
         {/* Add form */}
         {showForm ? (
-          <Card className="border-dashed bg-screen-bg">
+          <Card className="border-dashed bg-background">
             <CardContent className="pt-5 pb-5">
-              <p className="text-xs font-semibold text-muted mb-3 tracking-wide uppercase">New property</p>
+              <p className="text-xs font-semibold text-foreground-muted mb-3 tracking-wide uppercase">New property</p>
               <div className="space-y-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="address">Full address</Label>
@@ -139,7 +139,7 @@ export default function OnboardingPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="nickname">
-                    Nickname <span className="font-normal text-muted">(optional)</span>
+                    Nickname <span className="font-normal text-foreground-muted">(optional)</span>
                   </Label>
                   <Input
                     id="nickname"
@@ -167,7 +167,7 @@ export default function OnboardingPage() {
         ) : (
           <button
             onClick={() => setShowForm(true)}
-            className="w-full border border-dashed border-border rounded-lg p-4 text-center text-sm text-muted hover:border-accent hover:text-accent transition-colors bg-screen-bg"
+            className="w-full border border-dashed border-border rounded-lg p-4 text-center text-sm text-foreground-muted hover:border-accent hover:text-accent transition-colors bg-background"
           >
             <span className="text-lg block mb-1">+</span>
             Add another property
@@ -183,7 +183,7 @@ export default function OnboardingPage() {
           </>
         )}
 
-        <p className="text-center text-xs text-muted mt-4">
+        <p className="text-center text-xs text-foreground-muted mt-4">
           <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => router.push('/upload')}>
             Skip for now — add properties later
           </Button>

@@ -86,7 +86,7 @@ export default function PropertiesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <span className="text-sm text-muted">Loading…</span>
+        <span className="text-sm text-foreground-muted">Loading…</span>
       </div>
     )
   }
@@ -95,8 +95,8 @@ export default function PropertiesPage() {
     <div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="font-display text-2xl text-ink">Properties</h1>
-          <p className="text-sm text-muted mt-0.5">{properties.length} {properties.length === 1 ? 'property' : 'properties'}</p>
+          <h1 className="font-display text-2xl text-foreground">Properties</h1>
+          <p className="text-sm text-foreground-muted mt-0.5">{properties.length} {properties.length === 1 ? 'property' : 'properties'}</p>
         </div>
         <Button size="sm" onClick={() => router.push('/properties/new')}>+ Add property</Button>
       </div>
@@ -105,7 +105,7 @@ export default function PropertiesPage() {
         <MetricTile
           label="Total value"
           value={totalValueCents !== null ? formatCents(totalValueCents) : '—'}
-          foot={<span className="text-xs text-muted">{properties.length} properties</span>}
+          foot={<span className="text-xs text-foreground-muted">{properties.length} properties</span>}
         />
         <MetricTile
           label="Total debt"
@@ -116,14 +116,14 @@ export default function PropertiesPage() {
 
       {entities.length > 1 && (
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="text-xs text-muted font-medium">Filter</span>
+          <span className="text-xs text-foreground-muted font-medium">Filter</span>
           <button
             onClick={() => setEntityFilter('all')}
             className={[
               'text-xs px-2.5 py-1 rounded-full border transition-colors',
               entityFilter === 'all'
                 ? 'bg-accent text-white border-accent'
-                : 'border-border text-muted hover:border-accent hover:text-ink',
+                : 'border-border text-foreground-muted hover:border-accent hover:text-foreground',
             ].join(' ')}
           >
             All entities
@@ -136,7 +136,7 @@ export default function PropertiesPage() {
                 'text-xs px-2.5 py-1 rounded-full border transition-colors',
                 entityFilter === e.id
                   ? 'bg-accent text-white border-accent'
-                  : 'border-border text-muted hover:border-accent hover:text-ink',
+                  : 'border-border text-foreground-muted hover:border-accent hover:text-foreground',
               ].join(' ')}
             >
               {e.name}
@@ -147,7 +147,7 @@ export default function PropertiesPage() {
 
       {filtered.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-sm text-muted mb-3">
+          <p className="text-sm text-foreground-muted mb-3">
             {properties.length === 0 ? 'No properties yet.' : 'No properties match the filter.'}
           </p>
           {properties.length === 0 && (
@@ -158,11 +158,11 @@ export default function PropertiesPage() {
         <div className="bg-surface border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-screen-bg">
-                <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Property</th>
-                <th className="text-left font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Entity</th>
-                <th className="text-center font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">Statement</th>
-                <th className="text-right font-medium text-muted text-xs uppercase tracking-wide py-2.5 px-4">LVR</th>
+              <tr className="border-b border-border bg-background">
+                <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Property</th>
+                <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Entity</th>
+                <th className="text-center font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Statement</th>
+                <th className="text-right font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">LVR</th>
               </tr>
             </thead>
             <tbody>
@@ -173,31 +173,31 @@ export default function PropertiesPage() {
                   <tr
                     key={prop.id}
                     className={[
-                      'border-b border-ruled last:border-b-0 hover:bg-screen-bg cursor-pointer transition-colors',
+                      'border-b border-rule last:border-b-0 hover:bg-background cursor-pointer transition-colors',
                       isSold ? 'opacity-60' : '',
                     ].join(' ')}
                     onClick={() => router.push(`/properties/${prop.id}`)}
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-ink">{prop.address}</p>
+                        <p className="font-medium text-foreground">{prop.address}</p>
                         {isSold && (
                           <Badge variant="complete">Sold</Badge>
                         )}
                       </div>
-                      {prop.nickname && <p className="text-xs text-muted mt-0.5">{prop.nickname}</p>}
+                      {prop.nickname && <p className="text-xs text-foreground-muted mt-0.5">{prop.nickname}</p>}
                     </td>
-                    <td className="py-3 px-4 text-muted">{prop.entityName ?? '—'}</td>
+                    <td className="py-3 px-4 text-foreground-muted">{prop.entityName ?? '—'}</td>
                     <td className="py-3 px-4 text-center">
                       {isSold ? (
-                        <span className="text-xs text-muted">—</span>
+                        <span className="text-xs text-foreground-muted">—</span>
                       ) : (
                         <Badge variant={hasMissing ? 'missing' : 'complete'}>
                           {hasMissing ? 'Missing' : 'Complete'}
                         </Badge>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-right text-muted">
+                    <td className="py-3 px-4 text-right text-foreground-muted">
                       {prop.lvrPercent !== null ? `${prop.lvrPercent}%` : '—'}
                     </td>
                   </tr>

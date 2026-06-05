@@ -16,9 +16,9 @@ export function Toaster() {
       toastOptions={{
         classNames: {
           toast:
-            'bg-white border border-border rounded-lg shadow-lg font-sans text-sm text-ink',
+            'bg-white border border-border rounded-lg shadow-lg font-sans text-sm text-foreground',
           title: 'font-semibold',
-          description: 'text-muted text-xs',
+          description: 'text-foreground-muted text-xs',
           success: 'border-l-4 border-l-accent',
           error:   'border-l-4 border-l-warn',
           warning: 'border-l-4 border-l-warn',

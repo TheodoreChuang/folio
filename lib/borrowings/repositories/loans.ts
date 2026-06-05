@@ -22,6 +22,7 @@ type CreateInstallmentLoanInput = {
 type UpdateInstallmentLoanInput = {
   lender?: string
   nickname?: string | null
+  accountReference?: string | null
   startDate?: string
   endDate?: string
   entityId?: string | null
@@ -44,6 +45,41 @@ export async function listAllInstallmentLoans(
     .select({ id: installmentLoans.id, lender: installmentLoans.lender, nickname: installmentLoans.nickname })
     .from(installmentLoans)
     .where(eq(installmentLoans.userId, userId))
+}
+
+export type FlatInstallmentLoan = InstallmentLoan & {
+  latestBalance: { balanceCents: number; recordedAt: string } | null
+  propertyAddress: string | null
+  entityName: string | null
+}
+
+export async function listAllLoansFlat(userId: string): Promise<FlatInstallmentLoan[]> {
+  const [loans, propRows, entityRows, balanceRows] = await Promise.all([
+    db.select().from(installmentLoans).where(eq(installmentLoans.userId, userId)),
+    db.select({ id: properties.id, address: properties.address, nickname: properties.nickname })
+      .from(properties).where(eq(properties.userId, userId)),
+    db.select({ id: entities.id, name: entities.name })
+      .from(entities).where(eq(entities.userId, userId)),
+    db.select().from(installmentLoanBalances)
+      .where(eq(installmentLoanBalances.userId, userId))
+      .orderBy(installmentLoanBalances.installmentLoanId, desc(installmentLoanBalances.recordedAt)),
+  ])
+
+  const propertyMap = new Map(propRows.map(p => [p.id, p.nickname ?? p.address]))
+  const entityMap = new Map(entityRows.map(e => [e.id, e.name]))
+  const latestBalanceMap = new Map<string, { balanceCents: number; recordedAt: string }>()
+  for (const row of balanceRows) {
+    if (!latestBalanceMap.has(row.installmentLoanId)) {
+      latestBalanceMap.set(row.installmentLoanId, { balanceCents: row.balanceCents, recordedAt: row.recordedAt })
+    }
+  }
+
+  return loans.map(loan => ({
+    ...loan,
+    latestBalance: latestBalanceMap.get(loan.id) ?? null,
+    propertyAddress: loan.propertyId ? (propertyMap.get(loan.propertyId) ?? null) : null,
+    entityName: loan.entityId ? (entityMap.get(loan.entityId) ?? null) : null,
+  }))
 }
 
 export async function listInstallmentLoans(

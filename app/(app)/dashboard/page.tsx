@@ -60,6 +60,10 @@ type LedgerSummaryResponse = {
   }
 }
 
+type PlanContextSummary = {
+  householdSurplusMonthlyCents: number | null
+}
+
 // ---------- chart config ----------
 
 const cashflowChartConfig = {
@@ -84,6 +88,7 @@ export default function DashboardPage() {
   const [portfolio, setPortfolio] = useState<PortfolioLVR | null>(null)
   const [ledger, setLedger] = useState<LedgerSummaryResponse | null>(null)
   const [trends, setTrends] = useState<TrendPoint[] | null>(null)
+  const [planContext, setPlanContext] = useState<PlanContextSummary | null>(null)
 
   useEffect(() => {
     void fetch('/api/portfolio/summary')
@@ -109,6 +114,15 @@ export default function DashboardPage() {
       .catch(() => null)
   }, [])
 
+  useEffect(() => {
+    void fetch('/api/plan/context')
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { context?: PlanContextSummary } | null) => {
+        if (data?.context) setPlanContext(data.context)
+      })
+      .catch(() => null)
+  }, [])
+
   // --- derived values ---
 
   const totalValueCents = portfolio?.totalValueCents ?? 0
@@ -116,6 +130,12 @@ export default function DashboardPage() {
   const netEquityCents = totalValueCents - totalDebtCents
   const lvrPct = portfolio?.lvr ?? null
   const netCashflow = ledger?.totals.netAfterMortgage ?? null
+
+  const personalSurplus = planContext?.householdSurplusMonthlyCents ?? null
+  const portfolioCashflow = netCashflow
+  const totalSurplus = personalSurplus !== null && portfolioCashflow !== null
+    ? personalSurplus + portfolioCashflow
+    : null
 
   const missingProperties = ledger
     ? ledger.totals.properties.filter(p => !p.hasStatement)
@@ -137,7 +157,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-ink">Portfolio</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Portfolio</h1>
 
       {/* Prompts strip — statement completeness only */}
       {missingProperties.length > 0 && (
@@ -189,13 +209,71 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Serviceability */}
+      {portfolioCashflow !== null && (
+        <div>
+          <SectionLabel>
+            Serviceability · monthly
+            <span className="ml-2 text-[10px] font-normal tracking-normal text-foreground-muted normal-case">
+              — can the household carry the portfolio?
+            </span>
+          </SectionLabel>
+          {personalSurplus !== null ? (
+            <div className="flex items-stretch gap-3">
+              <MetricTile
+                label="Personal surplus"
+                value={formatMoney(personalSurplus)}
+                valueClassName={personalSurplus < 0 ? 'text-negative' : undefined}
+                foot={<span className="tag-est text-[10px] font-medium text-foreground-muted">Estimated · from Household</span>}
+                className="flex-1"
+              />
+              <div className="flex items-center text-2xl font-light text-foreground-subtle px-1">+</div>
+              <MetricTile
+                label="Portfolio cashflow"
+                value={formatMoney(portfolioCashflow)}
+                valueClassName={portfolioCashflow < 0 ? 'text-negative' : undefined}
+                foot={<span className="text-foreground-muted">after loan repayments</span>}
+                className="flex-1"
+              />
+              <div className="flex items-center text-2xl font-light text-foreground-subtle px-1">=</div>
+              <MetricTile
+                label="Total surplus"
+                value={formatMoney(totalSurplus ?? 0)}
+                valueClassName={(totalSurplus ?? 0) < 0 ? 'text-negative' : undefined}
+                foot={
+                  <span className="text-foreground-muted">
+                    {(totalSurplus ?? 0) >= 0 ? '+' : ''}{formatMoney((totalSurplus ?? 0) * 12)} / yr
+                  </span>
+                }
+                className="flex-1 border-accent/35 bg-accent-soft/50"
+              />
+            </div>
+          ) : (
+            <div className="flex items-stretch gap-3">
+              <MetricTile
+                label="Portfolio cashflow"
+                value={formatMoney(portfolioCashflow)}
+                valueClassName={portfolioCashflow < 0 ? 'text-negative' : undefined}
+                foot={<span className="text-foreground-muted">after loan repayments</span>}
+                className="flex-1"
+              />
+              <div className="flex-1 flex items-center">
+                <p className="text-sm text-foreground-muted">
+                  Add a <a href="/household" className="text-accent hover:underline">household budget</a> to see your full serviceability picture.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Cashflow trend chart */}
       <div>
         <SectionLabel>Cashflow trend · last 12 months</SectionLabel>
         <div className="bg-surface border border-border rounded-[7px] p-5">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-medium text-ink">Monthly cashflow composition</span>
-            <div className="flex items-center gap-4 text-xs text-muted">
+            <span className="text-sm font-medium text-foreground">Monthly cashflow composition</span>
+            <div className="flex items-center gap-4 text-xs text-foreground-muted">
               <span className="flex items-center gap-1.5">
                 <span
                   className="inline-block w-2.5 h-2.5 rounded-sm"

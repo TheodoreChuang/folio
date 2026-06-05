@@ -160,22 +160,22 @@
           <table class="table properties">
             <thead>
               <tr>
-                <th>Property</th>
-                <th>Type</th>
-                <th class="num">Value</th>
-                <th class="num">Growth</th>
-                <th class="num">Gross yield</th>
+                <th class="is-sortable">Property</th>
+                <th class="is-sortable">Type</th>
+                <th class="num is-sortable">Value</th>
+                <th class="num is-sortable">Growth</th>
+                <th class="num is-sortable">Gross yield</th>
                 <th class="num is-sorted">Monthly CF <span class="sort-glyph">↑</span></th>
-                <th class="num">LVR</th>
-                <th>Statement</th>
+                <th class="num is-sortable">LVR</th>
+                <th class="is-sortable">Statement</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
+              <tr data-goto="property">
                 <td>
-                  <div class="addr-cell">
+                  <div class="cell-lead">
                     <div class="name">8 Daley Street</div>
-                    <div class="ent">Marrickville · Okafor Family Trust</div>
+                    <div class="sub">Marrickville · Okafor Family Trust</div>
                   </div>
                 </td>
                 <td class="muted">Unit · 2 bed</td>
@@ -191,11 +191,11 @@
                 </td>
                 <td><span class="badge badge--partial"><span class="dot"></span>Partial</span></td>
               </tr>
-              <tr>
+              <tr data-goto="property">
                 <td>
-                  <div class="addr-cell">
+                  <div class="cell-lead">
                     <div class="name">14 Elm Street</div>
-                    <div class="ent">Randwick · Okafor Family Trust</div>
+                    <div class="sub">Randwick · Okafor Family Trust</div>
                   </div>
                 </td>
                 <td class="muted">House · 3 bed</td>
@@ -211,11 +211,11 @@
                 </td>
                 <td><span class="badge badge--missing"><span class="dot"></span>Missing · Apr</span></td>
               </tr>
-              <tr>
+              <tr data-goto="property">
                 <td>
-                  <div class="addr-cell">
+                  <div class="cell-lead">
                     <div class="name">Sutherland Court</div>
-                    <div class="ent">Kingsford · Personal · Theo</div>
+                    <div class="sub">Kingsford · Personal · Theo</div>
                   </div>
                 </td>
                 <td class="muted">House · 4 bed</td>
@@ -232,7 +232,7 @@
               </tr>
             </tbody>
           </table>
-          <div class="table-foot" style="display: flex; justify-content: space-between;">
+          <div class="table-foot">
             <span>Trailing 12 months · sorted by monthly cashflow.</span>
             <span>Click a row to open the property page.</span>
           </div>

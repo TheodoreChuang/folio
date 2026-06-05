@@ -59,6 +59,7 @@ export async function PATCH(
     const updates: {
       lender?: string
       nickname?: string | null
+      accountReference?: string | null
       startDate?: string
       endDate?: string
       entityId?: string | null
@@ -80,6 +81,14 @@ export async function PATCH(
 
     if ('nickname' in raw) {
       updates.nickname = typeof raw.nickname === 'string' ? raw.nickname.trim() || null : null
+    }
+
+    if ('accountReference' in raw) {
+      const ref = typeof raw.accountReference === 'string' ? raw.accountReference.trim() : ''
+      if (ref.length > 100) {
+        return NextResponse.json({ error: 'accountReference too long (max 100 characters)' }, { status: 400 })
+      }
+      updates.accountReference = ref || null
     }
 
     if ('startDate' in raw) {

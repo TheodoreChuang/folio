@@ -49,9 +49,9 @@ function DataTableCell({ className, numeric, muted, ...props }: React.TdHTMLAttr
   return (
     <td
       className={cn(
-        'px-5 h-[34px] text-ink align-middle',
+        'px-5 h-[34px] text-foreground align-middle',
         numeric && 'text-right tabular-nums',
-        muted && 'text-muted',
+        muted && 'text-foreground-muted',
         className,
       )}
       {...props}
