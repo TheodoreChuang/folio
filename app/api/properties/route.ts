@@ -4,14 +4,22 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
 const VALID_PROPERTY_TYPES = ['house', 'unit', 'townhouse', 'land'] as const
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const rows = await listProperties(user.id)
+    const { searchParams } = new URL(request.url)
+    const entityIdParam = searchParams.get('entityId')
+    if (entityIdParam !== null && !UUID_REGEX.test(entityIdParam)) {
+      return NextResponse.json({ error: 'entityId must be a valid UUID' }, { status: 400 })
+    }
+    const entityId = entityIdParam ?? null
+
+    const rows = await listProperties(user.id, entityId)
     return NextResponse.json({ properties: rows })
   } catch (err) {
     captureError(err, { route: 'GET /api/properties' })

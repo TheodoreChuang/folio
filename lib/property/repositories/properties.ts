@@ -32,7 +32,7 @@ type UpdatePropertyInput = {
   saleSettlementDate?: string | null
 }
 
-export async function listProperties(userId: string): Promise<PropertyWithLvr[]> {
+export async function listProperties(userId: string, entityId?: string | null): Promise<PropertyWithLvr[]> {
   const rows = await db
     .select({
       id: properties.id,
@@ -83,7 +83,10 @@ export async function listProperties(userId: string): Promise<PropertyWithLvr[]>
       `,
     })
     .from(properties)
-    .where(eq(properties.userId, userId))
+    .where(and(
+      eq(properties.userId, userId),
+      entityId ? eq(properties.entityId, entityId) : undefined,
+    ))
   return rows
 }
 
