@@ -73,19 +73,17 @@ export default function LoansPage() {
       const qs = params.size ? `?${params}` : ''
       const anyActive = !!(entityId || lender || loanType)
 
-      const fetches: [Promise<Response>, Promise<Response>, Promise<Response> | null] = [
+      const [loansRes, entRes, allLoansRes] = await Promise.all([
         fetch(`/api/loans${qs}`),
         fetch('/api/entities'),
-        anyActive ? fetch('/api/loans') : null,
-      ]
+        anyActive ? fetch('/api/loans') : Promise.resolve(null),
+      ])
 
-      const [loansRes, entRes, allLoansRes] = await Promise.all(fetches)
+      if (loansRes.status === 401) { router.push('/login'); return }
 
-      if (loansRes!.status === 401) { router.push('/login'); return }
-
-      const { loans: list = [] } = await loansRes!.json() as { loans?: FlatLoan[] }
-      const { entities: ents = [] } = entRes!.ok
-        ? await entRes!.json() as { entities?: Entity[] }
+      const { loans: list = [] } = await loansRes.json() as { loans?: FlatLoan[] }
+      const { entities: ents = [] } = entRes.ok
+        ? await entRes.json() as { entities?: Entity[] }
         : { entities: [] }
 
       setLoans(list)
