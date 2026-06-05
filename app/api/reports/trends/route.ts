@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
-import { lastDayOfMonth } from '@/lib/format'
 import { fetchTrendData } from '@/lib/aggregate'
 
 export type TrendPoint = {
@@ -18,19 +17,25 @@ const EXPENSE_CATEGORIES = new Set([
   'utilities', 'strata_fees', 'other_expense',
 ])
 
-function currentMonth(): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-}
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-function generateMonthRange(endMonth: string, count: number): string[] {
-  const [year, mon] = endMonth.split('-').map(Number)
+function monthsBetween(from: string, to: string): string[] {
+  const [fy, fm] = from.slice(0, 7).split('-').map(Number)
+  const [ty, tm] = to.slice(0, 7).split('-').map(Number)
   const months: string[] = []
-  for (let i = count - 1; i >= 0; i--) {
-    const d = new Date(year, mon - 1 - i, 1)
-    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  let y = fy, m = fm
+  while (y < ty || (y === ty && m <= tm)) {
+    months.push(`${y}-${String(m).padStart(2, '0')}`)
+    m++
+    if (m > 12) { m = 1; y++ }
   }
   return months
+}
+
+function lastDayOfMonth(yearMonth: string): string {
+  const [y, m] = yearMonth.split('-').map(Number)
+  return `${yearMonth}-${new Date(y, m, 0).getDate()}`
 }
 
 export async function GET(request: Request) {
@@ -40,21 +45,31 @@ export async function GET(request: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { searchParams } = new URL(request.url)
-    const monthsRaw = searchParams.get('months') ?? '12'
-    const monthsNum = parseInt(monthsRaw, 10)
-    if (!Number.isInteger(monthsNum) || monthsNum < 1 || monthsNum > 24) {
-      return NextResponse.json(
-        { error: 'months must be an integer between 1 and 24' },
-        { status: 400 }
-      )
+
+    const from = searchParams.get('from')
+    const to = searchParams.get('to')
+
+    if (!from || !DATE_REGEX.test(from)) {
+      return NextResponse.json({ error: 'from must be a date in YYYY-MM-DD format' }, { status: 400 })
+    }
+    if (!to || !DATE_REGEX.test(to)) {
+      return NextResponse.json({ error: 'to must be a date in YYYY-MM-DD format' }, { status: 400 })
+    }
+    if (from > to) {
+      return NextResponse.json({ error: 'from must not be after to' }, { status: 400 })
     }
 
-    const end = currentMonth()
-    const months = generateMonthRange(end, monthsNum)
-    const from = `${months[0]}-01`
-    const to = lastDayOfMonth(months[months.length - 1])
+    const months = monthsBetween(from, to)
+    if (months.length > 24) {
+      return NextResponse.json({ error: 'date range must not exceed 24 months' }, { status: 400 })
+    }
 
-    const rows = await fetchTrendData(user.id, from, to)
+    const entityIdParam = searchParams.get('entityId')
+    if (entityIdParam !== null && !UUID_REGEX.test(entityIdParam)) {
+      return NextResponse.json({ error: 'entityId must be a valid UUID' }, { status: 400 })
+    }
+
+    const rows = await fetchTrendData(user.id, from, lastDayOfMonth(months[months.length - 1]), entityIdParam)
 
     type MonthBucket = { rent: number; expenses: number; mortgage: number }
     const buckets = new Map<string, MonthBucket>()
