@@ -176,7 +176,7 @@ export default function LoansPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border bg-background">
+                    <tr className="border-b border-border bg-surface-sunken">
                       <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Lender</th>
                       <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Nickname / Account</th>
                       <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Entity</th>

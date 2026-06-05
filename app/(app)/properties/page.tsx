@@ -182,7 +182,7 @@ export default function PropertiesPage() {
         <div className="bg-surface border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-background">
+              <tr className="border-b border-border bg-surface-sunken">
                 <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Property</th>
                 <th className="text-left font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Entity</th>
                 <th className="text-center font-medium text-foreground-muted text-xs uppercase tracking-wide py-2.5 px-4">Statement</th>
