@@ -238,11 +238,11 @@ export default function DashboardPage() {
               <div className="flex items-center text-2xl font-light text-foreground-subtle px-1">=</div>
               <MetricTile
                 label="Total surplus"
-                value={formatMoney(totalSurplus!)}
-                valueClassName={totalSurplus! < 0 ? 'text-negative' : undefined}
+                value={formatMoney(totalSurplus ?? 0)}
+                valueClassName={(totalSurplus ?? 0) < 0 ? 'text-negative' : undefined}
                 foot={
                   <span className="text-foreground-muted">
-                    {totalSurplus! >= 0 ? '+' : ''}{formatMoney(totalSurplus! * 12)} / yr
+                    {(totalSurplus ?? 0) >= 0 ? '+' : ''}{formatMoney((totalSurplus ?? 0) * 12)} / yr
                   </span>
                 }
                 className="flex-1 border-accent/35 bg-accent-soft/50"
