@@ -145,8 +145,16 @@
       // Don't open when the user clicked the inline clear button
       if (clearBtn && clearBtn.contains(e.target)) return;
       e.stopPropagation();
-      wrap.classList.toggle('is-open');
-      chip.classList.toggle('is-open', wrap.classList.contains('is-open'));
+      const willOpen = !wrap.classList.contains('is-open');
+      // Close any other open filter on the page first — only one at a time.
+      document.querySelectorAll('.entity-filter.is-open').forEach(other => {
+        if (other === wrap) return;
+        other.classList.remove('is-open');
+        const otherChip = other.querySelector('.chip-select');
+        otherChip && otherChip.classList.remove('is-open');
+      });
+      wrap.classList.toggle('is-open', willOpen);
+      chip.classList.toggle('is-open', willOpen);
     });
 
     clearBtn && clearBtn.addEventListener('click', e => {

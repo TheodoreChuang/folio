@@ -42,8 +42,103 @@
           <p class="subtitle">Trailing 12 months · 1 May 2025 – 30 Apr 2026</p>
         </div>
         <div class="controls">
-          <span class="chip-select"><span class="label">Entity</span>All entities <span class="chevron"></span></span>
-          <span class="chip-select"><span class="label">Period</span>Last 12 months <span class="chevron"></span></span>
+          <!-- Entity filter — full §12b primitive (rich variant, end-aligned). -->
+          <span class="entity-filter entity-filter--end" data-filter="entity">
+            <span class="chip-select">
+              <span class="label">Entity</span>All entities
+              <span class="chevron"></span>
+              <button type="button" class="chip-clear" aria-label="Clear entity filter">
+                <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" stroke-width="1.4"/><line x1="2" y1="8" x2="8" y2="2" stroke="currentColor" stroke-width="1.4"/></svg>
+              </button>
+            </span>
+
+            <div class="entity-menu" role="listbox" aria-label="Filter by entity">
+              <div class="menu-label">Filter by entity</div>
+
+              <button type="button" class="entity-opt is-selected" role="option" aria-selected="true" data-default>
+                <span class="glyph">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"/></svg>
+                </span>
+                <span class="opt-name">All entities</span>
+                <span class="opt-meta num">3</span>
+              </button>
+
+              <div class="sep"></div>
+
+              <button type="button" class="entity-opt" role="option">
+                <span class="glyph">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="4" width="10" height="8" rx="0.5"/><path d="M5 4V2.5h4V4"/><path d="M2 8h10"/></svg>
+                </span>
+                <span class="opt-name">Okafor Family Trust <span class="opt-kind">Discretionary trust</span></span>
+                <span class="opt-meta num">2</span>
+              </button>
+
+              <button type="button" class="entity-opt" role="option">
+                <span class="glyph">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="5.2" r="2.2"/><path d="M2.5 12c.7-2.3 2.4-3.4 4.5-3.4S10.8 9.7 11.5 12"/></svg>
+                </span>
+                <span class="opt-name">Personal · Theo <span class="opt-kind">Individual</span></span>
+                <span class="opt-meta num">1</span>
+              </button>
+
+              <button type="button" class="entity-opt is-empty" role="option">
+                <span class="glyph">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2.5" y="3" width="9" height="9"/><path d="M2.5 6h9M5 12V6M9 12V6"/></svg>
+                </span>
+                <span class="opt-name">Okafor Holdings Pty Ltd <span class="opt-kind">Company</span></span>
+                <span class="opt-meta">No properties</span>
+              </button>
+
+              <div class="sep"></div>
+
+              <a class="entity-opt is-action" href="entities.html">
+                <span class="glyph">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M7 3v8M3 7h8"/></svg>
+                </span>
+                <span class="opt-name">Add or manage entities</span>
+                <span class="opt-meta">↗</span>
+              </a>
+            </div>
+          </span>
+
+          <!-- Period filter — simple variant (no glyph), end-aligned. -->
+          <span class="entity-filter entity-filter--simple entity-filter--end" data-filter="period">
+            <span class="chip-select">
+              <span class="label">Period</span>Last 12 months
+              <span class="chevron"></span>
+              <button type="button" class="chip-clear" aria-label="Clear period filter">
+                <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" stroke-width="1.4"/><line x1="2" y1="8" x2="8" y2="2" stroke="currentColor" stroke-width="1.4"/></svg>
+              </button>
+            </span>
+
+            <div class="entity-menu" role="listbox" aria-label="Filter by period">
+              <div class="menu-label">Reporting period</div>
+
+              <button type="button" class="entity-opt is-selected" role="option" aria-selected="true" data-default>
+                <span class="opt-name">Last 12 months</span>
+                <span class="opt-meta">Rolling</span>
+              </button>
+
+              <div class="sep"></div>
+
+              <button type="button" class="entity-opt" role="option">
+                <span class="opt-name">This financial year <span class="opt-kind">FY 2025–26</span></span>
+              </button>
+
+              <button type="button" class="entity-opt" role="option">
+                <span class="opt-name">Last financial year <span class="opt-kind">FY 2024–25</span></span>
+              </button>
+
+              <button type="button" class="entity-opt" role="option">
+                <span class="opt-name">Last 6 months</span>
+                <span class="opt-meta">Rolling</span>
+              </button>
+
+              <button type="button" class="entity-opt" role="option">
+                <span class="opt-name">All time</span>
+              </button>
+            </div>
+          </span>
         </div>
       </div>
 

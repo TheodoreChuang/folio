@@ -300,6 +300,7 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius);
   font-size: var(--text-sm);
   color: hsl(var(--foreground));
+  white-space: nowrap;
 }
 .chip-select .label { color: hsl(var(--foreground-subtle)); font-size: var(--text-xs); margin-right: 2px; }
 .chip-select .chevron {
@@ -2221,6 +2222,7 @@ a:hover { text-decoration: underline; }
 .entity-filter {
   position: relative;
   display: inline-flex;
+  flex: none;
 }
 .entity-filter .chip-select { cursor: pointer; }
 .entity-filter .chip-select:hover {
@@ -2352,6 +2354,12 @@ a:hover { text-decoration: underline; }
 .entity-filter--simple .entity-opt {
   grid-template-columns: 1fr auto;
 }
+
+/* End-aligned menu — anchors the popover to the trigger's right edge.
+   Use when the filter sits in a right-aligned control bar (e.g. the
+   Dashboard / Insights .page-head .controls) so the 320px menu opens
+   inward instead of overflowing the viewport. */
+.entity-filter--end .entity-menu { left: auto; right: 0; }
 
 .summary-strip {
   display: grid;
