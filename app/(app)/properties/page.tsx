@@ -155,6 +155,8 @@ export default function PropertiesPage() {
       <div className="flex items-center gap-2 mb-4">
         <FilterChip
           label="Entity"
+          labelPlural="entities"
+          itemLabel="properties"
           value={entityFilter}
           options={entityOptions}
           onChange={setEntityFilter}

@@ -18,6 +18,8 @@ export interface FilterOption {
 
 interface FilterChipProps {
   label: string
+  labelPlural?: string
+  itemLabel?: string
   value: string | null
   options: FilterOption[]
   onChange: (id: string | null) => void
@@ -77,6 +79,8 @@ function AllGlyph() {
 
 export function FilterChip({
   label,
+  labelPlural,
+  itemLabel,
   value,
   options,
   onChange,
@@ -84,6 +88,8 @@ export function FilterChip({
   actionLink,
   align = 'start',
 }: FilterChipProps) {
+  const allLabel = labelPlural ?? `${label.toLowerCase()}s`
+  const noItemLabel = itemLabel ?? allLabel
   const [open, setOpen] = useState(false)
   const selectedOption = options.find(o => o.id === value) ?? null
   const totalCount = options.reduce((sum, o) => sum + o.count, 0)
@@ -109,7 +115,7 @@ export function FilterChip({
           <span className={cn('text-xs mr-0.5', isActive ? 'text-accent/70' : 'text-foreground-subtle')}>
             {label}
           </span>
-          {selectedOption ? selectedOption.name : `All ${label.toLowerCase()}s`}
+          {selectedOption ? selectedOption.name : `All ${allLabel}`}
           {isActive ? (
             <span
               role="button"
@@ -161,7 +167,7 @@ export function FilterChip({
             </span>
           )}
           <span className="flex-1 flex flex-col leading-tight">
-            All {label.toLowerCase()}s
+            All {allLabel}
           </span>
           <span className={cn('text-xs tabular-nums', !isActive ? 'text-accent' : 'text-foreground-subtle')}>
             {totalCount}
@@ -205,7 +211,7 @@ export function FilterChip({
                 )}
               </span>
               <span className={cn('text-xs tabular-nums', isSelected ? 'text-accent' : 'text-foreground-subtle')}>
-                {option.disabled ? `No ${label.toLowerCase()}s` : option.count}
+                {option.disabled ? `No ${noItemLabel}` : option.count}
               </span>
             </button>
           )
