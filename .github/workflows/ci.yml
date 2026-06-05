@@ -102,8 +102,21 @@ jobs:
           TEST_USER_EMAIL: ci@test.local
           TEST_USER_PASSWORD: ci-password-folio
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('**/package.json') }}
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          restore-keys: nextjs-${{ runner.os }}-
 
       - name: Build app for e2e
         run: pnpm build
