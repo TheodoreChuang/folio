@@ -39,36 +39,59 @@ describe('GET /api/reports/trends', () => {
 
   it('returns 401 when unauthenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
-    const res = await GET(makeRequest())
+    const res = await GET(makeRequest({ from: '2025-04-01', to: '2026-03-31' }))
     expect(res.status).toBe(401)
   })
 
-  it('returns 400 for months=0', async () => {
-    const res = await GET(makeRequest({ months: '0' }))
+  it('returns 400 when from is missing', async () => {
+    const res = await GET(makeRequest({ to: '2026-03-31' }))
     expect(res.status).toBe(400)
     const json = await res.json()
-    expect(json.error).toMatch(/months/i)
+    expect(json.error).toMatch(/from/i)
   })
 
-  it('returns 400 for months=25 (exceeds max)', async () => {
-    const res = await GET(makeRequest({ months: '25' }))
+  it('returns 400 when to is missing', async () => {
+    const res = await GET(makeRequest({ from: '2025-04-01' }))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/to/i)
+  })
+
+  it('returns 400 when from is not a valid date', async () => {
+    const res = await GET(makeRequest({ from: 'not-a-date', to: '2026-03-31' }))
     expect(res.status).toBe(400)
   })
 
-  it('returns 400 for non-numeric months', async () => {
-    const res = await GET(makeRequest({ months: 'abc' }))
+  it('returns 400 when from > to', async () => {
+    const res = await GET(makeRequest({ from: '2026-03-31', to: '2025-04-01' }))
     expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/from/i)
   })
 
-  it('defaults to 12 months when param is absent', async () => {
-    const res = await GET(makeRequest())
+  it('returns 400 when range exceeds 24 months', async () => {
+    const res = await GET(makeRequest({ from: '2024-01-01', to: '2026-03-31' }))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/24 months/i)
+  })
+
+  it('returns 400 for invalid entityId', async () => {
+    const res = await GET(makeRequest({ from: '2025-04-01', to: '2026-03-31', entityId: 'not-a-uuid' }))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/entityId/i)
+  })
+
+  it('returns 12 data points for a 12-month range', async () => {
+    const res = await GET(makeRequest({ from: '2025-04-01', to: '2026-03-31' }))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.trends).toHaveLength(12)
   })
 
-  it('returns exactly N data points ascending', async () => {
-    const res = await GET(makeRequest({ months: '6' }))
+  it('returns 6 data points for a 6-month range', async () => {
+    const res = await GET(makeRequest({ from: '2025-10-01', to: '2026-03-31' }))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.trends).toHaveLength(6)
@@ -77,29 +100,28 @@ describe('GET /api/reports/trends', () => {
     expect(months[5]).toBe('2026-03')
   })
 
-  it('range ends at current month (2026-03)', async () => {
-    const res = await GET(makeRequest({ months: '12' }))
+  it('returns FY data points for AU FY range', async () => {
+    const res = await GET(makeRequest({ from: '2025-07-01', to: '2026-06-30' }))
+    expect(res.status).toBe(200)
     const json = await res.json()
-    const months = json.trends.map((t: { month: string }) => t.month)
-    expect(months[11]).toBe('2026-03')
-    expect(months[0]).toBe('2025-04')
+    expect(json.trends).toHaveLength(12)
+    expect(json.trends[0].month).toBe('2025-07')
+    expect(json.trends[11].month).toBe('2026-06')
   })
 
   it('zero fields for months with no entries (not null)', async () => {
     mocks.mockFetchTrendData.mockResolvedValueOnce([
       makeRow('2026-03', 'rent', 400000),
     ])
-    const res = await GET(makeRequest({ months: '3' }))
+    const res = await GET(makeRequest({ from: '2026-01-01', to: '2026-03-31' }))
     const json = await res.json()
     const jan = json.trends.find((t: { month: string }) => t.month === '2026-01')
-    const feb = json.trends.find((t: { month: string }) => t.month === '2026-02')
     expect(jan.rentCents).toBe(0)
     expect(jan.netCents).toBe(0)
-    expect(feb.rentCents).toBe(0)
   })
 
   it('hasData is false for months with no entries', async () => {
-    const res = await GET(makeRequest({ months: '3' }))
+    const res = await GET(makeRequest({ from: '2026-01-01', to: '2026-03-31' }))
     const json = await res.json()
     json.trends.forEach((t: { hasData: boolean }) => {
       expect(t.hasData).toBe(false)
@@ -110,7 +132,7 @@ describe('GET /api/reports/trends', () => {
     mocks.mockFetchTrendData.mockResolvedValueOnce([
       makeRow('2026-03', 'rent', 400000),
     ])
-    const res = await GET(makeRequest({ months: '1' }))
+    const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     const json = await res.json()
     expect(json.trends[0].hasData).toBe(true)
   })
@@ -121,7 +143,7 @@ describe('GET /api/reports/trends', () => {
       makeRow('2026-03', 'repairs', 90000),
       makeRow('2026-03', 'loan_payment', 210000),
     ])
-    const res = await GET(makeRequest({ months: '1' }))
+    const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     const json = await res.json()
     const point = json.trends[0]
     expect(point.rentCents).toBe(400000)
@@ -137,7 +159,7 @@ describe('GET /api/reports/trends', () => {
       makeRow('2026-03', 'rates', 5000),
       makeRow('2026-03', 'repairs', 20000),
     ])
-    const res = await GET(makeRequest({ months: '1' }))
+    const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     const json = await res.json()
     expect(json.trends[0].expensesCents).toBe(35000)
   })
@@ -147,7 +169,7 @@ describe('GET /api/reports/trends', () => {
       makeRow('2026-01', 'rent', 300000),
       makeRow('2026-03', 'rent', 400000),
     ])
-    const res = await GET(makeRequest({ months: '3' }))
+    const res = await GET(makeRequest({ from: '2026-01-01', to: '2026-03-31' }))
     const json = await res.json()
     const jan = json.trends.find((t: { month: string }) => t.month === '2026-01')
     const feb = json.trends.find((t: { month: string }) => t.month === '2026-02')
@@ -157,23 +179,24 @@ describe('GET /api/reports/trends', () => {
     expect(mar.rentCents).toBe(400000)
   })
 
-  it('returns all-zero for every month when no entries', async () => {
-    const res = await GET(makeRequest({ months: '3' }))
-    const json = await res.json()
-    expect(json.trends).toHaveLength(3)
-    json.trends.forEach((t: { rentCents: unknown; netCents: unknown }) => {
-      expect(t.rentCents).toBe(0)
-      expect(t.netCents).toBe(0)
-    })
-  })
-
-  it('passes userId and date range to fetchTrendData', async () => {
-    await GET(makeRequest({ months: '3' }))
-    // months=3 ending 2026-03: range is 2026-01 to 2026-03
+  it('passes userId, from, to, and entityId to fetchTrendData', async () => {
+    const ENTITY_ID = 'c3d4e5f6-a7b8-4901-c234-333333333333'
+    await GET(makeRequest({ from: '2026-01-01', to: '2026-03-31', entityId: ENTITY_ID }))
     expect(mocks.mockFetchTrendData).toHaveBeenCalledWith(
       'user-123',
       '2026-01-01',
       '2026-03-31',
+      ENTITY_ID,
+    )
+  })
+
+  it('passes null entityId when not provided', async () => {
+    await GET(makeRequest({ from: '2026-01-01', to: '2026-03-31' }))
+    expect(mocks.mockFetchTrendData).toHaveBeenCalledWith(
+      'user-123',
+      '2026-01-01',
+      '2026-03-31',
+      null,
     )
   })
 })

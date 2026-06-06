@@ -24,6 +24,11 @@ const loanRow = {
   createdAt:           new Date(),
 }
 
+function makeGetRequest(params?: Record<string, string>) {
+  const qs = params ? `?${new URLSearchParams(params)}` : ''
+  return new Request(`http://localhost/api/loans${qs}`, { method: 'GET' })
+}
+
 function makePostRequest(body: unknown) {
   return new Request('http://localhost/api/loans', {
     method: 'POST',
@@ -77,17 +82,46 @@ describe('GET /api/loans', () => {
 
   it('returns 401 when unauthenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
-    const res = await GET()
+    const res = await GET(makeGetRequest())
     expect(res.status).toBe(401)
   })
 
   it('returns loans for the authenticated user', async () => {
-    const res = await GET()
+    const res = await GET(makeGetRequest())
     expect(res.status).toBe(200)
     const json = await res.json() as { loans: { id: string; lender: string }[] }
     expect(json.loans).toHaveLength(1)
     expect(json.loans[0].lender).toBe('Commonwealth Bank')
-    expect(mocks.mockListAllLoansFlat).toHaveBeenCalledWith('user-123')
+    expect(mocks.mockListAllLoansFlat).toHaveBeenCalledWith('user-123', { entityId: null, lender: null, loanType: null })
+  })
+
+  it('returns 400 for invalid entityId (not a UUID)', async () => {
+    const res = await GET(makeGetRequest({ entityId: 'not-a-uuid' }))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/entityId/i)
+  })
+
+  it('returns 400 for invalid loanType', async () => {
+    const res = await GET(makeGetRequest({ loanType: 'balloon' }))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/loanType/i)
+  })
+
+  it('passes entityId filter to listAllLoansFlat', async () => {
+    await GET(makeGetRequest({ entityId: VALID_ENTITY_ID }))
+    expect(mocks.mockListAllLoansFlat).toHaveBeenCalledWith('user-123', { entityId: VALID_ENTITY_ID, lender: null, loanType: null })
+  })
+
+  it('passes lender filter to listAllLoansFlat', async () => {
+    await GET(makeGetRequest({ lender: 'CBA' }))
+    expect(mocks.mockListAllLoansFlat).toHaveBeenCalledWith('user-123', { entityId: null, lender: 'CBA', loanType: null })
+  })
+
+  it('passes loanType filter to listAllLoansFlat', async () => {
+    await GET(makeGetRequest({ loanType: 'interest_only' }))
+    expect(mocks.mockListAllLoansFlat).toHaveBeenCalledWith('user-123', { entityId: null, lender: null, loanType: 'interest_only' })
   })
 })
 

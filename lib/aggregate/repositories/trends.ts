@@ -1,6 +1,6 @@
-import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { propertyLedger } from '@/db/schema'
+import { propertyLedger, properties } from '@/db/schema'
 import type { LedgerCategory } from '@/db/schema'
 
 export type TrendRow = {
@@ -13,7 +13,19 @@ export async function fetchTrendData(
   userId: string,
   from: string,
   to: string,
+  entityId?: string | null,
 ): Promise<TrendRow[]> {
+  let propertyIds: string[] | undefined
+
+  if (entityId) {
+    const rows = await db
+      .select({ id: properties.id })
+      .from(properties)
+      .where(and(eq(properties.userId, userId), eq(properties.entityId, entityId)))
+    if (rows.length === 0) return []
+    propertyIds = rows.map(r => r.id)
+  }
+
   return db
     .select({
       month: sql<string>`to_char(date_trunc('month', ${propertyLedger.lineItemDate}), 'YYYY-MM')`,
@@ -27,6 +39,7 @@ export async function fetchTrendData(
         gte(propertyLedger.lineItemDate, from),
         lte(propertyLedger.lineItemDate, to),
         isNull(propertyLedger.deletedAt),
+        propertyIds ? inArray(propertyLedger.propertyId, propertyIds) : undefined,
       )
     )
     .groupBy(

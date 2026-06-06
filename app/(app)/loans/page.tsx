@@ -6,7 +6,9 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { MetricTile } from '@/components/ui/metric-tile'
-import type { Entity } from '@/db/schema'
+import { FilterChip } from '@/components/filter-chip'
+import type { FilterOption } from '@/components/filter-chip'
+import type { Entity, EntityType } from '@/db/schema'
 import type { FlatInstallmentLoan } from '@/lib/borrowings'
 import { formatCents } from '@/lib/format'
 import { pmt, interestOnlyPayment } from '@/lib/aggregate/plan/calculators/rate-sensitivity'
@@ -32,33 +34,67 @@ function loanTypeLabel(loanType: string | null): string {
   return loanType ?? '—'
 }
 
+function loanTypeFullLabel(loanType: string): string {
+  if (loanType === 'interest_only') return 'Interest only'
+  if (loanType === 'principal_and_interest') return 'Principal and interest'
+  if (loanType === 'line_of_credit') return 'Line of credit'
+  return loanType
+}
+
+function entityTypeSubLabel(type: EntityType): string {
+  switch (type) {
+    case 'trust': return 'Discretionary trust'
+    case 'individual': return 'Individual'
+    case 'company': return 'Company'
+    case 'joint': return 'Joint'
+    case 'superannuation': return 'Superannuation'
+  }
+}
+
 type FlatLoan = FlatInstallmentLoan
 
 export default function LoansPage() {
   const router = useRouter()
   const [loans, setLoans] = useState<FlatLoan[]>([])
+  const [allLoans, setAllLoans] = useState<FlatLoan[]>([])
   const [entities, setEntities] = useState<Entity[]>([])
   const [loading, setLoading] = useState(true)
   const [entityFilter, setEntityFilter] = useState<string | null>(null)
+  const [lenderFilter, setLenderFilter] = useState<string | null>(null)
+  const [typeFilter, setTypeFilter] = useState<string | null>(null)
 
-  const loadLoans = useCallback(async () => {
+  const loadLoans = useCallback(async (entityId: string | null, lender: string | null, loanType: string | null) => {
     setLoading(true)
     try {
-      const [loansRes, entitiesRes] = await Promise.all([
-        fetch('/api/loans'),
+      const params = new URLSearchParams()
+      if (entityId) params.set('entityId', entityId)
+      if (lender) params.set('lender', lender)
+      if (loanType) params.set('loanType', loanType)
+      const qs = params.size ? `?${params}` : ''
+      const anyActive = !!(entityId || lender || loanType)
+
+      const [loansRes, entRes, allLoansRes] = await Promise.all([
+        fetch(`/api/loans${qs}`),
         fetch('/api/entities'),
+        anyActive ? fetch('/api/loans') : Promise.resolve(null),
       ])
 
-      if (loansRes.status === 401 || entitiesRes.status === 401) {
-        router.push('/login')
-        return
+      if (loansRes.status === 401) { router.push('/login'); return }
+
+      const { loans: list = [] } = await loansRes.json() as { loans?: FlatLoan[] }
+      const { entities: ents = [] } = entRes.ok
+        ? await entRes.json() as { entities?: Entity[] }
+        : { entities: [] }
+
+      setLoans(list)
+      setEntities(ents)
+
+      if (anyActive && allLoansRes) {
+        const { loans: all = [] } = await allLoansRes.json() as { loans?: FlatLoan[] }
+        setAllLoans(all)
+      } else {
+        setAllLoans(list)
       }
-
-      const loansData = await loansRes.json() as { loans?: FlatLoan[] }
-      const entitiesData = await entitiesRes.json() as { entities?: Entity[] }
-
-      setLoans(loansData.loans ?? [])
-      setEntities(entitiesData.entities ?? [])
     } catch {
       toast.error('Failed to load loans')
     } finally {
@@ -67,24 +103,20 @@ export default function LoansPage() {
   }, [router])
 
   useEffect(() => {
-    loadLoans()
-  }, [loadLoans])
+    loadLoans(entityFilter, lenderFilter, typeFilter)
+  }, [entityFilter, lenderFilter, typeFilter, loadLoans])
 
-  const filteredLoans = entityFilter
-    ? loans.filter(l => l.entityId === entityFilter)
-    : loans
-
-  const totalDebtCents = filteredLoans.reduce((sum, l) => sum + (l.latestBalance?.balanceCents ?? 0), 0)
-  const securedPropertyIds = new Set(filteredLoans.map(l => l.propertyId).filter(Boolean))
+  const totalDebtCents = loans.reduce((sum, l) => sum + (l.latestBalance?.balanceCents ?? 0), 0)
+  const securedPropertyIds = new Set(loans.map(l => l.propertyId).filter(Boolean))
 
   const monthlyRepaymentsCents = (() => {
-    const amounts = filteredLoans.map(estimateRepaymentCents).filter((v): v is number => v !== null)
+    const amounts = loans.map(estimateRepaymentCents).filter((v): v is number => v !== null)
     return amounts.length > 0 ? amounts.reduce((s, v) => s + v, 0) : null
   })()
 
   const weightedAvgRate = (() => {
     let weightedSum = 0, totalBalance = 0
-    for (const l of filteredLoans) {
+    for (const l of loans) {
       const bal = l.latestBalance?.balanceCents
       const rate = l.interestRate != null ? parseFloat(l.interestRate) : null
       if (bal && rate != null && !isNaN(rate)) { weightedSum += bal * rate; totalBalance += bal }
@@ -92,7 +124,35 @@ export default function LoansPage() {
     return totalBalance > 0 ? weightedSum / totalBalance : null
   })()
 
-  const entityChips = entities.filter(e => loans.some(l => l.entityId === e.id))
+  const entityOptions: FilterOption[] = entities.map(e => {
+    const count = allLoans.filter(l => l.entityId === e.id).length
+    return {
+      id: e.id,
+      name: e.name,
+      subLabel: entityTypeSubLabel(e.type),
+      count,
+      entityType: e.type,
+      disabled: count === 0,
+    }
+  })
+
+  const uniqueLenders = Array.from(new Set(allLoans.map(l => l.lender).filter(Boolean)))
+  const lenderOptions: FilterOption[] = uniqueLenders.map(lender => ({
+    id: lender,
+    name: lender,
+    count: allLoans.filter(l => l.lender === lender).length,
+  }))
+
+  type LoanType = 'interest_only' | 'principal_and_interest' | 'line_of_credit'
+  const uniqueTypes = Array.from(
+    new Set(allLoans.map(l => l.loanType).filter((t): t is LoanType => t !== null))
+  )
+  const typeOptions: FilterOption[] = uniqueTypes.map(t => ({
+    id: t,
+    name: loanTypeLabel(t),
+    subLabel: loanTypeFullLabel(t),
+    count: allLoans.filter(l => l.loanType === t).length,
+  }))
 
   return (
     <div className="min-h-screen bg-background">
@@ -108,38 +168,11 @@ export default function LoansPage() {
           </Link>
         </div>
 
-        {entityChips.length > 0 && (
-          <div className="flex items-center gap-2 mb-5 flex-wrap">
-            <span className="text-xs font-semibold text-foreground-muted uppercase tracking-wider">Filter</span>
-            {entityChips.map(e => (
-              <button
-                key={e.id}
-                onClick={() => setEntityFilter(prev => prev === e.id ? null : e.id)}
-                className={[
-                  'flex items-center gap-1.5 h-7 px-3 rounded-full border text-xs font-medium transition-colors',
-                  entityFilter === e.id
-                    ? 'bg-accent-soft border-accent/20 text-accent'
-                    : 'bg-surface border-border text-foreground-muted hover:text-foreground hover:border-foreground/20',
-                ].join(' ')}
-              >
-                <span className="text-[10px] font-medium opacity-60">Entity</span>
-                {e.name}
-                {entityFilter === e.id && (
-                  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
-                    <line x1="2" y1="2" x2="8" y2="8" stroke="currentColor" strokeWidth="1.4" />
-                    <line x1="2" y1="8" x2="8" y2="2" stroke="currentColor" strokeWidth="1.4" />
-                  </svg>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-
         <div className="grid grid-cols-4 gap-3 mb-6">
           <MetricTile
             label="Total debt"
             value={loading ? '…' : formatCents(totalDebtCents)}
-            foot={<span>{filteredLoans.length} loan{filteredLoans.length !== 1 ? 's' : ''}</span>}
+            foot={<span>{loans.length} loan{loans.length !== 1 ? 's' : ''}</span>}
           />
           <MetricTile
             label="Monthly repayments (est)"
@@ -158,6 +191,37 @@ export default function LoansPage() {
           />
         </div>
 
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <FilterChip
+            label="Entity"
+            labelPlural="entities"
+            itemLabel="loans"
+            value={entityFilter}
+            options={entityOptions}
+            onChange={setEntityFilter}
+            variant="rich"
+            actionLink={{ href: '/entities', label: 'Add or manage entities' }}
+          />
+          {lenderOptions.length > 0 && (
+            <FilterChip
+              label="Lender"
+              value={lenderFilter}
+              options={lenderOptions}
+              onChange={setLenderFilter}
+              variant="simple"
+            />
+          )}
+          {typeOptions.length > 0 && (
+            <FilterChip
+              label="Type"
+              value={typeFilter}
+              options={typeOptions}
+              onChange={setTypeFilter}
+              variant="simple"
+            />
+          )}
+        </div>
+
         <div>
           <div className="text-[10px] font-semibold text-foreground-muted uppercase tracking-widest mb-2">
             All loans
@@ -167,9 +231,9 @@ export default function LoansPage() {
             <div className="bg-surface border border-border rounded-lg px-5 py-8 text-center text-sm text-foreground-muted">
               Loading loans…
             </div>
-          ) : filteredLoans.length === 0 ? (
+          ) : loans.length === 0 ? (
             <div className="bg-surface border border-border rounded-lg px-5 py-8 text-center text-sm text-foreground-muted">
-              {loans.length === 0 ? 'No loans yet. Add one with the button above.' : 'No loans match the current filter.'}
+              {allLoans.length === 0 ? 'No loans yet. Add one with the button above.' : 'No loans match the current filter.'}
             </div>
           ) : (
             <div className="bg-surface border border-border rounded-lg overflow-hidden">
@@ -188,7 +252,7 @@ export default function LoansPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredLoans.map(loan => (
+                    {loans.map(loan => (
                       <tr
                         key={loan.id}
                         onClick={() => router.push(`/loans/${loan.id}`)}

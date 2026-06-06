@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   ComposedChart,
   Bar,
@@ -15,16 +16,71 @@ import { MetricTile } from '@/components/ui/metric-tile'
 import { LvrMeter } from '@/components/ui/lvr-meter'
 import { Prompt } from '@/components/ui/prompt'
 import { SectionLabel } from '@/components/ui/section-label'
-import { lastDayOfMonth } from '@/lib/format'
+import { FilterChip } from '@/components/filter-chip'
+import type { FilterOption } from '@/components/filter-chip'
+import type { Entity, EntityType } from '@/db/schema'
 import type { ReportTotals } from '@/lib/aggregate'
 import type { TrendPoint } from '@/app/api/reports/trends/route'
 import type { PortfolioLVR } from '@/app/api/portfolio/summary/route'
 
 // ---------- helpers ----------
 
-function currentMonthStr(): string {
+type PeriodKey = '12m' | '6m' | 'this-fy' | 'last-fy'
+
+function periodToDateRange(period: PeriodKey): { from: string; to: string } {
   const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const year = now.getFullYear()
+  const month = now.getMonth() + 1
+
+  if (period === '12m' || period === '6m') {
+    const n = period === '12m' ? 12 : 6
+    const start = new Date(year, month - n, 1)
+    const sy = start.getFullYear()
+    const sm = String(start.getMonth() + 1).padStart(2, '0')
+    const endDay = new Date(year, month, 0).getDate()
+    return {
+      from: `${sy}-${sm}-01`,
+      to: `${year}-${String(month).padStart(2, '0')}-${endDay}`,
+    }
+  }
+
+  // Australian FY: July 1 – June 30
+  const fyStartYear = month >= 7 ? year : year - 1
+  if (period === 'this-fy') {
+    return { from: `${fyStartYear}-07-01`, to: `${fyStartYear + 1}-06-30` }
+  }
+  return { from: `${fyStartYear - 1}-07-01`, to: `${fyStartYear}-06-30` }
+}
+
+function periodLabel(period: PeriodKey): string {
+  if (period === '12m') return 'last 12 months'
+  if (period === '6m') return 'last 6 months'
+  const { from } = periodToDateRange(period)
+  const fy = parseInt(from.slice(0, 4))
+  return `FY ${fy}–${String(fy + 1).slice(2)}`
+}
+
+function periodMonthCount(period: PeriodKey): number {
+  return period === '6m' ? 6 : 12
+}
+
+function periodSubLabel(period: PeriodKey): string {
+  const { from, to } = periodToDateRange(period)
+  const fmt = (s: string) => {
+    const d = new Date(s + 'T00:00:00')
+    return d.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
+  }
+  return `${fmt(from)} – ${fmt(to)}`
+}
+
+function entityTypeSubLabel(type: EntityType): string {
+  switch (type) {
+    case 'trust': return 'Discretionary trust'
+    case 'individual': return 'Individual'
+    case 'company': return 'Company'
+    case 'joint': return 'Joint'
+    case 'superannuation': return 'Superannuation'
+  }
 }
 
 function formatMoney(cents: number): string {
@@ -34,10 +90,8 @@ function formatMoney(cents: number): string {
     return `${sign}$${(abs / 100_000_000).toFixed(2)}m`
   }
   if (abs >= 100_000) {
-    // e.g. 930_000_00 cents = $930k
     return `${sign}$${Math.round(abs / 100_000)}k`
   }
-  // plain thousands with comma
   return `${sign}$${(abs / 100).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
 
@@ -85,32 +139,51 @@ type ChartPoint = {
 // ---------- page ----------
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [portfolio, setPortfolio] = useState<PortfolioLVR | null>(null)
   const [ledger, setLedger] = useState<LedgerSummaryResponse | null>(null)
   const [trends, setTrends] = useState<TrendPoint[] | null>(null)
   const [planContext, setPlanContext] = useState<PlanContextSummary | null>(null)
+  const [entities, setEntities] = useState<Entity[]>([])
+  const [entityFilter, setEntityFilter] = useState<string | null>(null)
+  const [period, setPeriod] = useState<PeriodKey>('12m')
+
+  const loadDashboard = useCallback(async (entityId: string | null, p: PeriodKey) => {
+    try {
+      const { from, to } = periodToDateRange(p)
+      const entityQs = entityId ? `&entityId=${entityId}` : ''
+      const portfolioQs = entityId ? `?entityId=${entityId}` : ''
+
+      const [portfolioRes, ledgerRes, trendsRes] = await Promise.all([
+        fetch(`/api/portfolio/summary${portfolioQs}`),
+        fetch(`/api/ledger/summary?from=${from}&to=${to}${entityQs}`),
+        fetch(`/api/reports/trends?from=${from}&to=${to}${entityQs}`),
+      ])
+
+      if (portfolioRes.status === 401) { router.push('/login'); return }
+
+      setPortfolio(portfolioRes.ok
+        ? (await portfolioRes.json() as { portfolio: PortfolioLVR }).portfolio
+        : null)
+      setLedger(ledgerRes.ok ? await ledgerRes.json() as LedgerSummaryResponse : null)
+      setTrends(trendsRes.ok
+        ? (await trendsRes.json() as { trends: TrendPoint[] }).trends
+        : null)
+    } catch {
+      // silent — stale state shown until next load
+    }
+  }, [router])
 
   useEffect(() => {
-    void fetch('/api/portfolio/summary')
-      .then(r => r.json())
-      .then((data: { portfolio: PortfolioLVR }) => setPortfolio(data.portfolio))
-      .catch(() => null)
-  }, [])
+    loadDashboard(entityFilter, period)
+  }, [entityFilter, period, loadDashboard])
 
   useEffect(() => {
-    const month = currentMonthStr()
-    const from = `${month}-01`
-    const to = lastDayOfMonth(month)
-    void fetch(`/api/ledger/summary?from=${from}&to=${to}`)
-      .then(r => r.json())
-      .then((data: LedgerSummaryResponse) => setLedger(data))
-      .catch(() => null)
-  }, [])
-
-  useEffect(() => {
-    void fetch('/api/reports/trends?months=12')
-      .then(r => r.json())
-      .then((data: { trends: TrendPoint[] }) => setTrends(data.trends))
+    void fetch('/api/entities')
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { entities?: Entity[] } | null) => {
+        if (data?.entities) setEntities(data.entities)
+      })
       .catch(() => null)
   }, [])
 
@@ -129,7 +202,7 @@ export default function DashboardPage() {
   const totalDebtCents = portfolio?.totalDebtCents ?? 0
   const netEquityCents = totalValueCents - totalDebtCents
   const lvrPct = portfolio?.lvr ?? null
-  const netCashflow = ledger?.totals.netAfterMortgage ?? null
+  const netCashflow = ledger ? ledger.totals.netAfterMortgage / periodMonthCount(period) : null
 
   const personalSurplus = planContext?.householdSurplusMonthlyCents ?? null
   const portfolioCashflow = netCashflow
@@ -142,7 +215,7 @@ export default function DashboardPage() {
     : []
 
   const chartData: ChartPoint[] = (trends ?? []).map(pt => ({
-    label: pt.month.slice(5), // 'YYYY-MM' → 'MM'
+    label: pt.month.slice(5),
     month: pt.month,
     rent:     pt.hasData ? pt.rentCents / 100 : null,
     expenses: pt.hasData ? -(pt.expensesCents / 100) : null,
@@ -155,9 +228,51 @@ export default function DashboardPage() {
     return now.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
   })()
 
+  // --- filter options ---
+
+  const entityOptions: FilterOption[] = entities.map(e => ({
+    id: e.id,
+    name: e.name,
+    subLabel: entityTypeSubLabel(e.type),
+    count: 0,
+    entityType: e.type,
+  }))
+
+  const periodOptions: FilterOption[] = [
+    { id: '12m',     name: 'Last 12 months',     subLabel: periodSubLabel('12m'),     count: 0 },
+    { id: '6m',      name: 'Last 6 months',       subLabel: periodSubLabel('6m'),      count: 0 },
+    { id: 'this-fy', name: 'This financial year', subLabel: periodSubLabel('this-fy'), count: 0 },
+    { id: 'last-fy', name: 'Last financial year', subLabel: periodSubLabel('last-fy'), count: 0 },
+  ]
+
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Portfolio</h1>
+      {/* Page head */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Portfolio</h1>
+          <FilterChip
+            label="Period"
+            labelPlural="periods"
+            value={period}
+            options={periodOptions}
+            onChange={(v) => setPeriod((v ?? '12m') as PeriodKey)}
+            variant="simple"
+            align="end"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <FilterChip
+            label="Entity"
+            labelPlural="entities"
+            value={entityFilter}
+            options={entityOptions}
+            onChange={setEntityFilter}
+            variant="rich"
+            actionLink={{ href: '/entities', label: 'Add or manage entities' }}
+          />
+        </div>
+      </div>
 
       {/* Prompts strip — statement completeness only */}
       {missingProperties.length > 0 && (
@@ -269,7 +384,7 @@ export default function DashboardPage() {
 
       {/* Cashflow trend chart */}
       <div>
-        <SectionLabel>Cashflow trend · last 12 months</SectionLabel>
+        <SectionLabel>Cashflow trend · {periodLabel(period)}</SectionLabel>
         <div className="bg-surface border border-border rounded-[7px] p-5">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-medium text-foreground">Monthly cashflow composition</span>

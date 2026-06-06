@@ -1,7 +1,7 @@
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { installmentLoans, installmentLoanBalances, properties, entities } from '@/db/schema'
-import type { InstallmentLoan } from '@/db/schema'
+import type { InstallmentLoan, LoanType } from '@/db/schema'
 
 type CreateInstallmentLoanInput = {
   lender: string
@@ -53,9 +53,20 @@ export type FlatInstallmentLoan = InstallmentLoan & {
   entityName: string | null
 }
 
-export async function listAllLoansFlat(userId: string): Promise<FlatInstallmentLoan[]> {
+type LoanFilters = {
+  entityId?: string | null
+  lender?: string | null
+  loanType?: string | null
+}
+
+export async function listAllLoansFlat(userId: string, filters?: LoanFilters): Promise<FlatInstallmentLoan[]> {
   const [loans, propRows, entityRows, balanceRows] = await Promise.all([
-    db.select().from(installmentLoans).where(eq(installmentLoans.userId, userId)),
+    db.select().from(installmentLoans).where(and(
+      eq(installmentLoans.userId, userId),
+      filters?.entityId ? eq(installmentLoans.entityId, filters.entityId) : undefined,
+      filters?.lender ? eq(installmentLoans.lender, filters.lender) : undefined,
+      filters?.loanType ? eq(installmentLoans.loanType, filters.loanType as LoanType) : undefined,
+    )),
     db.select({ id: properties.id, address: properties.address, nickname: properties.nickname })
       .from(properties).where(eq(properties.userId, userId)),
     db.select({ id: entities.id, name: entities.name })
