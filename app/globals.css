@@ -40,6 +40,7 @@
 
   /* Lines */
   --color-border:           hsl(36 12% 86%);
+  --color-border-strong:    hsl(34 10% 74%);
   --color-rule:             hsl(36 14% 90%);
 
   /* Accent */

@@ -225,7 +225,7 @@ function ItemForm({
           <Button size="sm" variant="ghost" onClick={onCancel} disabled={saving}>
             Cancel
           </Button>
-          <Button size="sm" variant="accent" onClick={handleSave} disabled={saving}>
+          <Button size="sm" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : isEditing ? 'Save changes' : 'Add'}
           </Button>
         </div>
@@ -395,7 +395,7 @@ function EmptyState({ onAdd }: { onAdd: (type: BudgetItemType) => void }) {
         Add the income you bring in and the expenses you carry.
       </p>
       <div className="flex gap-2 mt-2">
-        <Button variant="accent" onClick={() => onAdd('income')}>Add your first income source</Button>
+        <Button onClick={() => onAdd('income')}>Add your first income source</Button>
         <Button variant="outline" onClick={() => onAdd('expense')}>Add an expense</Button>
       </div>
     </div>
