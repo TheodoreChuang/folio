@@ -33,10 +33,6 @@ function monthsBetween(from: string, to: string): string[] {
   return months
 }
 
-function lastDayOfMonth(yearMonth: string): string {
-  const [y, m] = yearMonth.split('-').map(Number)
-  return `${yearMonth}-${new Date(y, m, 0).getDate()}`
-}
 
 export async function GET(request: Request) {
   try {
@@ -52,8 +48,16 @@ export async function GET(request: Request) {
     if (!from || !DATE_REGEX.test(from)) {
       return NextResponse.json({ error: 'from must be a date in YYYY-MM-DD format' }, { status: 400 })
     }
+    const fromDate = new Date(from + 'T00:00:00Z')
+    if (isNaN(fromDate.getTime()) || fromDate.toISOString().slice(0, 10) !== from) {
+      return NextResponse.json({ error: 'from must be a valid date' }, { status: 400 })
+    }
     if (!to || !DATE_REGEX.test(to)) {
       return NextResponse.json({ error: 'to must be a date in YYYY-MM-DD format' }, { status: 400 })
+    }
+    const toDate = new Date(to + 'T00:00:00Z')
+    if (isNaN(toDate.getTime()) || toDate.toISOString().slice(0, 10) !== to) {
+      return NextResponse.json({ error: 'to must be a valid date' }, { status: 400 })
     }
     if (from > to) {
       return NextResponse.json({ error: 'from must not be after to' }, { status: 400 })
@@ -69,7 +73,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'entityId must be a valid UUID' }, { status: 400 })
     }
 
-    const rows = await fetchTrendData(user.id, from, lastDayOfMonth(months[months.length - 1]), entityIdParam)
+    const rows = await fetchTrendData(user.id, from, to, entityIdParam)
 
     type MonthBucket = { rent: number; expenses: number; mortgage: number }
     const buckets = new Map<string, MonthBucket>()

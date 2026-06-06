@@ -32,7 +32,8 @@ describe('GET /api/loans — filter params (integration)', () => {
   let propId: string
   let loanEntityA: string
   let loanEntityB: string
-  let loanNoEntity: string
+  let loanEntityA2: string
+  let loanNullEntity: string
 
   beforeAll(async () => {
     if (!hasEnv) return
@@ -105,7 +106,7 @@ describe('GET /api/loans — filter params (integration)', () => {
       .returning()
     loanEntityB = lB.id
 
-    const [lNone] = await db
+    const [lA2] = await db
       .insert(installmentLoans)
       .values({
         userId,
@@ -117,14 +118,29 @@ describe('GET /api/loans — filter params (integration)', () => {
         endDate: '2050-01-01',
       })
       .returning()
-    loanNoEntity = lNone.id
+    loanEntityA2 = lA2.id
+
+    const [lNull] = await db
+      .insert(installmentLoans)
+      .values({
+        userId,
+        propertyId: propId,
+        entityId: null,
+        lender: `NAB-${crypto.randomUUID().slice(0, 8)}`,
+        loanType: 'interest_only',
+        startDate: '2020-01-01',
+        endDate: '2050-01-01',
+      })
+      .returning()
+    loanNullEntity = lNull.id
   })
 
   afterAll(async () => {
     if (!hasEnv) return
     if (loanEntityA) await db.delete(installmentLoans).where(eq(installmentLoans.id, loanEntityA))
     if (loanEntityB) await db.delete(installmentLoans).where(eq(installmentLoans.id, loanEntityB))
-    if (loanNoEntity) await db.delete(installmentLoans).where(eq(installmentLoans.id, loanNoEntity))
+    if (loanEntityA2) await db.delete(installmentLoans).where(eq(installmentLoans.id, loanEntityA2))
+    if (loanNullEntity) await db.delete(installmentLoans).where(eq(installmentLoans.id, loanNullEntity))
     if (propId) await db.delete(properties).where(eq(properties.id, propId))
     if (entityAId) await db.delete(entities).where(eq(entities.id, entityAId))
     if (entityBId) await db.delete(entities).where(eq(entities.id, entityBId))
@@ -144,7 +160,8 @@ describe('GET /api/loans — filter params (integration)', () => {
     const ids = loans.map(l => l.id)
     expect(ids).toContain(loanEntityA)
     expect(ids).toContain(loanEntityB)
-    expect(ids).toContain(loanNoEntity)
+    expect(ids).toContain(loanEntityA2)
+    expect(ids).toContain(loanNullEntity)
   })
 
   it('entityId filter: returns only loans with matching entity_id', async () => {
@@ -155,7 +172,16 @@ describe('GET /api/loans — filter params (integration)', () => {
     const ids = loans.map(l => l.id)
     expect(ids).toContain(loanEntityA)
     expect(ids).not.toContain(loanEntityB)
-    expect(ids).toContain(loanNoEntity)
+    expect(ids).toContain(loanEntityA2)
+  })
+
+  it('entityId filter excludes loans with null entityId', async () => {
+    if (!hasEnv) return
+    const res = await getLoans({ entityId: entityAId })
+    expect(res.status).toBe(200)
+    const { loans } = await res.json() as { loans: { id: string }[] }
+    const ids = loans.map(l => l.id)
+    expect(ids).not.toContain(loanNullEntity)
   })
 
   it('entityId filter: unknown entity returns no matching test loans', async () => {
@@ -163,7 +189,7 @@ describe('GET /api/loans — filter params (integration)', () => {
     const res = await getLoans({ entityId: crypto.randomUUID() })
     expect(res.status).toBe(200)
     const { loans } = await res.json() as { loans: { id: string }[] }
-    const testIds = [loanEntityA, loanEntityB, loanNoEntity]
+    const testIds = [loanEntityA, loanEntityB, loanEntityA2, loanNullEntity]
     expect(loans.filter(l => testIds.includes(l.id))).toHaveLength(0)
   })
 
@@ -172,7 +198,7 @@ describe('GET /api/loans — filter params (integration)', () => {
     const res = await getLoans({ loanType: 'interest_only' })
     expect(res.status).toBe(200)
     const { loans } = await res.json() as { loans: { id: string; loanType: string }[] }
-    const testLoans = loans.filter(l => [loanEntityA, loanEntityB, loanNoEntity].includes(l.id))
+    const testLoans = loans.filter(l => [loanEntityA, loanEntityB, loanEntityA2, loanNullEntity].includes(l.id))
     expect(testLoans.map(l => l.id)).toContain(loanEntityA)
     expect(testLoans.every(l => l.loanType === 'interest_only')).toBe(true)
   })
@@ -183,7 +209,7 @@ describe('GET /api/loans — filter params (integration)', () => {
     expect(res.status).toBe(200)
     const { loans } = await res.json() as { loans: { id: string }[] }
     const ids = loans.map(l => l.id)
-    expect(ids).toContain(loanNoEntity)
+    expect(ids).toContain(loanEntityA2)
     expect(ids).not.toContain(loanEntityA)
     expect(ids).not.toContain(loanEntityB)
   })

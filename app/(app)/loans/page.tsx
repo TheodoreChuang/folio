@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button'
 import { MetricTile } from '@/components/ui/metric-tile'
 import { FilterChip } from '@/components/filter-chip'
 import type { FilterOption } from '@/components/filter-chip'
-import type { Entity, EntityType } from '@/db/schema'
+import type { Entity, LoanType } from '@/db/schema'
 import type { FlatInstallmentLoan } from '@/lib/borrowings'
-import { formatCents } from '@/lib/format'
+import { formatCents, entityTypeSubLabel } from '@/lib/format'
 import { pmt, interestOnlyPayment } from '@/lib/aggregate/plan/calculators/rate-sensitivity'
 
 function estimateRepaymentCents(loan: FlatInstallmentLoan): number | null {
@@ -41,15 +41,6 @@ function loanTypeFullLabel(loanType: string): string {
   return loanType
 }
 
-function entityTypeSubLabel(type: EntityType): string {
-  switch (type) {
-    case 'trust': return 'Discretionary trust'
-    case 'individual': return 'Individual'
-    case 'company': return 'Company'
-    case 'joint': return 'Joint'
-    case 'superannuation': return 'Superannuation'
-  }
-}
 
 type FlatLoan = FlatInstallmentLoan
 
@@ -63,7 +54,7 @@ export default function LoansPage() {
   const [lenderFilter, setLenderFilter] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
 
-  const loadLoans = useCallback(async (entityId: string | null, lender: string | null, loanType: string | null) => {
+  const loadLoans = useCallback(async (entityId: string | null, lender: string | null, loanType: string | null, signal?: AbortSignal) => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
@@ -74,10 +65,12 @@ export default function LoansPage() {
       const anyActive = !!(entityId || lender || loanType)
 
       const [loansRes, entRes, allLoansRes] = await Promise.all([
-        fetch(`/api/loans${qs}`),
-        fetch('/api/entities'),
-        anyActive ? fetch('/api/loans') : Promise.resolve(null),
+        fetch(`/api/loans${qs}`, { signal }),
+        fetch('/api/entities', { signal }),
+        anyActive ? fetch('/api/loans', { signal }) : Promise.resolve(null),
       ])
+
+      if (signal?.aborted) return
 
       if (loansRes.status === 401) { router.push('/login'); return }
 
@@ -95,15 +88,18 @@ export default function LoansPage() {
       } else {
         setAllLoans(list)
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       toast.error('Failed to load loans')
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) setLoading(false)
     }
   }, [router])
 
   useEffect(() => {
-    loadLoans(entityFilter, lenderFilter, typeFilter)
+    const controller = new AbortController()
+    loadLoans(entityFilter, lenderFilter, typeFilter, controller.signal)
+    return () => controller.abort()
   }, [entityFilter, lenderFilter, typeFilter, loadLoans])
 
   const totalDebtCents = loans.reduce((sum, l) => sum + (l.latestBalance?.balanceCents ?? 0), 0)
@@ -143,7 +139,6 @@ export default function LoansPage() {
     count: allLoans.filter(l => l.lender === lender).length,
   }))
 
-  type LoanType = 'interest_only' | 'principal_and_interest' | 'line_of_credit'
   const uniqueTypes = Array.from(
     new Set(allLoans.map(l => l.loanType).filter((t): t is LoanType => t !== null))
   )

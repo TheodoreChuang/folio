@@ -5,6 +5,7 @@ import { findPropertyById } from '@/lib/property'
 import { findEntityById } from '@/lib/entities'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
+import type { LoanType } from '@/db/schema'
 
 export async function GET(request: Request) {
   try {
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
     const loans = await listAllLoansFlat(user.id, {
       entityId: entityIdParam,
       lender: lenderParam,
-      loanType: loanTypeParam,
+      loanType: loanTypeParam as LoanType | null,
     })
     return NextResponse.json({ loans })
   } catch (err) {

@@ -1,3 +1,15 @@
+import type { EntityType } from '@/db/schema'
+
+export function entityTypeSubLabel(type: EntityType): string {
+  switch (type) {
+    case 'trust': return 'Discretionary trust'
+    case 'individual': return 'Individual'
+    case 'company': return 'Company'
+    case 'joint': return 'Joint'
+    case 'superannuation': return 'Superannuation'
+  }
+}
+
 export function formatCentsEntered(cents: number): string {
   return '$' + (cents / 100).toLocaleString('en-AU', {
     minimumFractionDigits: 0,
