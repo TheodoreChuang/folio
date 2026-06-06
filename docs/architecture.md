@@ -142,7 +142,7 @@ lib/assets/            ← Assets domain (bank accounts, investments, super, veh
 lib/borrowings/        ← Borrowings domain (installment loans, revolving credit)
 lib/income/            ← Income domain (PAYG, self-employed, other income)
 lib/personal-finance/  ← Personal Finance domain (household budget estimates)
-lib/reporting/         ← Reporting domain (cross-domain aggregation, live queries, AI commentary)
+lib/aggregate/         ← Aggregate domain (cross-domain aggregation)
 lib/ingestion/         ← Ingestion domain (document receipt, extraction staging, routing memory)
 ```
 
