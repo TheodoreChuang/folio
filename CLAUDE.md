@@ -6,13 +6,11 @@
 
 ## Git — non-negotiable before any code change
 
-**Always create a branch before making any edits.** Never commit to `main`.
+**Always create a branch before making any edits.** Never commit to `main`. See `conventions.md §0` for naming and merge rules.
 
 ```
 git checkout -b {type}/{short-description}   # do this first, before touching any file
 ```
-
-After all work is done and verified: commit to the branch, push, open a PR via `gh pr create`.
 
 ## Stack
 - **Next.js 16** (App Router, TypeScript, `strict: true`)
@@ -35,27 +33,17 @@ After all work is done and verified: commit to the branch, push, open a PR via `
 | Seed | `pnpm seed` |
 | Supabase reset | `pnpm db:reset` |
 
-## Project Layout
+## Key Paths
 ```
-app/
-  api/{upload,extract,statements,properties,reports}/route.ts
-  (auth, dashboard, upload, properties, reports pages)
 db/schema.ts          — Drizzle table definitions + exported types
-lib/
-  extraction/         — PDF → text → AI extraction pipeline
-  supabase/{client,server}.ts
-  db.ts               — Drizzle client
-  logger.ts           — debug/info/error (LOG_LEVEL=debug for verbose)
-supabase/migrations/  — SQL migrations (applied to local + prod)
-__tests__/            — Vitest unit tests (*.test.ts)
-                        integration tests (*.integration.test.ts)
+lib/extraction/       — PDF → text → AI extraction pipeline
 docs/solutions/       — documented solutions to past bugs and patterns (searchable by module, tags, problem_type)
 ```
+See `conventions.md §1` for the full folder structure and module layout.
 
 ## Testing Conventions
 - Unit tests mock at the boundary (Supabase, DB, AI); no real I/O
 - Integration tests use `pool: 'forks'` and run sequentially (DB safety)
-- **Always verify changes with tests before finishing**: `pnpm test` (unit), `pnpm test:integration` (integration), `pnpm test:e2e` (e2e) — run whichever suites are relevant to the change
 
 ## Pre-commit Checklist
 Run all three before every commit — these match what CI checks:
@@ -67,10 +55,6 @@ pnpm test
 Integration tests (`pnpm test:integration`) require `supabase start`; run them when the change touches DB queries, migrations, or storage.
 
 ## Key Patterns
-- **API error shape**: `{ error: string, detail?: string }` — `error` is user-facing,
-  `detail` is extra context for debugging
-- **Auth in API routes**: always `createServerSupabaseClient()` → `supabase.auth.getUser()`
-  before any business logic; return 401 if no user
 - **Logging**: use `logger.debug/info/error` from `lib/logger.ts`; set `LOG_LEVEL=debug`
   in `.env.local` to enable verbose output (default: info, debug suppressed)
 - **Storage uploads**: `upsert: false`; hash-based dedup happens before upload

@@ -43,6 +43,16 @@ Route handlers are thin adapters: authenticate, parse input, call a domain servi
 a response. No business logic or Drizzle queries in route handlers. See `docs/architecture.md`
 for the full module structure and the rationale.
 
+### Domain module governance
+
+**Do not create a new `lib/{domain}/` module without an explicit architectural decision.**
+Before introducing a new domain, ask: does this logic already fit in an existing module?
+
+- `lib/aggregate/` owns all cross-cutting financial computations — portfolio summaries,
+  cashflow totals, return metrics, trend data. Add new financial logic here first.
+- New domains are warranted when the concern is clearly bounded and independent
+  (e.g. a wholly new entity type with its own lifecycle). When in doubt, extend `lib/aggregate/`.
+
 ---
 
 ## 2. Naming
@@ -122,6 +132,16 @@ Zod schemas are the API documentation — no separate spec or route summary comm
 | 500 | Server error |
 
 Do not use 422.
+
+### API design philosophy
+
+APIs are first-class citizens — design them to stand alone, not to serve a specific page or client.
+
+- A route should model a resource or operation, not mirror what one UI screen happens to need.
+- Prefer generic, composable endpoints (`GET /api/insights/return?from=&to=&entityId=`) over
+  client-shaped ones that bundle unrelated data to reduce round trips.
+- Building a BFF-style endpoint tailored to a single client is an exception that requires
+  explicit justification — not the default.
 
 ---
 
