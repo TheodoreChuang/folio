@@ -139,6 +139,14 @@
       // Active accent state when a non-default option is selected
       const isDefault = opt.hasAttribute('data-default');
       chip.classList.toggle('is-active', !isDefault);
+      // Any option carrying a data-subtitle rewrites the page subtitle to
+      // reflect the current scope (entity) or window (period). Only options
+      // that opt in are affected, so other pages are untouched.
+      if (opt.dataset.subtitle) {
+        const head = wrap.closest('.page-head');
+        const sub = head && head.querySelector('.subtitle');
+        if (sub) sub.textContent = opt.dataset.subtitle;
+      }
     };
 
     chip && chip.addEventListener('click', e => {
