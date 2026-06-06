@@ -60,6 +60,10 @@ function periodLabel(period: PeriodKey): string {
   return `FY ${fy}–${String(fy + 1).slice(2)}`
 }
 
+function periodMonthCount(period: PeriodKey): number {
+  return period === '6m' ? 6 : 12
+}
+
 function periodSubLabel(period: PeriodKey): string {
   const { from, to } = periodToDateRange(period)
   const fmt = (s: string) => {
@@ -198,7 +202,7 @@ export default function DashboardPage() {
   const totalDebtCents = portfolio?.totalDebtCents ?? 0
   const netEquityCents = totalValueCents - totalDebtCents
   const lvrPct = portfolio?.lvr ?? null
-  const netCashflow = ledger?.totals.netAfterMortgage ?? null
+  const netCashflow = ledger ? ledger.totals.netAfterMortgage / periodMonthCount(period) : null
 
   const personalSurplus = planContext?.householdSurplusMonthlyCents ?? null
   const portfolioCashflow = netCashflow
