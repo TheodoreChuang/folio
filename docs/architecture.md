@@ -127,7 +127,7 @@ import { getLoansByProperty } from '@/lib/borrowings'
 import { loanRepository } from '@/lib/borrowings/repositories/loans'
 ```
 
-The Reporting module is the sole exception: it reads other domain tables directly via
+The Aggregate module is the sole exception: it reads other domain tables directly via
 SQL for cross-domain aggregation queries. SQL joins across tables are materially more
 efficient than API aggregation for analytical workloads. All other modules never query
 another module's tables. See `docs/data-model.md` — Principle 13.
