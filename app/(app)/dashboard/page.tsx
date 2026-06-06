@@ -18,7 +18,8 @@ import { Prompt } from '@/components/ui/prompt'
 import { SectionLabel } from '@/components/ui/section-label'
 import { FilterChip } from '@/components/filter-chip'
 import type { FilterOption } from '@/components/filter-chip'
-import type { Entity, EntityType } from '@/db/schema'
+import type { Entity } from '@/db/schema'
+import { entityTypeSubLabel } from '@/lib/format'
 import type { ReportTotals } from '@/lib/aggregate'
 import type { TrendPoint } from '@/app/api/reports/trends/route'
 import type { PortfolioLVR } from '@/app/api/portfolio/summary/route'
@@ -73,15 +74,6 @@ function periodSubLabel(period: PeriodKey): string {
   return `${fmt(from)} – ${fmt(to)}`
 }
 
-function entityTypeSubLabel(type: EntityType): string {
-  switch (type) {
-    case 'trust': return 'Discretionary trust'
-    case 'individual': return 'Individual'
-    case 'company': return 'Company'
-    case 'joint': return 'Joint'
-    case 'superannuation': return 'Superannuation'
-  }
-}
 
 function formatMoney(cents: number): string {
   const abs = Math.abs(cents)
@@ -148,17 +140,19 @@ export default function DashboardPage() {
   const [entityFilter, setEntityFilter] = useState<string | null>(null)
   const [period, setPeriod] = useState<PeriodKey>('12m')
 
-  const loadDashboard = useCallback(async (entityId: string | null, p: PeriodKey) => {
+  const loadDashboard = useCallback(async (entityId: string | null, p: PeriodKey, signal?: AbortSignal) => {
     try {
       const { from, to } = periodToDateRange(p)
       const entityQs = entityId ? `&entityId=${entityId}` : ''
       const portfolioQs = entityId ? `?entityId=${entityId}` : ''
 
       const [portfolioRes, ledgerRes, trendsRes] = await Promise.all([
-        fetch(`/api/portfolio/summary${portfolioQs}`),
-        fetch(`/api/ledger/summary?from=${from}&to=${to}${entityQs}`),
-        fetch(`/api/reports/trends?from=${from}&to=${to}${entityQs}`),
+        fetch(`/api/portfolio/summary${portfolioQs}`, { signal }),
+        fetch(`/api/ledger/summary?from=${from}&to=${to}${entityQs}`, { signal }),
+        fetch(`/api/reports/trends?from=${from}&to=${to}${entityQs}`, { signal }),
       ])
+
+      if (signal?.aborted) return
 
       if (portfolioRes.status === 401) { router.push('/login'); return }
 
@@ -169,13 +163,16 @@ export default function DashboardPage() {
       setTrends(trendsRes.ok
         ? (await trendsRes.json() as { trends: TrendPoint[] }).trends
         : null)
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       // silent — stale state shown until next load
     }
   }, [router])
 
   useEffect(() => {
-    loadDashboard(entityFilter, period)
+    const controller = new AbortController()
+    loadDashboard(entityFilter, period, controller.signal)
+    return () => controller.abort()
   }, [entityFilter, period, loadDashboard])
 
   useEffect(() => {

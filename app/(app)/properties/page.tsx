@@ -9,8 +9,8 @@ import { MetricTile } from '@/components/ui/metric-tile'
 import { Badge } from '@/components/ui/badge'
 import { FilterChip } from '@/components/filter-chip'
 import type { FilterOption } from '@/components/filter-chip'
-import type { Property, Entity, EntityType } from '@/db/schema'
-import { formatCents } from '@/lib/format'
+import type { Property, Entity } from '@/db/schema'
+import { formatCents, entityTypeSubLabel } from '@/lib/format'
 
 type PropertyWithEntity = Property & { entityName: string | null; lvrPercent: number | null }
 
@@ -26,15 +26,6 @@ function currentMonthRange(): { from: string; to: string } {
   return { from: `${y}-${m}-01`, to: `${y}-${m}-${String(lastDay).padStart(2, '0')}` }
 }
 
-function entityTypeSubLabel(type: EntityType): string {
-  switch (type) {
-    case 'trust': return 'Discretionary trust'
-    case 'individual': return 'Individual'
-    case 'company': return 'Company'
-    case 'joint': return 'Joint'
-    case 'superannuation': return 'Superannuation'
-  }
-}
 
 export default function PropertiesPage() {
   const router = useRouter()

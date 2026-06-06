@@ -56,7 +56,7 @@ export type FlatInstallmentLoan = InstallmentLoan & {
 type LoanFilters = {
   entityId?: string | null
   lender?: string | null
-  loanType?: string | null
+  loanType?: LoanType | null
 }
 
 export async function listAllLoansFlat(userId: string, filters?: LoanFilters): Promise<FlatInstallmentLoan[]> {
@@ -65,7 +65,7 @@ export async function listAllLoansFlat(userId: string, filters?: LoanFilters): P
       eq(installmentLoans.userId, userId),
       filters?.entityId ? eq(installmentLoans.entityId, filters.entityId) : undefined,
       filters?.lender ? eq(installmentLoans.lender, filters.lender) : undefined,
-      filters?.loanType ? eq(installmentLoans.loanType, filters.loanType as LoanType) : undefined,
+      filters?.loanType ? eq(installmentLoans.loanType, filters.loanType) : undefined,
     )),
     db.select({ id: properties.id, address: properties.address, nickname: properties.nickname })
       .from(properties).where(eq(properties.userId, userId)),
