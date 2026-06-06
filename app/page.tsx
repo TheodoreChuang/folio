@@ -1,5 +1,12 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+
+export const metadata: Metadata = {
+  title: 'Folio — Property investment, finally legible',
+  description:
+    'Understand your Australian property portfolio, stay ahead of important events, and model your next move — without maintaining another spreadsheet.',
+}
 
 function CheckIcon() {
   return (
@@ -20,6 +27,14 @@ function CheckIcon() {
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* Skip link */}
+      <a
+        href="#main-content"
+        className="fixed top-0 left-0 -translate-y-full focus:translate-y-0 z-[100] bg-surface-raised text-foreground text-sm font-medium px-4 py-2 border-b border-r border-border rounded-br-md transition-transform"
+      >
+        Skip to main content
+      </a>
+
       {/* TOP NAV */}
       <nav className="sticky top-0 z-50 bg-surface-raised border-b border-border">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
@@ -61,9 +76,10 @@ export default function LandingPage() {
         </div>
       </nav>
 
+      <main id="main-content">
       {/* HERO */}
-      <header className="max-w-6xl mx-auto px-6 py-16 md:py-24">
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+      <div className="max-w-6xl mx-auto px-6 py-16 md:py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
           {/* Copy */}
           <div>
             <span className="inline-flex items-center gap-2 text-sm text-foreground-muted mb-6">
@@ -178,10 +194,9 @@ export default function LandingPage() {
               extracted &amp; routed automatically
             </div>
           </div>
-        </section>
-      </header>
+        </div>
+      </div>
 
-      <main>
         {/* VALUE PROPS */}
         <section id="value" className="border-t border-border py-16 md:py-24">
           <div className="max-w-6xl mx-auto px-6">
