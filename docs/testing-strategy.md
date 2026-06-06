@@ -38,7 +38,7 @@ Anything that depends on a WHERE clause being correct — soft-delete filters, d
 
 **What to test:** all category-to-bucket mappings (rent, expenses, mortgage), net formulas (before and after mortgage), per-property isolation (entries for property A must not affect property B totals), and all flag conditions (missing statement, missing mortgage payment).
 
-**Example:** `lib/reports/compute.ts` + `__tests__/lib/reports-compute.test.ts`
+**Example:** `lib/aggregate/services/compute.ts` + `__tests__/lib/reports-compute.test.ts`
 
 ### 2. Soft-delete WHERE clause correctness
 
@@ -92,7 +92,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<local anon key>
 
 All integration tests use an `if (!hasEnv) return` guard — they silently skip if credentials are not set.
 
-**CI status:** integration tests run in CI (`pnpm test:integration`) but currently skip because `TEST_USER_EMAIL` is not set as a GitHub secret. Fix before first production deploy by wiring test user creation via the Supabase admin API.
+**CI status:** integration tests run in CI. The test user is created via the Supabase admin API; `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` are injected as workflow env vars.
 
 ---
 
@@ -101,4 +101,3 @@ All integration tests use an `if (!hasEnv) return` guard — they silently skip 
 | Gap | Rationale | When to fix |
 |-----|-----------|------------|
 | `hasStatement` semantics | Any non-`loan_payment` entry counts as "has statement" — a manual expense entry satisfies the flag even without a PM statement. Deferred pending UX review of health check status display. | V4 UX refresh |
-| Integration tests in CI | CI creates the test user via admin API; `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` are injected as workflow env vars. | Done |
