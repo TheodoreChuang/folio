@@ -40,6 +40,7 @@
 
   /* Lines */
   --color-border:           hsl(36 12% 86%);
+  --color-border-strong:    hsl(34 10% 74%);
   --color-rule:             hsl(36 14% 90%);
 
   /* Accent */
@@ -132,6 +133,11 @@
   This restores the v3 behaviour so existing border-* utilities use our token.
 */
 @layer base {
+  html {
+    /* compensates for sticky nav (h-14 = 3.5rem) so anchor targets aren't hidden beneath it */
+    scroll-padding-top: 3.5rem;
+  }
+
   *, ::after, ::before, ::backdrop, ::file-selector-button {
     border-color: var(--color-border);
   }
