@@ -1,5 +1,7 @@
-export { computeReport } from './services/compute'
-export type { ReportTotals, ReportFlags, PropertyTotals, MissingMortgage } from './services/compute'
+export { computeReport, computeReturn } from './services/compute'
+export type { ReportTotals, ReportFlags, PropertyTotals, MissingMortgage, InsightsReturn } from './services/compute'
+
+export { fetchReturnData } from './repositories/return'
 
 export { computePortfolioLVR } from './services/portfolio'
 export type { PortfolioLVR } from './services/portfolio'

@@ -1,5 +1,68 @@
 import type { PropertyLedger, Property, InstallmentLoan } from '@/db/schema'
 
+// ── return metrics ──────────────────────────────────────────────────────────
+
+export type InsightsReturn = {
+  grossYieldPct: number | null
+  capitalGrowthPct: number | null
+  capitalGrowthCents: number | null
+  totalReturnPct: number | null
+  annualisedRentCents: number
+  currentValueCents: number
+}
+
+function round(n: number, decimals: number): number {
+  const f = Math.pow(10, decimals)
+  return Math.round(n * f) / f
+}
+
+export function computeReturn(input: {
+  endValuations: Array<{ valueCents: number }>
+  startValuations: Array<{ valueCents: number }>
+  periodRentCents: number
+  periodMonths: number
+}): InsightsReturn {
+  const { endValuations, startValuations, periodRentCents, periodMonths } = input
+
+  const currentValueCents = endValuations.reduce((s, v) => s + v.valueCents, 0)
+
+  // startValueCents is unavailable when we have end valuations but no start
+  const startValueCents =
+    endValuations.length > 0 && startValuations.length === 0
+      ? null
+      : startValuations.reduce((s, v) => s + v.valueCents, 0)
+
+  const annualisedRentCents =
+    periodMonths > 0 ? Math.round((periodRentCents / periodMonths) * 12) : 0
+
+  const grossYieldPct =
+    currentValueCents > 0
+      ? round((annualisedRentCents / currentValueCents) * 100, 2)
+      : null
+
+  const capitalGrowthPct =
+    startValueCents === null || startValueCents === 0
+      ? null
+      : round(((currentValueCents - startValueCents) / startValueCents) * 100, 2)
+
+  const capitalGrowthCents =
+    startValueCents === null ? null : currentValueCents - startValueCents
+
+  const totalReturnPct =
+    grossYieldPct !== null && capitalGrowthPct !== null
+      ? round(grossYieldPct + capitalGrowthPct, 2)
+      : null
+
+  return {
+    grossYieldPct,
+    capitalGrowthPct,
+    capitalGrowthCents,
+    totalReturnPct,
+    annualisedRentCents,
+    currentValueCents,
+  }
+}
+
 export type PropertyTotals = {
   propertyId: string
   address: string

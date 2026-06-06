@@ -11,6 +11,7 @@ export interface FilterOption {
   id: string
   name: string
   subLabel?: string
+  meta?: string
   count: number
   entityType?: EntityType
   disabled?: boolean
@@ -211,7 +212,7 @@ export function FilterChip({
                 )}
               </span>
               <span className={cn('text-xs tabular-nums', isSelected ? 'text-accent' : 'text-foreground-subtle')}>
-                {option.disabled ? `No ${noItemLabel}` : option.count}
+                {option.disabled ? `No ${noItemLabel}` : (option.meta ?? (option.count > 0 ? option.count : null))}
               </span>
             </button>
           )
