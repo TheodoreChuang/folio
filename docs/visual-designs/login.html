@@ -103,22 +103,12 @@
 
       </div>
 
-      <!-- State preview toggle (for review only — would not ship) -->
-      <div style="text-align: center;">
-        <div class="login-state-toggle" role="group" aria-label="Preview state">
-          <span class="lab">Preview</span>
-          <button type="button" class="is-on" data-state-preview="email">Email entry</button>
-          <button type="button" data-state-preview="sent">Confirmation</button>
-        </div>
-      </div>
-
     </div>
   </div>
 
   <script>
     (function () {
       const states = document.querySelectorAll('.login-state');
-      const toggleButtons = document.querySelectorAll('[data-state-preview]');
       const stateGotoLinks = document.querySelectorAll('[data-state-goto]');
       const form = document.getElementById('login-form');
       const emailInput = document.getElementById('login-email');
@@ -127,8 +117,9 @@
 
       function go(state) {
         states.forEach(s => s.classList.toggle('is-active', s.dataset.state === state));
-        toggleButtons.forEach(b => b.classList.toggle('is-on', b.dataset.statePreview === state));
       }
+      // Tweaks panel drives the preview state (email entry vs. confirmation)
+      window.addEventListener('login-set-state', e => go(e.detail));
 
       form.addEventListener('submit', e => {
         e.preventDefault();
@@ -138,7 +129,6 @@
         go('sent');
       });
 
-      toggleButtons.forEach(b => b.addEventListener('click', () => go(b.dataset.statePreview)));
       stateGotoLinks.forEach(a => a.addEventListener('click', e => {
         e.preventDefault();
         go(a.dataset.stateGoto);
@@ -162,6 +152,40 @@
         }, 1000);
       });
     })();
+  </script>
+
+  <!-- Tweaks panel — hosts demo/preview controls that are NOT part of the product UI -->
+  <div id="login-tweaks-root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "previewState": "Email entry"
+    }/*EDITMODE-END*/;
+
+    const STATE_MAP = { 'Email entry': 'email', 'Confirmation': 'sent' };
+
+    function LoginTweaks() {
+      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      React.useEffect(() => {
+        const state = STATE_MAP[t.previewState] || 'email';
+        window.dispatchEvent(new CustomEvent('login-set-state', { detail: state }));
+      }, [t.previewState]);
+      return (
+        <TweaksPanel>
+          <TweakSection label="Preview" />
+          <TweakRadio
+            label="Screen state"
+            value={t.previewState}
+            options={['Email entry', 'Confirmation']}
+            onChange={(v) => setTweak('previewState', v)} />
+        </TweaksPanel>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('login-tweaks-root')).render(<LoginTweaks />);
   </script>
 </body>
 </html>
