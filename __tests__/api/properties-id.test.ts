@@ -235,6 +235,7 @@ describe('PATCH /api/properties/[id]', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.property.address).toBe('99 New St')
+    expect(mocks.mockUpdateProperty).toHaveBeenCalledWith('user-123', VALID_UUID, expect.objectContaining({ address: '99 New St' }))
   })
 
   it('updates nickname only', async () => {
@@ -346,5 +347,6 @@ describe('DELETE /api/properties/[id]', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.success).toBe(true)
+    expect(mocks.mockDeleteProperty).toHaveBeenCalledWith('user-123', VALID_UUID)
   })
 })

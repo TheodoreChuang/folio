@@ -137,7 +137,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ loan: updated })
+    return NextResponse.json({ success: true })
   } catch (err) {
     captureError(err, { route: 'DELETE /api/properties/[id]/loans/[loanId]' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
