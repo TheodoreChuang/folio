@@ -18,6 +18,42 @@ Unit tests mock the DB at the query boundary. They can verify that the route cal
 
 Anything that depends on a WHERE clause being correct — soft-delete filters, date-range filters, RLS user-scoping — needs an integration test or an explicit code-review checkpoint. Writing a unit test that "covers" a soft-delete query is insufficient; if the `isNull(deletedAt)` condition is missing, the unit test will still pass.
 
+### Test false positive patterns
+
+A unit test is a false positive when it passes even if the route handler logic is completely wrong. This happens when the mock is set up to return exactly what the assertion expects, with no real computation in between — the test is asserting the mock, not the route.
+
+**The pattern to look for:**
+
+```typescript
+// BAD — mock echo: the mock returns what the assertion checks.
+// If the handler body were deleted, this test would still pass.
+mockGetProperties.mockResolvedValue([{ id: '1', address: '123 St' }])
+// ... call route ...
+expect(body.properties[0].address).toBe('123 St')
+```
+
+The tell: mock setup and response assertion are mirrors. The route contributes nothing the test can detect.
+
+**What a good route unit test verifies instead:**
+
+- Auth guard fires → returns 401 when `getUser` returns null
+- Input validation fires → returns 400 for each class of invalid input
+- Service/repository called with correct arguments → especially `userId` from the auth session (cross-user isolation at the unit level)
+- Service errors propagate correctly → returns 404 when service returns null/empty
+- Response is correctly shaped → status code, wrapper key, error shape
+
+These cases test *route behavior*, not mock pass-through. A happy-path test that only checks data flows through is only useful when it also asserts what arguments the mock was called with.
+
+**How to fix a false positive:**
+
+1. Add the missing error-case tests (401, 400, 404) if absent — these are almost never false positives
+2. For the happy-path test: assert `expect(mockService).toHaveBeenCalledWith(expect.objectContaining({ userId }))` to verify the route is scoping correctly
+3. If the route does a non-trivial transformation (mapping, filtering, computing), test that the output differs from the raw mock return in a way that proves the transformation ran
+
+**False positives are not always wrong, but they are always incomplete.** A route that truly does nothing except call a service and return its result is correctly tested by a thin happy-path test — *if* it also has auth, validation, and argument-assertion tests alongside it. The risk is when the happy-path test is the *only* test, giving false confidence.
+
+---
+
 ### Route tests that use `@/lib/db` directly must mock it
 
 `lib/db.ts` imports `lib/env.ts`, which calls `requireEnv('DATABASE_URL')` at module load time. If a route handler imports `db` directly and the test does not mock `@/lib/db`, the test will throw `Missing required environment variable: DATABASE_URL` in CI (where `.env.local` is absent).
