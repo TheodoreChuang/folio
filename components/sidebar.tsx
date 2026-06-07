@@ -55,6 +55,16 @@ function DashboardIcon() {
   return <Icon><rect x="2" y="2" width="5" height="5" rx="1" /><rect x="9" y="2" width="5" height="5" rx="1" /><rect x="2" y="9" width="5" height="5" rx="1" /><rect x="9" y="9" width="5" height="5" rx="1" /></Icon>
 }
 
+function InsightsIcon() {
+  return (
+    <Icon>
+      <rect x="2" y="10" width="3" height="4"/>
+      <rect x="6.5" y="6" width="3" height="8"/>
+      <rect x="11" y="3" width="3" height="11"/>
+    </Icon>
+  )
+}
+
 function UploadIcon() {
   return <Icon><path d="M3 11v2h10v-2" /><path d="M8 3v8M5 6l3-3 3 3" /></Icon>
 }
@@ -192,6 +202,11 @@ export function Sidebar() {
       <NavItem href="/dashboard" active={pathname.startsWith('/dashboard')}>
         <DashboardIcon />
         Portfolio pulse
+      </NavItem>
+
+      <NavItem href="/insights" active={pathname.startsWith('/insights')}>
+        <InsightsIcon />
+        Insights
       </NavItem>
 
       <NavItem href="/upload" active={pathname.startsWith('/upload')}>
