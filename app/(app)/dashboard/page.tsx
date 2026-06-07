@@ -2,78 +2,64 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  ComposedChart,
-  Bar,
-  Line,
-  XAxis,
-  YAxis,
-  ReferenceLine,
-} from 'recharts'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import type { ChartConfig } from '@/components/ui/chart'
 import { MetricTile } from '@/components/ui/metric-tile'
 import { LvrMeter } from '@/components/ui/lvr-meter'
 import { Prompt } from '@/components/ui/prompt'
 import { SectionLabel } from '@/components/ui/section-label'
 import { FilterChip } from '@/components/filter-chip'
 import type { FilterOption } from '@/components/filter-chip'
-import type { Entity } from '@/db/schema'
+import type { Entity, Property } from '@/db/schema'
 import { entityTypeSubLabel } from '@/lib/format'
 import type { ReportTotals } from '@/lib/aggregate'
-import type { TrendPoint } from '@/app/api/reports/trends/route'
 import type { PortfolioLVR } from '@/app/api/portfolio/summary/route'
 
 // ---------- helpers ----------
 
-type PeriodKey = '12m' | '6m' | 'this-fy' | 'last-fy'
-
-function periodToDateRange(period: PeriodKey): { from: string; to: string } {
+function rollingDateRange(months: number): { from: string; to: string } {
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1
+  const start = new Date(year, month - months, 1)
+  const sy = start.getFullYear()
+  const sm = String(start.getMonth() + 1).padStart(2, '0')
+  const endDay = new Date(year, month, 0).getDate()
+  return {
+    from: `${sy}-${sm}-01`,
+    to: `${year}-${String(month).padStart(2, '0')}-${endDay}`,
+  }
+}
 
-  if (period === '12m' || period === '6m') {
-    const n = period === '12m' ? 12 : 6
-    const start = new Date(year, month - n, 1)
-    const sy = start.getFullYear()
-    const sm = String(start.getMonth() + 1).padStart(2, '0')
-    const endDay = new Date(year, month, 0).getDate()
-    return {
-      from: `${sy}-${sm}-01`,
-      to: `${year}-${String(month).padStart(2, '0')}-${endDay}`,
-    }
+
+function buildSubtitle(
+  entityFilter: string | null,
+  properties: Pick<Property, 'id' | 'entityId'>[] | null,
+  entities: Entity[],
+  monthStr: string,
+): string | null {
+  if (properties === null) return null
+
+  const suffix = `current to ${monthStr}`
+
+  if (entityFilter) {
+    const entity = entities.find(e => e.id === entityFilter)
+    const count = properties.filter(p => p.entityId === entityFilter).length
+    const name = entity?.name ?? 'Selected entity'
+    const propPhrase = count === 0 ? 'no properties' : count === 1 ? '1 property' : `${count} properties`
+    return `${name} · ${propPhrase} · ${suffix}`
   }
 
-  // Australian FY: July 1 – June 30
-  const fyStartYear = month >= 7 ? year : year - 1
-  if (period === 'this-fy') {
-    return { from: `${fyStartYear}-07-01`, to: `${fyStartYear + 1}-06-30` }
+  const count = properties.length
+  if (count === 0) return `No properties yet · ${suffix}`
+
+  const entityIds = new Set(properties.map(p => p.entityId).filter(Boolean))
+  const entityCount = entityIds.size
+  const propWord = count === 1 ? 'property' : 'properties'
+  const entWord = entityCount === 1 ? 'entity' : 'entities'
+  if (entityCount > 0) {
+    return `${count} ${propWord} across ${entityCount} ${entWord} · ${suffix}`
   }
-  return { from: `${fyStartYear - 1}-07-01`, to: `${fyStartYear}-06-30` }
+  return `${count} ${propWord} · ${suffix}`
 }
-
-function periodLabel(period: PeriodKey): string {
-  if (period === '12m') return 'last 12 months'
-  if (period === '6m') return 'last 6 months'
-  const { from } = periodToDateRange(period)
-  const fy = parseInt(from.slice(0, 4))
-  return `FY ${fy}–${String(fy + 1).slice(2)}`
-}
-
-function periodMonthCount(period: PeriodKey): number {
-  return period === '6m' ? 6 : 12
-}
-
-function periodSubLabel(period: PeriodKey): string {
-  const { from, to } = periodToDateRange(period)
-  const fmt = (s: string) => {
-    const d = new Date(s + 'T00:00:00')
-    return d.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
-  }
-  return `${fmt(from)} – ${fmt(to)}`
-}
-
 
 function formatMoney(cents: number): string {
   const abs = Math.abs(cents)
@@ -110,46 +96,26 @@ type PlanContextSummary = {
   householdSurplusMonthlyCents: number | null
 }
 
-// ---------- chart config ----------
-
-const cashflowChartConfig = {
-  rent:     { label: 'Rent',             color: 'hsl(152 38% 30% / 0.55)' },
-  expenses: { label: 'Expenses',         color: 'hsl(14 58% 42% / 0.5)' },
-  mortgage: { label: 'Loan repayments',  color: 'hsl(32 6% 38% / 0.45)' },
-  net:      { label: 'Net',              color: 'hsl(188 32% 32%)' },
-} satisfies ChartConfig
-
-type ChartPoint = {
-  label: string
-  month: string
-  rent: number | null
-  expenses: number | null
-  mortgage: number | null
-  net: number | null
-}
-
 // ---------- page ----------
 
 export default function DashboardPage() {
   const router = useRouter()
   const [portfolio, setPortfolio] = useState<PortfolioLVR | null>(null)
   const [ledger, setLedger] = useState<LedgerSummaryResponse | null>(null)
-  const [trends, setTrends] = useState<TrendPoint[] | null>(null)
   const [planContext, setPlanContext] = useState<PlanContextSummary | null>(null)
   const [entities, setEntities] = useState<Entity[]>([])
+  const [properties, setProperties] = useState<Pick<Property, 'id' | 'entityId'>[] | null>(null)
   const [entityFilter, setEntityFilter] = useState<string | null>(null)
-  const [period, setPeriod] = useState<PeriodKey>('12m')
 
-  const loadDashboard = useCallback(async (entityId: string | null, p: PeriodKey, signal?: AbortSignal) => {
+  const loadDashboard = useCallback(async (entityId: string | null, signal?: AbortSignal) => {
     try {
-      const { from, to } = periodToDateRange(p)
+      const { from, to } = rollingDateRange(12)
       const entityQs = entityId ? `&entityId=${entityId}` : ''
       const portfolioQs = entityId ? `?entityId=${entityId}` : ''
 
-      const [portfolioRes, ledgerRes, trendsRes] = await Promise.all([
+      const [portfolioRes, ledgerRes] = await Promise.all([
         fetch(`/api/portfolio/summary${portfolioQs}`, { signal }),
         fetch(`/api/ledger/summary?from=${from}&to=${to}${entityQs}`, { signal }),
-        fetch(`/api/reports/trends?from=${from}&to=${to}${entityQs}`, { signal }),
       ])
 
       if (signal?.aborted) return
@@ -160,9 +126,6 @@ export default function DashboardPage() {
         ? (await portfolioRes.json() as { portfolio: PortfolioLVR }).portfolio
         : null)
       setLedger(ledgerRes.ok ? await ledgerRes.json() as LedgerSummaryResponse : null)
-      setTrends(trendsRes.ok
-        ? (await trendsRes.json() as { trends: TrendPoint[] }).trends
-        : null)
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
       // silent — stale state shown until next load
@@ -171,15 +134,24 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const controller = new AbortController()
-    loadDashboard(entityFilter, period, controller.signal)
+    loadDashboard(entityFilter, controller.signal)
     return () => controller.abort()
-  }, [entityFilter, period, loadDashboard])
+  }, [entityFilter, loadDashboard])
 
   useEffect(() => {
     void fetch('/api/entities')
       .then(r => r.ok ? r.json() : null)
       .then((data: { entities?: Entity[] } | null) => {
         if (data?.entities) setEntities(data.entities)
+      })
+      .catch(() => null)
+  }, [])
+
+  useEffect(() => {
+    void fetch('/api/properties')
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { properties?: Pick<Property, 'id' | 'entityId'>[] } | null) => {
+        if (data?.properties) setProperties(data.properties)
       })
       .catch(() => null)
   }, [])
@@ -195,11 +167,19 @@ export default function DashboardPage() {
 
   // --- derived values ---
 
+  const monthLabel = new Date().toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
+  const subtitle = buildSubtitle(entityFilter, properties, entities, monthLabel)
   const totalValueCents = portfolio?.totalValueCents ?? 0
   const totalDebtCents = portfolio?.totalDebtCents ?? 0
   const netEquityCents = totalValueCents - totalDebtCents
   const lvrPct = portfolio?.lvr ?? null
-  const netCashflow = ledger ? ledger.totals.netAfterMortgage / periodMonthCount(period) : null
+  const loanCount = portfolio?.loansWithBalance ?? null
+  const equityPct = totalValueCents > 0 ? Math.round((netEquityCents / totalValueCents) * 100) : null
+  const lvrLabel = lvrPct === null ? null
+    : lvrPct < 60 ? 'Healthy · < 60%'
+    : lvrPct < 75 ? 'Elevated · 60–75%'
+    : 'High · > 75%'
+  const netCashflow = ledger ? ledger.totals.netAfterMortgage / 12 : null
 
   const personalSurplus = planContext?.householdSurplusMonthlyCents ?? null
   const portfolioCashflow = netCashflow
@@ -211,64 +191,38 @@ export default function DashboardPage() {
     ? ledger.totals.properties.filter(p => !p.hasStatement)
     : []
 
-  const chartData: ChartPoint[] = (trends ?? []).map(pt => ({
-    label: pt.month.slice(5),
-    month: pt.month,
-    rent:     pt.hasData ? pt.rentCents / 100 : null,
-    expenses: pt.hasData ? -(pt.expensesCents / 100) : null,
-    mortgage: pt.hasData ? -(pt.mortgageCents / 100) : null,
-    net:      pt.hasData ? pt.netCents / 100 : null,
-  }))
-
-  const monthLabel = (() => {
-    const now = new Date()
-    return now.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
-  })()
-
   // --- filter options ---
 
   const entityOptions: FilterOption[] = entities.map(e => ({
     id: e.id,
     name: e.name,
     subLabel: entityTypeSubLabel(e.type),
-    count: 0,
+    count: properties?.filter(p => p.entityId === e.id).length ?? 0,
     entityType: e.type,
   }))
-
-  const periodOptions: FilterOption[] = [
-    { id: '12m',     name: 'Last 12 months',     subLabel: periodSubLabel('12m'),     count: 0 },
-    { id: '6m',      name: 'Last 6 months',       subLabel: periodSubLabel('6m'),      count: 0 },
-    { id: 'this-fy', name: 'This financial year', subLabel: periodSubLabel('this-fy'), count: 0 },
-    { id: 'last-fy', name: 'Last financial year', subLabel: periodSubLabel('last-fy'), count: 0 },
-  ]
 
   return (
     <div className="space-y-8">
       {/* Page head */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+      <div className="flex items-end justify-between gap-6">
+        <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Portfolio</h1>
-          <FilterChip
-            label="Period"
-            labelPlural="periods"
-            value={period}
-            options={periodOptions}
-            onChange={(v) => setPeriod((v ?? '12m') as PeriodKey)}
-            variant="simple"
-            align="end"
-          />
+          {subtitle && (
+            <p className="font-display italic font-light text-foreground-muted text-lg mt-1.5 leading-snug">
+              {subtitle}
+            </p>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <FilterChip
-            label="Entity"
-            labelPlural="entities"
-            value={entityFilter}
-            options={entityOptions}
-            onChange={setEntityFilter}
-            variant="rich"
-            actionLink={{ href: '/entities', label: 'Add or manage entities' }}
-          />
-        </div>
+        <FilterChip
+          label="Entity"
+          labelPlural="entities"
+          value={entityFilter}
+          options={entityOptions}
+          onChange={setEntityFilter}
+          variant="rich"
+          align="end"
+          actionLink={{ href: '/entities', label: 'Add or manage entities' }}
+        />
       </div>
 
       {/* Prompts strip — statement completeness only */}
@@ -291,32 +245,33 @@ export default function DashboardPage() {
       {/* Portfolio metrics */}
       <div>
         <SectionLabel>Portfolio position · {monthLabel}</SectionLabel>
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <MetricTile
             label="Total value"
             value={formatMillions(totalValueCents)}
+            foot={portfolio !== null ? <span className="text-foreground-muted">{portfolio.propertiesTotal} {portfolio.propertiesTotal === 1 ? 'property' : 'properties'}</span> : undefined}
           />
           <MetricTile
             label="Total debt"
             value={formatMillions(totalDebtCents)}
+            foot={loanCount !== null ? <span className="text-foreground-muted">{loanCount} {loanCount === 1 ? 'loan' : 'loans'}</span> : undefined}
           />
           <MetricTile
             label="Net equity"
             value={formatMillions(netEquityCents)}
+            foot={equityPct !== null ? <span className="text-foreground-muted">{equityPct}% of value</span> : undefined}
           />
           <MetricTile
             label="Portfolio LVR"
             value={lvrPct !== null ? `${lvrPct}%` : '—'}
             foot={
               lvrPct !== null ? (
-                <LvrMeter value={lvrPct / 100} className="w-full" />
+                <div className="flex flex-col gap-2 w-full">
+                  <LvrMeter value={lvrPct / 100} className="w-full" />
+                  {lvrLabel && <span>{lvrLabel}</span>}
+                </div>
               ) : undefined
             }
-          />
-          <MetricTile
-            label="Net cashflow · monthly"
-            value={netCashflow !== null ? formatMoney(netCashflow) : '—'}
-            valueClassName={netCashflow !== null && netCashflow < 0 ? 'text-negative' : undefined}
           />
         </div>
       </div>
@@ -344,7 +299,7 @@ export default function DashboardPage() {
                 label="Portfolio cashflow"
                 value={formatMoney(portfolioCashflow)}
                 valueClassName={portfolioCashflow < 0 ? 'text-negative' : undefined}
-                foot={<span className="text-foreground-muted">after loan repayments</span>}
+                foot={<span className="text-foreground-muted">after loan repayments · 12-mo avg</span>}
                 className="flex-1"
               />
               <div className="flex items-center text-2xl font-light text-foreground-subtle px-1">=</div>
@@ -366,7 +321,7 @@ export default function DashboardPage() {
                 label="Portfolio cashflow"
                 value={formatMoney(portfolioCashflow)}
                 valueClassName={portfolioCashflow < 0 ? 'text-negative' : undefined}
-                foot={<span className="text-foreground-muted">after loan repayments</span>}
+                foot={<span className="text-foreground-muted">after loan repayments · 12-mo avg</span>}
                 className="flex-1"
               />
               <div className="flex-1 flex items-center">
@@ -379,102 +334,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Cashflow trend chart */}
-      <div>
-        <SectionLabel>Cashflow trend · {periodLabel(period)}</SectionLabel>
-        <div className="bg-surface border border-border rounded-[7px] p-5">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-medium text-foreground">Monthly cashflow composition</span>
-            <div className="flex items-center gap-4 text-xs text-foreground-muted">
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-sm"
-                  style={{ background: 'hsl(152 38% 30% / 0.55)' }}
-                />
-                Rent
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-sm"
-                  style={{ background: 'hsl(14 58% 42% / 0.5)' }}
-                />
-                Expenses
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-sm"
-                  style={{ background: 'hsl(32 6% 38% / 0.45)' }}
-                />
-                Loan repayments
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span
-                  className="inline-block w-2.5 h-0.5 rounded-sm"
-                  style={{ background: 'hsl(188 32% 32%)' }}
-                />
-                Net
-              </span>
-            </div>
-          </div>
-          <ChartContainer config={cashflowChartConfig} className="h-[220px] w-full">
-            <ComposedChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11, fill: 'hsl(34 5% 56%)' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: 'hsl(34 5% 56%)' }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={v => {
-                  const abs = Math.abs(v as number)
-                  if (abs >= 1000) return `${(v as number) < 0 ? '−' : ''}$${abs / 1000}k`
-                  return `$${v}`
-                }}
-                width={48}
-              />
-              <ReferenceLine y={0} stroke="hsl(36 12% 86%)" strokeWidth={1} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              {/* Rent — positive stack */}
-              <Bar
-                dataKey="rent"
-                stackId="positive"
-                fill="hsl(152 38% 30% / 0.55)"
-                radius={[2, 2, 0, 0]}
-                isAnimationActive={false}
-              />
-              {/* Expenses — negative stack */}
-              <Bar
-                dataKey="expenses"
-                stackId="negative"
-                fill="hsl(14 58% 42% / 0.5)"
-                radius={[0, 0, 0, 0]}
-                isAnimationActive={false}
-              />
-              {/* Mortgage — stacked on expenses below zero */}
-              <Bar
-                dataKey="mortgage"
-                stackId="negative"
-                fill="hsl(32 6% 38% / 0.45)"
-                radius={[0, 0, 2, 2]}
-                isAnimationActive={false}
-              />
-              {/* Net cashflow line */}
-              <Line
-                dataKey="net"
-                stroke="hsl(188 32% 32%)"
-                strokeWidth={1.6}
-                dot={{ r: 2.2, fill: 'hsl(188 32% 32%)', strokeWidth: 0 }}
-                activeDot={{ r: 3 }}
-                connectNulls={false}
-                isAnimationActive={false}
-              />
-            </ComposedChart>
-          </ChartContainer>
-        </div>
-      </div>
     </div>
   )
 }

@@ -169,6 +169,25 @@ describe('GET /api/portfolio/summary', () => {
     expect(portfolio.propertiesTotal).toBe(2)
   })
 
+  it('only sums valuations for properties in scope (entity-filter regression)', async () => {
+    // Simulate the repository returning all valuations user-wide but properties
+    // filtered to one entity — totalValueCents must not include the excluded property.
+    mocks.mockFetchPortfolioData.mockResolvedValueOnce({
+      properties: [propRow2], // entity-scoped: only PROP_ID2
+      valuations: [
+        valuationRow,                                                           // PROP_ID  — NOT in scope
+        { propertyId: PROP_ID2, valueCents: 80000000, valuedAt: '2026-02-01' }, // PROP_ID2 — in scope
+      ],
+      balances: [],
+      loans: [],
+    })
+    const res = await GET(new Request('http://localhost/api/portfolio/summary?entityId=entity-001'))
+    const { portfolio } = await res.json()
+    expect(portfolio.totalValueCents).toBe(80000000)  // only PROP_ID2
+    expect(portfolio.propertiesValued).toBe(1)
+    expect(portfolio.propertiesTotal).toBe(1)
+  })
+
   it('passes entityId to fetchPortfolioData when provided', async () => {
     const ENTITY_ID = 'entity-001'
     await GET(new Request(`http://localhost/api/portfolio/summary?entityId=${ENTITY_ID}`))

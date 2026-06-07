@@ -35,7 +35,8 @@ export function computePortfolioLVR(
 
   const activeLoans = loans.filter(l => !l.endDate || l.endDate > today)
 
-  const totalValueCents = Array.from(latestValuationMap.values()).reduce((sum, v) => sum + v, 0)
+  const totalValueCents = allProperties.reduce((sum, p) =>
+    sum + (latestValuationMap.get(p.id) ?? 0), 0)
   const totalDebtCents = activeLoans
     .filter(l => latestBalanceMap.has(l.id))
     .reduce((sum, l) => sum + (latestBalanceMap.get(l.id) ?? 0), 0)
@@ -48,7 +49,7 @@ export function computePortfolioLVR(
     totalValueCents,
     totalDebtCents,
     lvr,
-    propertiesValued: latestValuationMap.size,
+    propertiesValued: allProperties.filter(p => latestValuationMap.has(p.id)).length,
     propertiesTotal: allProperties.length,
     loansWithBalance: activeLoans.filter(l => latestBalanceMap.has(l.id)).length,
     activeLoansTotal: activeLoans.length,
