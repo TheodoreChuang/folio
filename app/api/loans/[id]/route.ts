@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
-import { and, eq } from 'drizzle-orm'
 import { findInstallmentLoanDetail, updateInstallmentLoanById } from '@/lib/borrowings'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
-import { db } from '@/lib/db'
-import { entities } from '@/db/schema'
+import { findEntityById } from '@/lib/entities'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
@@ -110,11 +108,7 @@ export async function PATCH(
     if ('entityId' in raw) {
       const entityId = typeof raw.entityId === 'string' && UUID_REGEX.test(raw.entityId) ? raw.entityId : null
       if (entityId) {
-        const [ent] = await db
-          .select({ id: entities.id })
-          .from(entities)
-          .where(and(eq(entities.id, entityId), eq(entities.userId, user.id)))
-          .limit(1)
+        const ent = await findEntityById(user.id, entityId)
         if (!ent) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       }
       updates.entityId = entityId

@@ -122,6 +122,12 @@ describe('PATCH /api/properties/[id]/loans/[loanId]', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.loan.lender).toBe('ANZ')
+    expect(mocks.mockUpdateInstallmentLoan).toHaveBeenCalledWith(
+      'user-123',
+      VALID_PROP_ID,
+      VALID_LOAN_ID,
+      expect.objectContaining({ lender: 'ANZ' }),
+    )
   })
 
   it('returns 200 when endDate is updated', async () => {

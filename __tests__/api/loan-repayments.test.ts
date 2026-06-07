@@ -147,6 +147,11 @@ describe('POST /api/loans/[id]/repayments', () => {
     expect(res.status).toBe(201)
     const json = await res.json() as { repayment: { id: string } }
     expect(json.repayment.id).toBe(repaymentRow.id)
+    expect(mocks.mockCreateLoanLedgerEntry).toHaveBeenCalledWith(
+      'user-123',
+      VALID_LOAN_ID,
+      expect.objectContaining({ paymentDate: '2026-04-01', amountCents: 216700 }),
+    )
   })
 
   it('returns 400 when paymentDate is missing', async () => {
