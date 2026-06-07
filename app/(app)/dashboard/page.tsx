@@ -15,52 +15,42 @@ import type { PortfolioLVR } from '@/app/api/portfolio/summary/route'
 
 // ---------- helpers ----------
 
-type PeriodKey = '12m' | '6m' | 'this-fy' | 'last-fy'
-
-function periodToDateRange(period: PeriodKey): { from: string; to: string } {
+function rollingDateRange(months: number): { from: string; to: string } {
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1
-
-  if (period === '12m' || period === '6m') {
-    const n = period === '12m' ? 12 : 6
-    const start = new Date(year, month - n, 1)
-    const sy = start.getFullYear()
-    const sm = String(start.getMonth() + 1).padStart(2, '0')
-    const endDay = new Date(year, month, 0).getDate()
-    return {
-      from: `${sy}-${sm}-01`,
-      to: `${year}-${String(month).padStart(2, '0')}-${endDay}`,
-    }
+  const start = new Date(year, month - months, 1)
+  const sy = start.getFullYear()
+  const sm = String(start.getMonth() + 1).padStart(2, '0')
+  const endDay = new Date(year, month, 0).getDate()
+  return {
+    from: `${sy}-${sm}-01`,
+    to: `${year}-${String(month).padStart(2, '0')}-${endDay}`,
   }
-
-  // Australian FY: July 1 – June 30
-  const fyStartYear = month >= 7 ? year : year - 1
-  if (period === 'this-fy') {
-    return { from: `${fyStartYear}-07-01`, to: `${fyStartYear + 1}-06-30` }
-  }
-  return { from: `${fyStartYear - 1}-07-01`, to: `${fyStartYear}-06-30` }
 }
 
 
 function buildSubtitle(
   entityFilter: string | null,
-  properties: Pick<Property, 'id' | 'entityId'>[],
+  properties: Pick<Property, 'id' | 'entityId'>[] | null,
   entities: Entity[],
-): string {
-  const now = new Date()
-  const monthStr = now.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
+  monthStr: string,
+): string | null {
+  if (properties === null) return null
+
   const suffix = `current to ${monthStr}`
 
   if (entityFilter) {
     const entity = entities.find(e => e.id === entityFilter)
     const count = properties.filter(p => p.entityId === entityFilter).length
     const name = entity?.name ?? 'Selected entity'
-    const propWord = count === 1 ? 'property' : 'properties'
-    return `${name} · ${count} ${propWord} · ${suffix}`
+    const propPhrase = count === 0 ? 'no properties' : count === 1 ? '1 property' : `${count} properties`
+    return `${name} · ${propPhrase} · ${suffix}`
   }
 
   const count = properties.length
+  if (count === 0) return `No properties yet · ${suffix}`
+
   const entityIds = new Set(properties.map(p => p.entityId).filter(Boolean))
   const entityCount = entityIds.size
   const propWord = count === 1 ? 'property' : 'properties'
@@ -114,12 +104,12 @@ export default function DashboardPage() {
   const [ledger, setLedger] = useState<LedgerSummaryResponse | null>(null)
   const [planContext, setPlanContext] = useState<PlanContextSummary | null>(null)
   const [entities, setEntities] = useState<Entity[]>([])
-  const [properties, setProperties] = useState<Pick<Property, 'id' | 'entityId'>[]>([])
+  const [properties, setProperties] = useState<Pick<Property, 'id' | 'entityId'>[] | null>(null)
   const [entityFilter, setEntityFilter] = useState<string | null>(null)
 
   const loadDashboard = useCallback(async (entityId: string | null, signal?: AbortSignal) => {
     try {
-      const { from, to } = periodToDateRange('12m')
+      const { from, to } = rollingDateRange(12)
       const entityQs = entityId ? `&entityId=${entityId}` : ''
       const portfolioQs = entityId ? `?entityId=${entityId}` : ''
 
@@ -177,7 +167,8 @@ export default function DashboardPage() {
 
   // --- derived values ---
 
-  const subtitle = buildSubtitle(entityFilter, properties, entities)
+  const monthLabel = new Date().toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
+  const subtitle = buildSubtitle(entityFilter, properties, entities, monthLabel)
   const totalValueCents = portfolio?.totalValueCents ?? 0
   const totalDebtCents = portfolio?.totalDebtCents ?? 0
   const netEquityCents = totalValueCents - totalDebtCents
@@ -200,18 +191,13 @@ export default function DashboardPage() {
     ? ledger.totals.properties.filter(p => !p.hasStatement)
     : []
 
-  const monthLabel = (() => {
-    const now = new Date()
-    return now.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
-  })()
-
   // --- filter options ---
 
   const entityOptions: FilterOption[] = entities.map(e => ({
     id: e.id,
     name: e.name,
     subLabel: entityTypeSubLabel(e.type),
-    count: properties.filter(p => p.entityId === e.id).length,
+    count: properties?.filter(p => p.entityId === e.id).length ?? 0,
     entityType: e.type,
   }))
 
@@ -221,9 +207,11 @@ export default function DashboardPage() {
       <div className="flex items-end justify-between gap-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Portfolio</h1>
-          <p className="font-display italic font-light text-foreground-muted text-lg mt-1.5 leading-snug">
-            {subtitle}
-          </p>
+          {subtitle && (
+            <p className="font-display italic font-light text-foreground-muted text-lg mt-1.5 leading-snug">
+              {subtitle}
+            </p>
+          )}
         </div>
         <FilterChip
           label="Entity"
