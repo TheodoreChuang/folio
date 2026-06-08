@@ -8,8 +8,6 @@ import { captureError } from '@/lib/api-error'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-// DELETE /api/documents/[id]
-// Soft-deletes a source document and its associated ledger entries, then removes the storage file.
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -40,7 +38,7 @@ export async function DELETE(
         const softDeletedEntries = await tx
           .update(propertyLedger)
           .set({ deletedAt: new Date() })
-          .where(eq(propertyLedger.sourceDocumentId, id))
+          .where(and(eq(propertyLedger.sourceDocumentId, id), isNull(propertyLedger.deletedAt)))
           .returning()
         entriesDeleted = softDeletedEntries.length
 

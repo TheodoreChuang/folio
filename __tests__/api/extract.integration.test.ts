@@ -4,19 +4,6 @@ import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-const VALID_CATEGORIES = [
-  'rent',
-  'insurance',
-  'rates',
-  'repairs',
-  'property_management',
-  'utilities',
-  'strata_fees',
-  'other_expense',
-  'loan_payment',
-] as const
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
-
 const refs = vi.hoisted(() => ({
   cookieStore: [] as { name: string; value: string }[],
 }))
@@ -116,7 +103,7 @@ describe('POST /api/extract (integration)', () => {
     )
   }
 
-  it('full flow: upload fixture PDF → extract → returns valid ExtractionResult shape', async () => {
+  it('full flow: upload fixture PDF → extract → returns sourceDocumentId and stagedCount', async () => {
     if (!hasEnv || !sourceDocumentId) return
     if (!hasAnthropicKey) return
     const res = await extractRequest(sourceDocumentId, '2026-03')
@@ -129,45 +116,8 @@ describe('POST /api/extract (integration)', () => {
     }
     const json = await res.json()
     expect(json.sourceDocumentId).toBe(sourceDocumentId)
-    expect(json.result).toBeDefined()
-    expect(json.result.propertyAddress).toBeDefined()
-    expect(typeof json.result.propertyAddress).toBe('string')
-    expect(json.result.statementPeriodStart).toMatch(DATE_REGEX)
-    expect(json.result.statementPeriodEnd).toMatch(DATE_REGEX)
-    expect(Array.isArray(json.result.lineItems)).toBe(true)
-    expect(json.result.lineItems.length).toBeGreaterThanOrEqual(1)
-  })
-
-  it('all returned amountCents are positive integers', async () => {
-    if (!hasEnv || !sourceDocumentId || !hasAnthropicKey) return
-    const res = await extractRequest(sourceDocumentId, '2026-03')
-    if (res.status !== 200) return
-    const json = await res.json()
-    for (const item of json.result.lineItems) {
-      expect(Number.isInteger(item.amountCents)).toBe(true)
-      expect(item.amountCents).toBeGreaterThan(0)
-    }
-  })
-
-  it('all returned dates are valid YYYY-MM-DD', async () => {
-    if (!hasEnv || !sourceDocumentId || !hasAnthropicKey) return
-    const res = await extractRequest(sourceDocumentId, '2026-03')
-    if (res.status !== 200) return
-    const json = await res.json()
-    expect(json.result.statementPeriodStart).toMatch(DATE_REGEX)
-    expect(json.result.statementPeriodEnd).toMatch(DATE_REGEX)
-    for (const item of json.result.lineItems) {
-      expect(item.lineItemDate).toMatch(DATE_REGEX)
-    }
-  })
-
-  it('all returned categories are valid enum values', async () => {
-    if (!hasEnv || !sourceDocumentId || !hasAnthropicKey) return
-    const res = await extractRequest(sourceDocumentId, '2026-03')
-    if (res.status !== 200) return
-    const json = await res.json()
-    for (const item of json.result.lineItems) {
-      expect(VALID_CATEGORIES).toContain(item.category)
-    }
+    expect(typeof json.stagedCount).toBe('number')
+    expect(json.stagedCount).toBeGreaterThanOrEqual(0)
+    expect(json.result).toBeUndefined()
   })
 })

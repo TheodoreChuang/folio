@@ -1,12 +1,12 @@
 import { createHash } from 'crypto'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { sourceDocuments } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
-import { captureError } from '@/lib/api-error'
+import { captureError, getStorageStatusCode } from '@/lib/api-error'
 import { MAX_UPLOAD_BYTES } from '@/lib/constants'
 
 const documentTypeSchema = z.enum(['pm_statement', 'loan_statement', 'unknown'])
@@ -92,7 +92,8 @@ export async function POST(request: Request) {
     .where(
       and(
         eq(sourceDocuments.userId, userId),
-        eq(sourceDocuments.fileHash, hash)
+        eq(sourceDocuments.fileHash, hash),
+        isNull(sourceDocuments.deletedAt)
       )
     )
     .limit(1)
@@ -116,9 +117,8 @@ export async function POST(request: Request) {
     })
 
   if (uploadError) {
-    logger.debug('storage upload failed', { statusCode: (uploadError as { statusCode?: string }).statusCode })
-
-    const statusCode = (uploadError as { statusCode?: string }).statusCode
+    const statusCode = getStorageStatusCode(uploadError)
+    logger.debug('storage upload failed', { statusCode })
     if (statusCode === '409') {
       return NextResponse.json(
         { error: 'File already uploaded' },
@@ -157,7 +157,7 @@ export async function POST(request: Request) {
       sourceDocumentId: doc.id,
       filePath: doc.filePath,
       isDuplicate: false,
-    })
+    }, { status: 201 })
   } catch (err) {
     await supabase.storage.from('documents').remove([filePath])
 
@@ -174,7 +174,8 @@ export async function POST(request: Request) {
         .where(
           and(
             eq(sourceDocuments.userId, userId),
-            eq(sourceDocuments.fileHash, hash)
+            eq(sourceDocuments.fileHash, hash),
+            isNull(sourceDocuments.deletedAt)
           )
         )
         .limit(1)

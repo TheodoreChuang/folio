@@ -116,7 +116,7 @@ describe('POST /api/upload', () => {
       size: exactlyOneMb,
     })
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(201)
   })
 
   it('rejects invalid documentType (400)', async () => {
@@ -129,7 +129,7 @@ describe('POST /api/upload', () => {
   it('succeeds when documentType is absent (defaults to unknown)', async () => {
     const form = formDataWithFile({ documentType: null })
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(201)
     expect(mocks.mockUpload).toHaveBeenCalledWith(
       'documents/user-123/documents/test.pdf',
       expect.any(ArrayBuffer),
@@ -154,7 +154,7 @@ describe('POST /api/upload', () => {
   it('returns isDuplicate: false and correct shape on new upload', async () => {
     const form = formDataWithFile({})
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(201)
     const json = await res.json()
     expect(json.isDuplicate).toBe(false)
     expect(json.sourceDocumentId).toBe('doc-uuid')
@@ -175,7 +175,7 @@ describe('POST /api/upload', () => {
     expect(mocks.mockUpload).not.toHaveBeenCalled()
   })
 
-  it('deletes storage object if DB insert fails (cleanup)', async () => {
+  it('deletes storage object if DB insert fails and returns 500', async () => {
     mocks.mockInsertReturning.mockRejectedValue(new Error('DB error'))
     const form = formDataWithFile({ fileName: 'cleanup-test.pdf' })
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
