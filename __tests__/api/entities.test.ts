@@ -12,7 +12,9 @@ const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockSelect: vi.fn(),
   mockInsertValues: vi.fn(),
+  mockInsertValuesCall: vi.fn(),
   mockUpdateSet: vi.fn(),
+  mockUpdateSetCall: vi.fn(),
   mockDeleteWhere: vi.fn(),
 }))
 
@@ -39,15 +41,19 @@ vi.mock('@/lib/db', () => ({
       }),
     }),
     insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        returning: mocks.mockInsertValues,
+      values: vi.fn().mockImplementation((vals) => {
+        mocks.mockInsertValuesCall(vals)
+        return { returning: mocks.mockInsertValues }
       }),
     }),
     update: vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          returning: mocks.mockUpdateSet,
-        }),
+      set: vi.fn().mockImplementation((vals) => {
+        mocks.mockUpdateSetCall(vals)
+        return {
+          where: vi.fn().mockReturnValue({
+            returning: mocks.mockUpdateSet,
+          }),
+        }
       }),
     }),
     delete: vi.fn().mockReturnValue({
@@ -127,6 +133,9 @@ describe('POST /api/entities', () => {
     const { entity } = await res.json()
     expect(entity.name).toBe('Personal')
     expect(entity.type).toBe('individual')
+    expect(mocks.mockInsertValuesCall).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-123', name: 'Personal', type: 'individual' })
+    )
   })
 
   it('accepts all valid entity types', async () => {
@@ -176,6 +185,7 @@ describe('PATCH /api/entities/[id]', () => {
     expect(res.status).toBe(200)
     const { entity } = await res.json()
     expect(entity.name).toBe('Family Trust')
+    expect(mocks.mockUpdateSetCall).toHaveBeenCalledWith({ name: 'Family Trust' })
   })
 })
 

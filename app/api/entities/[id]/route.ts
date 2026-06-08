@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
@@ -6,6 +7,12 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const patchSchema = z.object({
+  name: z.string({ required_error: 'name is required' })
+    .min(1, 'name is required')
+    .max(200, 'name too long (max 200)'),
+})
 
 export async function PATCH(
   request: Request,
@@ -19,17 +26,11 @@ export async function PATCH(
     const { id } = await params
     if (!UUID_REGEX.test(id)) return NextResponse.json({ error: 'Invalid entity ID' }, { status: 400 })
 
-    let body: unknown
-    try {
-      body = await request.json()
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    const parsed = patchSchema.safeParse(await request.json().catch(() => null))
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
-
-    const raw = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
-    const name = typeof raw.name === 'string' ? raw.name.trim() : ''
-    if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 })
-    if (name.length > 200) return NextResponse.json({ error: 'name too long (max 200)' }, { status: 400 })
+    const { name } = parsed.data
 
     const [updated] = await db
       .update(entities)
