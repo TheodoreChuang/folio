@@ -167,4 +167,9 @@ describe('DELETE /api/household/items/[id]', () => {
     const body = await res.json()
     expect(body.success).toBe(true)
   })
+
+  it('calls softDeleteBudgetItem with userId and item id', async () => {
+    await DELETE(makeRequest('DELETE'), makeParams(ITEM_ID))
+    expect(softDeleteBudgetItem).toHaveBeenCalledWith(USER_ID, ITEM_ID)
+  })
 })
