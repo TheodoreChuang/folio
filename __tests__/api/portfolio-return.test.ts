@@ -112,4 +112,18 @@ describe('GET /api/portfolio/return', () => {
       'user-123', '2025-06-01', '2026-06-30', null
     )
   })
+
+  it('passes correct periodMonths to computeReturn (13 months for 2025-06-01 to 2026-06-30)', async () => {
+    await GET(makeRequest({ from: '2025-06-01', to: '2026-06-30' }))
+    expect(mocks.mockComputeReturn).toHaveBeenCalledWith(
+      expect.objectContaining({ periodMonths: 13 })
+    )
+  })
+
+  it('passes correct periodMonths to computeReturn (1 month for single-month range)', async () => {
+    await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
+    expect(mocks.mockComputeReturn).toHaveBeenCalledWith(
+      expect.objectContaining({ periodMonths: 1 })
+    )
+  })
 })

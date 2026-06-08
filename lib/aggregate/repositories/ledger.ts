@@ -3,6 +3,34 @@ import { db } from '@/lib/db'
 import { propertyLedger, properties, installmentLoans } from '@/db/schema'
 import type { Property, InstallmentLoan, PropertyLedger } from '@/db/schema'
 
+export async function fetchLedgerEntryForDelete(
+  userId: string,
+  id: string,
+): Promise<PropertyLedger | undefined> {
+  const [entry] = await db
+    .select()
+    .from(propertyLedger)
+    .where(and(
+      eq(propertyLedger.id, id),
+      eq(propertyLedger.userId, userId),
+      isNull(propertyLedger.deletedAt),
+    ))
+    .limit(1)
+  return entry
+}
+
+export async function softDeleteLedgerEntry(
+  userId: string,
+  id: string,
+): Promise<PropertyLedger> {
+  const [updated] = await db
+    .update(propertyLedger)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(propertyLedger.id, id), eq(propertyLedger.userId, userId)))
+    .returning()
+  return updated
+}
+
 export async function fetchPropertiesActiveInRange(
   userId: string,
   from: string,

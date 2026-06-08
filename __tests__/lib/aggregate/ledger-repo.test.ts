@@ -105,9 +105,8 @@ describe('fetchLedgerEntriesInRange', () => {
     expect(mocks.mockWhere).toHaveBeenCalled()
   })
 
-  it('applies soft-delete filter — does not return deleted entries', async () => {
-    // The isNull(deletedAt) condition is in the query; integration tests verify correctness.
-    // Here: assert the function hits the DB (not short-circuited) when propertyIds has items.
+  it('reaches the DB (does not short-circuit) when propertyIds array is non-empty', async () => {
+    // isNull(deletedAt) correctness is verified at the integration test level.
     await fetchLedgerEntriesInRange('user-123', '2026-03-01', '2026-03-31', [PROP_ID])
     expect(mocks.mockWhere).toHaveBeenCalled()
   })

@@ -47,10 +47,8 @@ describe('fetchTrendData', () => {
     // userId is applied in the where clause (verified by RLS isolation)
   })
 
-  it('applies soft-delete filter (isNull deletedAt)', async () => {
-    // This test verifies the query path includes deletedAt = IS NULL.
-    // Correctness is enforced at the integration test level; here we assert
-    // the function reaches the groupBy (i.e. does not short-circuit before filtering).
+  it('reaches groupBy (does not short-circuit) for a normal userId query', async () => {
+    // isNull(deletedAt) correctness is verified at the integration test level.
     mocks.mockGroupBy.mockResolvedValueOnce([{ month: '2026-03', category: 'rent', totalCents: 100 }])
     const result = await fetchTrendData('user-123', '2026-01-01', '2026-03-31')
     expect(result).toHaveLength(1)

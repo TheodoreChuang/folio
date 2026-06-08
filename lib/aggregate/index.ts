@@ -16,6 +16,8 @@ export {
   fetchPropertiesActiveInRange,
   fetchLoansActiveInRange,
   fetchLedgerEntriesInRange,
+  fetchLedgerEntryForDelete,
+  softDeleteLedgerEntry,
 } from './repositories/ledger'
 
 export { fetchPlanContext } from './plan/context'
