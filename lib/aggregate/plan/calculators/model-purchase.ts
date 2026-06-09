@@ -151,7 +151,6 @@ export function computeModelPurchase(input: ModelPurchaseInput): ModelPurchaseRe
     runningCosts.maintenanceCents +
     runningCosts.adminCents
 
-  // Percentage costs are computed as a fraction of gross annual rent
   const pmFeeAnnualCents = (runningCosts.pmFeePct / 100) * annualRentCents
   const vacancyAnnualCents = (runningCosts.vacancyPct / 100) * annualRentCents
 
