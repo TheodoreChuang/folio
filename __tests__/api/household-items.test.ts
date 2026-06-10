@@ -212,13 +212,20 @@ describe('POST /api/household/items', () => {
     }
   })
 
+  it('calls createBudgetItem with userId from session', async () => {
+    await POST(makeRequest('POST', { type: 'income', name: 'Salary', amountCents: 500000, frequency: 'monthly' }))
+    expect(createBudgetItem).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: USER_ID })
+    )
+  })
+
   it('accepts optional effectiveFrom', async () => {
     const res = await POST(makeRequest('POST', {
       type: 'income', name: 'Salary', amountCents: 500000, frequency: 'monthly', effectiveFrom: '2024-06-01',
     }))
     expect(res.status).toBe(201)
     expect(createBudgetItem).toHaveBeenCalledWith(
-      expect.objectContaining({ effectiveFrom: '2024-06-01' })
+      expect.objectContaining({ userId: USER_ID, effectiveFrom: '2024-06-01' })
     )
   })
 
