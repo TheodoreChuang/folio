@@ -124,3 +124,12 @@ export async function deleteProperty(userId: string, id: string): Promise<Proper
     .returning()
   return row
 }
+
+export async function hasPropertyForEntity(userId: string, entityId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: properties.id })
+    .from(properties)
+    .where(and(eq(properties.userId, userId), eq(properties.entityId, entityId)))
+    .limit(1)
+  return rows.length > 0
+}
