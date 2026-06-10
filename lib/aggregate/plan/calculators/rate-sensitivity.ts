@@ -1,7 +1,5 @@
 import type { PlanContext, PlanContextLoan } from '@/lib/aggregate/plan/context'
 
-// PMT formula: monthly payment for a P&I loan.
-// r = monthly rate (decimal), n = number of months, pv = principal in cents
 export function pmt(annualRatePct: number, termMonths: number, balanceCents: number): number {
   const r = annualRatePct / 100 / 12
   if (r === 0) return Math.round(balanceCents / termMonths)

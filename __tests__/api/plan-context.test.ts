@@ -136,6 +136,13 @@ describe('GET /api/plan/context', () => {
     expect(body.context).toHaveProperty('loans')
   })
 
+  it('passes the authenticated user id to all data-fetching repositories', async () => {
+    await GET()
+    expect(mocks.mockFetchPortfolioData).toHaveBeenCalledWith(USER_ID)
+    expect(mocks.mockListBudgetItems).toHaveBeenCalledWith(USER_ID)
+    expect(mocks.mockFetchLedgerEntriesInRange).toHaveBeenCalledWith(USER_ID, expect.any(String), expect.any(String))
+  })
+
   // ── counts.variableLoans ───────────────────────────────────────────────────
 
   it('returns counts.variableLoans = 0 when no variable loans exist', async () => {
