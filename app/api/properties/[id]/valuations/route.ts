@@ -1,10 +1,21 @@
+import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { findPropertyById, listValuations, createValuation } from '@/lib/property'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const postSchema = z.object({
+  valuedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'valuedAt must be YYYY-MM-DD'),
+  valueCents: z.number({ required_error: 'valueCents is required', invalid_type_error: 'valueCents must be a positive integer' })
+    .int('valueCents must be a positive integer')
+    .positive('valueCents must be a positive integer'),
+  source: z.string().max(200, 'source too long (max 200 characters)').nullable().optional()
+    .transform(v => v == null ? null : v.trim() || null),
+  notes: z.string().max(500, 'notes too long (max 500 characters)').nullable().optional()
+    .transform(v => v == null ? null : v.trim() || null),
+})
 
 export async function GET(
   _request: Request,
@@ -47,38 +58,11 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid property ID' }, { status: 400 })
     }
 
-    let body: unknown
-    try {
-      body = await request.json()
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    const parsed = postSchema.safeParse(await request.json().catch(() => null))
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
-
-    const raw = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
-
-    const valuedAt = typeof raw.valuedAt === 'string' ? raw.valuedAt.trim() : ''
-    if (!DATE_REGEX.test(valuedAt)) {
-      return NextResponse.json({ error: 'valuedAt must be YYYY-MM-DD' }, { status: 400 })
-    }
-
-    const valueCents = raw.valueCents
-    if (typeof valueCents !== 'number' || !Number.isInteger(valueCents) || valueCents <= 0) {
-      return NextResponse.json({ error: 'valueCents must be a positive integer' }, { status: 400 })
-    }
-
-    const source = raw.source != null
-      ? (typeof raw.source === 'string' ? raw.source.trim() : null)
-      : null
-    if (source !== null && source.length > 200) {
-      return NextResponse.json({ error: 'source too long (max 200 characters)' }, { status: 400 })
-    }
-
-    const notes = raw.notes != null
-      ? (typeof raw.notes === 'string' ? raw.notes.trim() : null)
-      : null
-    if (notes !== null && notes.length > 500) {
-      return NextResponse.json({ error: 'notes too long (max 500 characters)' }, { status: 400 })
-    }
+    const { valuedAt, valueCents, source, notes } = parsed.data
 
     const property = await findPropertyById(user.id, id)
     if (!property) {
@@ -90,8 +74,8 @@ export async function POST(
       propertyId: id,
       valuedAt,
       valueCents,
-      source: source || null,
-      notes: notes || null,
+      source: source ?? null,
+      notes: notes ?? null,
     })
 
     return NextResponse.json({ valuation }, { status: 201 })

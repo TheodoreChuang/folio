@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { and, eq } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { entities } from '@/db/schema'
 import { getPropertyWithStats, updateProperty, deleteProperty } from '@/lib/property'
+import { findEntityById } from '@/lib/entities'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -91,11 +89,7 @@ export async function PATCH(
     }
 
     if (updates.entityId) {
-      const [entity] = await db
-        .select({ id: entities.id })
-        .from(entities)
-        .where(and(eq(entities.id, updates.entityId), eq(entities.userId, user.id)))
-        .limit(1)
+      const entity = await findEntityById(user.id, updates.entityId)
       if (!entity) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
       }

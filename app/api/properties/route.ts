@@ -1,10 +1,23 @@
+import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { listProperties, createProperty } from '@/lib/property'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
-const VALID_PROPERTY_TYPES = ['house', 'unit', 'townhouse', 'land'] as const
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const postSchema = z.object({
+  address: z.string({ required_error: 'Missing or empty address' })
+    .transform(s => s.trim())
+    .refine(s => s.length > 0, 'Missing or empty address')
+    .refine(s => s.length <= 500, 'Address too long (max 500 characters)'),
+  nickname: z.string().nullable().optional(),
+  startDate: z.string({ required_error: 'startDate is required' }).min(1, 'startDate is required'),
+  endDate: z.string().nullable().optional(),
+  entityId: z.string().nullable().optional(),
+  propertyType: z.enum(['house', 'unit', 'townhouse', 'land'], { message: 'Invalid propertyType' }).nullable().optional(),
+  purchasePriceCents: z.number().int().nonnegative().nullable().optional(),
+})
 
 export async function GET(request: Request) {
   try {
@@ -33,54 +46,34 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    let body: unknown
+    let rawBody: unknown
     try {
-      body = await request.json()
+      rawBody = await request.json()
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const raw = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
-
-    const address = typeof raw.address === 'string' ? raw.address.trim() : ''
-    if (!address) {
-      return NextResponse.json({ error: 'Missing or empty address' }, { status: 400 })
-    }
-    if (address.length > 500) {
-      return NextResponse.json({ error: 'Address too long (max 500 characters)' }, { status: 400 })
+    const parsed = postSchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
 
-    const nickname = typeof raw.nickname === 'string' ? raw.nickname.trim() || null : null
+    const { address, nickname, startDate, endDate, entityId, propertyType, purchasePriceCents } = parsed.data
 
-    const startDate = typeof raw.startDate === 'string' ? raw.startDate.trim() : ''
-    if (!startDate) {
-      return NextResponse.json({ error: 'startDate is required' }, { status: 400 })
-    }
-
-    const endDate = typeof raw.endDate === 'string' ? raw.endDate.trim() || null : null
     if (endDate && endDate < startDate) {
       return NextResponse.json({ error: 'endDate cannot be before startDate' }, { status: 400 })
     }
 
-    const entityId = typeof raw.entityId === 'string' ? raw.entityId.trim() || null : null
-
-    let propertyType: typeof VALID_PROPERTY_TYPES[number] | null = null
-    if ('propertyType' in raw && raw.propertyType !== null && raw.propertyType !== undefined) {
-      if (!VALID_PROPERTY_TYPES.includes(raw.propertyType as typeof VALID_PROPERTY_TYPES[number])) {
-        return NextResponse.json({ error: 'Invalid propertyType' }, { status: 400 })
-      }
-      propertyType = raw.propertyType as typeof VALID_PROPERTY_TYPES[number]
-    }
-
-    let purchasePriceCents: number | null = null
-    if ('purchasePriceCents' in raw && raw.purchasePriceCents !== null && raw.purchasePriceCents !== undefined) {
-      if (typeof raw.purchasePriceCents !== 'number' || !Number.isInteger(raw.purchasePriceCents) || raw.purchasePriceCents < 0) {
-        return NextResponse.json({ error: 'purchasePriceCents must be a non-negative integer' }, { status: 400 })
-      }
-      purchasePriceCents = raw.purchasePriceCents
-    }
-
-    const property = await createProperty({ userId: user.id, address, nickname, startDate, endDate, entityId, propertyType, purchasePriceCents })
+    const property = await createProperty({
+      userId: user.id,
+      address,
+      nickname: nickname ?? null,
+      startDate,
+      endDate: endDate ?? null,
+      entityId: entityId ?? null,
+      propertyType: propertyType ?? null,
+      purchasePriceCents: purchasePriceCents ?? null,
+    })
     return NextResponse.json({ property }, { status: 201 })
   } catch (err) {
     captureError(err, { route: 'POST /api/properties' })
