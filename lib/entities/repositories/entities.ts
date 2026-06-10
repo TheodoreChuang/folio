@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { entities, properties, installmentLoans } from '@/db/schema'
+import { entities } from '@/db/schema'
 import type { Entity, EntityType } from '@/db/schema'
 
 export async function findEntityById(userId: string, entityId: string): Promise<Entity | undefined> {
@@ -38,20 +38,3 @@ export async function deleteEntity(userId: string, id: string): Promise<Entity |
   return row
 }
 
-export async function hasPropertyForEntity(userId: string, entityId: string): Promise<boolean> {
-  const rows = await db
-    .select({ id: properties.id })
-    .from(properties)
-    .where(and(eq(properties.userId, userId), eq(properties.entityId, entityId)))
-    .limit(1)
-  return rows.length > 0
-}
-
-export async function hasLoanForEntity(userId: string, entityId: string): Promise<boolean> {
-  const rows = await db
-    .select({ id: installmentLoans.id })
-    .from(installmentLoans)
-    .where(and(eq(installmentLoans.userId, userId), eq(installmentLoans.entityId, entityId)))
-    .limit(1)
-  return rows.length > 0
-}

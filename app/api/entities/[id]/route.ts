@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
-import { updateEntity, deleteEntity, hasPropertyForEntity, hasLoanForEntity } from '@/lib/entities'
+import { updateEntity, deleteEntity } from '@/lib/entities'
+import { hasPropertyForEntity } from '@/lib/property'
+import { hasLoanForEntity } from '@/lib/borrowings'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 

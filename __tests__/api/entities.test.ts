@@ -27,9 +27,15 @@ vi.mock('@/lib/entities', () => ({
   createEntity: mocks.mockCreateEntity,
   updateEntity: mocks.mockUpdateEntity,
   deleteEntity: mocks.mockDeleteEntity,
-  hasPropertyForEntity: mocks.mockHasPropertyForEntity,
-  hasLoanForEntity: mocks.mockHasLoanForEntity,
   findEntityById: vi.fn(),
+}))
+
+vi.mock('@/lib/property', () => ({
+  hasPropertyForEntity: mocks.mockHasPropertyForEntity,
+}))
+
+vi.mock('@/lib/borrowings', () => ({
+  hasLoanForEntity: mocks.mockHasLoanForEntity,
 }))
 
 function makeRequest(method: string, body?: unknown, id?: string) {
