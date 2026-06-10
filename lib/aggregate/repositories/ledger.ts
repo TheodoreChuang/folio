@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, isNull, lte } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { propertyLedger, properties, installmentLoans } from '@/db/schema'
 import type { Property, InstallmentLoan, PropertyLedger } from '@/db/schema'
@@ -40,6 +40,8 @@ export async function fetchPropertiesActiveInRange(
 ): Promise<Property[]> {
   const where = [
     eq(properties.userId, userId),
+    lte(properties.startDate, to),
+    or(isNull(properties.endDate), gte(properties.endDate, from)),
     ...(propertyId ? [eq(properties.id, propertyId)] : []),
     ...(entityId ? [eq(properties.entityId, entityId)] : []),
   ]

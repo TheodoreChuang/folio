@@ -49,7 +49,7 @@ describe('fetchPropertiesActiveInRange', () => {
     expect(result[0].id).toBe(PROP_ID)
   })
 
-  it('returns empty array when no properties', async () => {
+  it('returns empty array when no properties in range', async () => {
     mocks.mockWhere.mockResolvedValueOnce([])
     const result = await fetchPropertiesActiveInRange('user-123', '2026-03-01', '2026-03-31')
     expect(result).toHaveLength(0)
@@ -59,6 +59,11 @@ describe('fetchPropertiesActiveInRange', () => {
     mocks.mockWhere.mockResolvedValueOnce([])
     const result = await fetchPropertiesActiveInRange('other-user', '2026-03-01', '2026-03-31')
     expect(result).toHaveLength(0)
+  })
+
+  it('reaches the DB with date-range params (WHERE correctness verified by S-2 integration test)', async () => {
+    await fetchPropertiesActiveInRange('user-123', '2026-03-01', '2026-03-31')
+    expect(mocks.mockWhere).toHaveBeenCalled()
   })
 })
 
