@@ -36,7 +36,6 @@ export function computeCgtEstimate(inputs: CgtEstimateInputs): CgtEstimateResult
     costsCents.buyerAgent +
     costsCents.improvements
 
-  // Cost base = purchase price + acquisition/improvement costs + selling costs
   const costBaseCents = purchasePriceCents + acquisitionCostsCents + sellingCostsTotalCents
 
   const rawGainCents = salePriceCents - costBaseCents

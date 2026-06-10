@@ -8,6 +8,7 @@ export {
   updateInstallmentLoan,
   updateInstallmentLoanById,
   endInstallmentLoan,
+  hasLoanForEntity,
 } from './repositories/loans'
 export type { InstallmentLoanDetail, FlatInstallmentLoan } from './repositories/loans'
 export {

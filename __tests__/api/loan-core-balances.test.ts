@@ -142,6 +142,11 @@ describe('POST /api/loans/[id]/balances', () => {
     expect(res.status).toBe(201)
     const json = await res.json() as { balance: { id: string } }
     expect(json.balance.id).toBe(balanceRow.id)
+    expect(mocks.mockCreateInstallmentLoanBalance).toHaveBeenCalledWith(
+      'user-123',
+      VALID_LOAN_ID,
+      expect.objectContaining({ recordedAt: '2026-04-01', balanceCents: 61500000 }),
+    )
   })
 
   it('returns 400 when recordedAt is missing', async () => {

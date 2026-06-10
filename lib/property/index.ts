@@ -1,4 +1,4 @@
-export { listProperties, findPropertyById, createProperty, updateProperty, deleteProperty } from './repositories/properties'
+export { listProperties, findPropertyById, createProperty, updateProperty, deleteProperty, hasPropertyForEntity } from './repositories/properties'
 export { findTrailing12mEntries, listLedgerEntriesByMonth, createLedgerEntry, upsertLoanPaymentEntry } from './repositories/ledger'
 export { listValuations, findLatestValuation, createValuation, deleteValuation } from './repositories/valuations'
 export { listTenancies, createTenancy, updateTenancy, deleteTenancy } from './repositories/tenancies'

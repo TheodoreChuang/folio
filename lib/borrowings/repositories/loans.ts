@@ -269,3 +269,12 @@ export async function endInstallmentLoan(
     .returning()
   return row
 }
+
+export async function hasLoanForEntity(userId: string, entityId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: installmentLoans.id })
+    .from(installmentLoans)
+    .where(and(eq(installmentLoans.userId, userId), eq(installmentLoans.entityId, entityId)))
+    .limit(1)
+  return rows.length > 0
+}
