@@ -24,15 +24,12 @@ const valuationRow = {
   createdAt: new Date(),
 }
 
-// call counts used to dispatch multiple select calls within the same test
-let selectCallCount = 0
-
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockSelectOrderBy: vi.fn(),   // valuations list
-  mockSelectLimit: vi.fn(),     // property ownership check
-  mockInsertReturning: vi.fn(),
-  mockDeleteReturning: vi.fn(),
+  mockFindPropertyById: vi.fn(),
+  mockListValuations: vi.fn(),
+  mockCreateValuation: vi.fn(),
+  mockDeleteValuation: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -41,31 +38,11 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn(() => {
-      selectCallCount++
-      const call = selectCallCount
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: mocks.mockSelectLimit,
-            orderBy: call === 2 ? mocks.mockSelectOrderBy : vi.fn().mockResolvedValue([]),
-          }),
-        }),
-      }
-    }),
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        returning: mocks.mockInsertReturning,
-      }),
-    }),
-    delete: vi.fn().mockReturnValue({
-      where: vi.fn().mockReturnValue({
-        returning: mocks.mockDeleteReturning,
-      }),
-    }),
-  },
+vi.mock('@/lib/property', () => ({
+  findPropertyById: mocks.mockFindPropertyById,
+  listValuations: mocks.mockListValuations,
+  createValuation: mocks.mockCreateValuation,
+  deleteValuation: mocks.mockDeleteValuation,
 }))
 
 function makeParams(id: string) {
@@ -91,10 +68,9 @@ function makeDeleteRequest() {
 describe('GET /api/properties/[id]/valuations', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    selectCallCount = 0
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelectLimit.mockResolvedValue([propRow])
-    mocks.mockSelectOrderBy.mockResolvedValue([valuationRow])
+    mocks.mockFindPropertyById.mockResolvedValue(propRow)
+    mocks.mockListValuations.mockResolvedValue([valuationRow])
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -111,7 +87,7 @@ describe('GET /api/properties/[id]/valuations', () => {
   })
 
   it('returns 404 when property not found', async () => {
-    mocks.mockSelectLimit.mockResolvedValue([])
+    mocks.mockFindPropertyById.mockResolvedValueOnce(undefined)
     const res = await GET(makeGetRequest(), makeParams(PROP_ID))
     expect(res.status).toBe(404)
   })
@@ -134,10 +110,9 @@ describe('POST /api/properties/[id]/valuations', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    selectCallCount = 0
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelectLimit.mockResolvedValue([propRow])
-    mocks.mockInsertReturning.mockResolvedValue([valuationRow])
+    mocks.mockFindPropertyById.mockResolvedValue(propRow)
+    mocks.mockCreateValuation.mockResolvedValue(valuationRow)
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -204,14 +179,14 @@ describe('POST /api/properties/[id]/valuations', () => {
   })
 
   it('returns 404 when property not found', async () => {
-    mocks.mockSelectLimit.mockResolvedValue([])
+    mocks.mockFindPropertyById.mockResolvedValueOnce(undefined)
     const res = await POST(makePostRequest(validBody), makeParams(PROP_ID))
     expect(res.status).toBe(404)
-    expect(mocks.mockInsertReturning).not.toHaveBeenCalled()
+    expect(mocks.mockCreateValuation).not.toHaveBeenCalled()
   })
 
   it('returns 409 on duplicate date', async () => {
-    mocks.mockInsertReturning.mockRejectedValue({ code: '23505' })
+    mocks.mockCreateValuation.mockRejectedValue({ code: '23505' })
     const res = await POST(makePostRequest(validBody), makeParams(PROP_ID))
     expect(res.status).toBe(409)
     const json = await res.json()
@@ -231,7 +206,7 @@ describe('DELETE /api/properties/[id]/valuations/[valuationId]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockDeleteReturning.mockResolvedValue([valuationRow])
+    mocks.mockDeleteValuation.mockResolvedValue(valuationRow)
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -255,7 +230,7 @@ describe('DELETE /api/properties/[id]/valuations/[valuationId]', () => {
   })
 
   it('returns 404 when not found', async () => {
-    mocks.mockDeleteReturning.mockResolvedValue([])
+    mocks.mockDeleteValuation.mockResolvedValueOnce(undefined)
     const res = await DELETE(makeDeleteRequest(), makeValParams(PROP_ID, VAL_ID))
     expect(res.status).toBe(404)
   })

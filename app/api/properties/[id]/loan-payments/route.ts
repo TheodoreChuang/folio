@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { validateLoanOwnership } from '@/lib/borrowings'
 import { upsertLoanPaymentEntry } from '@/lib/property'
@@ -5,7 +6,15 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
+
+const postSchema = z.object({
+  loanAccountId: z.string({ required_error: 'loanAccountId must be a valid UUID' }).uuid('loanAccountId must be a valid UUID'),
+  amountCents: z.number({ required_error: 'amountCents is required', invalid_type_error: 'amountCents must be a positive integer' })
+    .int('amountCents must be a positive integer')
+    .positive('amountCents must be a positive integer'),
+  lineItemDate: z.string({ required_error: 'lineItemDate must be YYYY-MM-DD' })
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'lineItemDate must be YYYY-MM-DD'),
+})
 
 export async function POST(
   request: Request,
@@ -21,29 +30,11 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid property ID' }, { status: 400 })
     }
 
-    let body: unknown
-    try {
-      body = await request.json()
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    const parsed = postSchema.safeParse(await request.json().catch(() => null))
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
-
-    const raw = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
-
-    const loanAccountId = typeof raw.loanAccountId === 'string' ? raw.loanAccountId.trim() : ''
-    if (!UUID_REGEX.test(loanAccountId)) {
-      return NextResponse.json({ error: 'loanAccountId must be a valid UUID' }, { status: 400 })
-    }
-
-    const amountCents = raw.amountCents
-    if (typeof amountCents !== 'number' || !Number.isInteger(amountCents) || amountCents <= 0) {
-      return NextResponse.json({ error: 'amountCents must be a positive integer' }, { status: 400 })
-    }
-
-    const lineItemDate = typeof raw.lineItemDate === 'string' ? raw.lineItemDate.trim() : ''
-    if (!DATE_REGEX.test(lineItemDate)) {
-      return NextResponse.json({ error: 'lineItemDate must be YYYY-MM-DD' }, { status: 400 })
-    }
+    const { loanAccountId, amountCents, lineItemDate } = parsed.data
 
     const loan = await validateLoanOwnership(user.id, id, loanAccountId)
     if (!loan) {

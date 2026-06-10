@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { findPropertyById } from '@/lib/property'
 import { listInstallmentLoans, createInstallmentLoan } from '@/lib/borrowings'
@@ -5,6 +6,16 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const postSchema = z.object({
+  lender: z.string({ required_error: 'lender is required' })
+    .transform(s => s.trim())
+    .refine(s => s.length > 0, 'lender is required')
+    .refine(s => s.length <= 200, 'lender too long (max 200 characters)'),
+  nickname: z.string().nullable().optional(),
+  startDate: z.string({ required_error: 'startDate is required' }).min(1, 'startDate is required'),
+  endDate: z.string({ required_error: 'endDate is required' }).min(1, 'endDate is required'),
+})
 
 export async function GET(
   _request: Request,
@@ -47,34 +58,11 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid property ID' }, { status: 400 })
     }
 
-    let body: unknown
-    try {
-      body = await request.json()
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    const parsed = postSchema.safeParse(await request.json().catch(() => null))
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
-
-    const raw = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
-
-    const lender = typeof raw.lender === 'string' ? raw.lender.trim() : ''
-    if (!lender) {
-      return NextResponse.json({ error: 'lender is required' }, { status: 400 })
-    }
-    if (lender.length > 200) {
-      return NextResponse.json({ error: 'lender too long (max 200 characters)' }, { status: 400 })
-    }
-
-    const nickname = typeof raw.nickname === 'string' ? raw.nickname.trim() || null : null
-
-    const startDate = typeof raw.startDate === 'string' ? raw.startDate.trim() : ''
-    if (!startDate) {
-      return NextResponse.json({ error: 'startDate is required' }, { status: 400 })
-    }
-
-    const endDate = typeof raw.endDate === 'string' ? raw.endDate.trim() : ''
-    if (!endDate) {
-      return NextResponse.json({ error: 'endDate is required' }, { status: 400 })
-    }
+    const { lender, nickname, startDate, endDate } = parsed.data
 
     if (endDate < startDate) {
       return NextResponse.json({ error: 'endDate cannot be before startDate' }, { status: 400 })
@@ -85,7 +73,7 @@ export async function POST(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const loan = await createInstallmentLoan(user.id, { propertyId: id, lender, nickname, startDate, endDate })
+    const loan = await createInstallmentLoan(user.id, { propertyId: id, lender, nickname: nickname ?? null, startDate, endDate })
     return NextResponse.json({ loan }, { status: 201 })
   } catch (err) {
     captureError(err, { route: 'POST /api/properties/[id]/loans' })

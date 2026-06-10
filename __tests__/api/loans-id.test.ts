@@ -291,7 +291,7 @@ describe('DELETE /api/properties/[id]/loans/[loanId]', () => {
     expect(res.status).toBe(404)
   })
 
-  it('returns 200 with { success: true }', async () => {
+  it('returns 200 and success: true when loan is ended', async () => {
     const res = await DELETE(
       makeDeleteRequest(VALID_PROP_ID, VALID_LOAN_ID),
       { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }

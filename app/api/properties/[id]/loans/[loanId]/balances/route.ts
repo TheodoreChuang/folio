@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import {
   findInstallmentLoanById,
@@ -7,8 +8,17 @@ import {
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const postSchema = z.object({
+  recordedAt: z.string({ required_error: 'recordedAt is required' })
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'recordedAt must be YYYY-MM-DD'),
+  balanceCents: z.number({ required_error: 'balanceCents is required', invalid_type_error: 'balanceCents must be a non-negative integer' })
+    .int('balanceCents must be a non-negative integer')
+    .nonnegative('balanceCents must be a non-negative integer'),
+  notes: z.string().max(500, 'notes too long (max 500 characters)').nullable().optional()
+    .transform(v => v == null ? null : v.trim() || null),
+})
 
 export async function GET(
   _request: Request,
@@ -57,31 +67,11 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid loan ID' }, { status: 400 })
     }
 
-    let body: unknown
-    try {
-      body = await request.json()
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    const parsed = postSchema.safeParse(await request.json().catch(() => null))
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
-
-    const raw = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
-
-    const recordedAt = typeof raw.recordedAt === 'string' ? raw.recordedAt.trim() : ''
-    if (!DATE_REGEX.test(recordedAt)) {
-      return NextResponse.json({ error: 'recordedAt must be YYYY-MM-DD' }, { status: 400 })
-    }
-
-    const balanceCents = raw.balanceCents
-    if (typeof balanceCents !== 'number' || !Number.isInteger(balanceCents) || balanceCents < 0) {
-      return NextResponse.json({ error: 'balanceCents must be a non-negative integer' }, { status: 400 })
-    }
-
-    const notes = raw.notes != null
-      ? (typeof raw.notes === 'string' ? raw.notes.trim() : null)
-      : null
-    if (notes !== null && notes.length > 500) {
-      return NextResponse.json({ error: 'notes too long (max 500 characters)' }, { status: 400 })
-    }
+    const { recordedAt, balanceCents, notes } = parsed.data
 
     const loan = await findInstallmentLoanById(user.id, loanId)
     if (!loan || loan.propertyId !== id) {
@@ -91,7 +81,7 @@ export async function POST(
     const balance = await createInstallmentLoanBalance(user.id, loanId, {
       recordedAt,
       balanceCents,
-      notes: notes || null,
+      notes: notes ?? null,
     })
     return NextResponse.json({ balance }, { status: 201 })
   } catch (err) {

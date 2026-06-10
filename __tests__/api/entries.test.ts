@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { POST } from '@/app/api/properties/[id]/entries/route'
+import { GET, POST } from '@/app/api/properties/[id]/entries/route'
 
 const propRow = {
   id: 'a1b2c3d4-e5f6-4789-a012-111111111111',
@@ -25,6 +25,13 @@ const entryRow = {
 
 const VALID_PROP_ID = propRow.id
 
+function makeGetRequest(propertyId: string, month?: string) {
+  const qs = month !== undefined ? `?month=${encodeURIComponent(month)}` : ''
+  return new Request(`http://localhost/api/properties/${propertyId}/entries${qs}`, {
+    method: 'GET',
+  })
+}
+
 function makePostRequest(propertyId: string, body: unknown) {
   return new Request(`http://localhost/api/properties/${propertyId}/entries`, {
     method: 'POST',
@@ -35,8 +42,9 @@ function makePostRequest(propertyId: string, body: unknown) {
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockSelectLimit: vi.fn(),    // property ownership check
-  mockInsertReturning: vi.fn(),
+  mockFindPropertyById: vi.fn(),
+  mockListLedgerEntriesByMonth: vi.fn(),
+  mockCreateLedgerEntry: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -47,22 +55,74 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: mocks.mockSelectLimit,
-        }),
-      }),
-    }),
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        returning: mocks.mockInsertReturning,
-      }),
-    }),
-  },
+vi.mock('@/lib/property', () => ({
+  findPropertyById: mocks.mockFindPropertyById,
+  listLedgerEntriesByMonth: mocks.mockListLedgerEntriesByMonth,
+  createLedgerEntry: mocks.mockCreateLedgerEntry,
 }))
+
+// ── GET ───────────────────────────────────────────────────────────────────────
+
+describe('GET /api/properties/[id]/entries', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
+    mocks.mockFindPropertyById.mockResolvedValue(propRow)
+    mocks.mockListLedgerEntriesByMonth.mockResolvedValue([entryRow])
+  })
+
+  it('returns 401 when unauthenticated', async () => {
+    mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
+    const res = await GET(makeGetRequest(VALID_PROP_ID, '2026-03'), { params: Promise.resolve({ id: VALID_PROP_ID }) })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 400 for invalid property ID', async () => {
+    const res = await GET(makeGetRequest('not-a-uuid', '2026-03'), { params: Promise.resolve({ id: 'not-a-uuid' }) })
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/invalid property/i)
+  })
+
+  it('returns 400 when month param is missing', async () => {
+    const res = await GET(makeGetRequest(VALID_PROP_ID), { params: Promise.resolve({ id: VALID_PROP_ID }) })
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/month/i)
+  })
+
+  it('returns 400 when month param is not YYYY-MM', async () => {
+    const res = await GET(makeGetRequest(VALID_PROP_ID, '2026-03-15'), { params: Promise.resolve({ id: VALID_PROP_ID }) })
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/month/i)
+  })
+
+  it('returns 404 when property not found', async () => {
+    mocks.mockFindPropertyById.mockResolvedValueOnce(undefined)
+    const res = await GET(makeGetRequest(VALID_PROP_ID, '2026-03'), { params: Promise.resolve({ id: VALID_PROP_ID }) })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 200 with entries for the month', async () => {
+    const res = await GET(makeGetRequest(VALID_PROP_ID, '2026-03'), { params: Promise.resolve({ id: VALID_PROP_ID }) })
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.entries).toHaveLength(1)
+    expect(json.entries[0].category).toBe('insurance')
+    expect(mocks.mockListLedgerEntriesByMonth).toHaveBeenCalledWith('user-123', VALID_PROP_ID, '2026-03')
+  })
+
+  it('returns 200 with empty entries when none exist for the month', async () => {
+    mocks.mockListLedgerEntriesByMonth.mockResolvedValueOnce([])
+    const res = await GET(makeGetRequest(VALID_PROP_ID, '2026-03'), { params: Promise.resolve({ id: VALID_PROP_ID }) })
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.entries).toEqual([])
+  })
+})
+
+// ── POST ──────────────────────────────────────────────────────────────────────
 
 describe('POST /api/properties/[id]/entries', () => {
   const validBody = {
@@ -75,8 +135,8 @@ describe('POST /api/properties/[id]/entries', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelectLimit.mockResolvedValue([propRow])
-    mocks.mockInsertReturning.mockResolvedValue([entryRow])
+    mocks.mockFindPropertyById.mockResolvedValue(propRow)
+    mocks.mockCreateLedgerEntry.mockResolvedValue(entryRow)
   })
 
   it('returns 201 with created entry on success', async () => {
@@ -94,7 +154,7 @@ describe('POST /api/properties/[id]/entries', () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
     const res = await POST(makePostRequest(VALID_PROP_ID, validBody), { params: Promise.resolve({ id: VALID_PROP_ID }) })
     expect(res.status).toBe(401)
-    expect(mocks.mockInsertReturning).not.toHaveBeenCalled()
+    expect(mocks.mockCreateLedgerEntry).not.toHaveBeenCalled()
   })
 
   it('returns 400 for invalid property ID', async () => {
@@ -112,7 +172,7 @@ describe('POST /api/properties/[id]/entries', () => {
     expect(res.status).toBe(400)
     const json = await res.json()
     expect(json.error).toMatch(/category/i)
-    expect(mocks.mockInsertReturning).not.toHaveBeenCalled()
+    expect(mocks.mockCreateLedgerEntry).not.toHaveBeenCalled()
   })
 
   it('returns 400 for invalid lineItemDate', async () => {
@@ -154,23 +214,23 @@ describe('POST /api/properties/[id]/entries', () => {
   })
 
   it('returns 404 when property is not found', async () => {
-    mocks.mockSelectLimit.mockResolvedValueOnce([])
+    mocks.mockFindPropertyById.mockResolvedValueOnce(undefined)
     const res = await POST(makePostRequest(VALID_PROP_ID, validBody), { params: Promise.resolve({ id: VALID_PROP_ID }) })
     expect(res.status).toBe(404)
-    expect(mocks.mockInsertReturning).not.toHaveBeenCalled()
+    expect(mocks.mockCreateLedgerEntry).not.toHaveBeenCalled()
   })
 
   it('returns 404 when property belongs to another user', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-B' } } })
-    mocks.mockSelectLimit.mockResolvedValueOnce([]) // WHERE userId = user-B → no match
+    mocks.mockFindPropertyById.mockResolvedValueOnce(undefined)
     const res = await POST(makePostRequest(VALID_PROP_ID, validBody), { params: Promise.resolve({ id: VALID_PROP_ID }) })
     expect(res.status).toBe(404)
-    expect(mocks.mockInsertReturning).not.toHaveBeenCalled()
+    expect(mocks.mockCreateLedgerEntry).not.toHaveBeenCalled()
   })
 
   it('accepts description as null when omitted', async () => {
     const bodyWithoutDesc = { lineItemDate: '2026-03-15', amountCents: 50000, category: 'rates' }
-    mocks.mockInsertReturning.mockResolvedValueOnce([{ ...entryRow, category: 'rates', description: null }])
+    mocks.mockCreateLedgerEntry.mockResolvedValueOnce({ ...entryRow, category: 'rates', description: null })
     const res = await POST(makePostRequest(VALID_PROP_ID, bodyWithoutDesc), { params: Promise.resolve({ id: VALID_PROP_ID }) })
     expect(res.status).toBe(201)
     const json = await res.json()
