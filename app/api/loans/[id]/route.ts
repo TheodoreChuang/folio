@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { findInstallmentLoanDetail, updateInstallmentLoanById } from '@/lib/borrowings'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
@@ -52,7 +53,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const raw = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {}
+    const rawResult = z.record(z.unknown()).safeParse(body)
+    const raw = rawResult.success ? rawResult.data : {}
 
     const updates: {
       lender?: string
@@ -67,89 +69,73 @@ export async function PATCH(
     } = {}
 
     if ('lender' in raw) {
-      const lender = typeof raw.lender === 'string' ? raw.lender.trim() : ''
-      if (!lender) {
-        return NextResponse.json({ error: 'lender cannot be empty' }, { status: 400 })
-      }
-      if (lender.length > 200) {
-        return NextResponse.json({ error: 'lender too long (max 200 characters)' }, { status: 400 })
-      }
-      updates.lender = lender
+      const r = z.string()
+        .transform(s => s.trim())
+        .refine(s => s.length > 0, 'lender cannot be empty')
+        .refine(s => s.length <= 200, 'lender too long (max 200 characters)')
+        .safeParse(raw.lender)
+      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      updates.lender = r.data
     }
 
     if ('nickname' in raw) {
-      updates.nickname = typeof raw.nickname === 'string' ? raw.nickname.trim() || null : null
+      const r = z.string().max(200).transform(s => s.trim() || null).nullable()
+        .safeParse(typeof raw.nickname === 'string' ? raw.nickname : null)
+      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      updates.nickname = r.data
     }
 
     if ('accountReference' in raw) {
-      const ref = typeof raw.accountReference === 'string' ? raw.accountReference.trim() : ''
-      if (ref.length > 100) {
-        return NextResponse.json({ error: 'accountReference too long (max 100 characters)' }, { status: 400 })
-      }
-      updates.accountReference = ref || null
+      const r = z.string().max(100, 'accountReference too long (max 100 characters)').transform(s => s.trim() || null).nullable()
+        .safeParse(typeof raw.accountReference === 'string' ? raw.accountReference : null)
+      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      updates.accountReference = r.data
     }
 
     if ('startDate' in raw) {
-      const startDate = typeof raw.startDate === 'string' ? raw.startDate.trim() : ''
-      if (!DATE_REGEX.test(startDate)) {
-        return NextResponse.json({ error: 'startDate must be YYYY-MM-DD' }, { status: 400 })
-      }
-      updates.startDate = startDate
+      const r = z.string().regex(DATE_REGEX, 'startDate must be YYYY-MM-DD')
+        .safeParse(typeof raw.startDate === 'string' ? raw.startDate.trim() : '')
+      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      updates.startDate = r.data
     }
 
     if ('endDate' in raw) {
-      const endDate = typeof raw.endDate === 'string' ? raw.endDate.trim() : ''
-      if (!DATE_REGEX.test(endDate)) {
-        return NextResponse.json({ error: 'endDate must be YYYY-MM-DD' }, { status: 400 })
-      }
-      updates.endDate = endDate
+      const r = z.string().regex(DATE_REGEX, 'endDate must be YYYY-MM-DD')
+        .safeParse(typeof raw.endDate === 'string' ? raw.endDate.trim() : '')
+      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      updates.endDate = r.data
     }
 
     if ('entityId' in raw) {
-      const entityId = typeof raw.entityId === 'string' && UUID_REGEX.test(raw.entityId) ? raw.entityId : null
-      if (entityId) {
-        const ent = await findEntityById(user.id, entityId)
+      const r = z.string().regex(UUID_REGEX, 'entityId must be a valid UUID').nullable()
+        .safeParse(raw.entityId === null ? null : raw.entityId)
+      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      if (r.data) {
+        const ent = await findEntityById(user.id, r.data)
         if (!ent) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       }
-      updates.entityId = entityId
+      updates.entityId = r.data
     }
 
     if ('loanType' in raw) {
-      if (raw.loanType === null) {
-        updates.loanType = null
-      } else if (raw.loanType === 'interest_only' || raw.loanType === 'principal_and_interest') {
-        updates.loanType = raw.loanType
-      } else {
-        return NextResponse.json(
-          { error: 'loanType must be interest_only, principal_and_interest, or null' },
-          { status: 400 }
-        )
-      }
+      const r = z.enum(['interest_only', 'principal_and_interest']).nullable()
+        .safeParse(raw.loanType)
+      if (!r.success) return NextResponse.json({ error: 'loanType must be interest_only, principal_and_interest, or null' }, { status: 400 })
+      updates.loanType = r.data
     }
 
     if ('ioEndDate' in raw) {
-      if (raw.ioEndDate === null) {
-        updates.ioEndDate = null
-      } else {
-        const ioEndDate = typeof raw.ioEndDate === 'string' ? raw.ioEndDate.trim() : ''
-        if (!DATE_REGEX.test(ioEndDate)) {
-          return NextResponse.json({ error: 'ioEndDate must be YYYY-MM-DD' }, { status: 400 })
-        }
-        updates.ioEndDate = ioEndDate
-      }
+      const r = z.string().regex(DATE_REGEX, 'ioEndDate must be YYYY-MM-DD').nullable()
+        .safeParse(typeof raw.ioEndDate === 'string' ? raw.ioEndDate.trim() : raw.ioEndDate === null ? null : '')
+      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      updates.ioEndDate = r.data
     }
 
     if ('interestRate' in raw) {
-      if (raw.interestRate === null) {
-        updates.interestRate = null
-      } else if (typeof raw.interestRate === 'number' && isFinite(raw.interestRate) && raw.interestRate >= 0 && raw.interestRate <= 100) {
-        updates.interestRate = String(raw.interestRate)
-      } else {
-        return NextResponse.json(
-          { error: 'interestRate must be a non-negative number or null' },
-          { status: 400 }
-        )
-      }
+      const r = z.number().min(0).max(100).nullable()
+        .safeParse(raw.interestRate)
+      if (!r.success) return NextResponse.json({ error: 'interestRate must be a non-negative number or null' }, { status: 400 })
+      updates.interestRate = r.data !== null ? String(r.data) : null
     }
 
     if (Object.keys(updates).length === 0) {

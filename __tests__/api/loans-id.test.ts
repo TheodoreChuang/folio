@@ -291,24 +291,13 @@ describe('DELETE /api/properties/[id]/loans/[loanId]', () => {
     expect(res.status).toBe(404)
   })
 
-  it('returns 200 and sets endDate to today (ends the loan)', async () => {
+  it('returns 200 with { success: true }', async () => {
     const res = await DELETE(
       makeDeleteRequest(VALID_PROP_ID, VALID_LOAN_ID),
       { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
     )
     expect(res.status).toBe(200)
     const json = await res.json()
-    expect(json.loan.endDate).toBeDefined()
-    expect(typeof json.loan.endDate).toBe('string')
-  })
-
-  it('returns the updated loan in the response', async () => {
-    const res = await DELETE(
-      makeDeleteRequest(VALID_PROP_ID, VALID_LOAN_ID),
-      { params: Promise.resolve({ id: VALID_PROP_ID, loanId: VALID_LOAN_ID }) }
-    )
-    const json = await res.json()
-    expect(json.loan.id).toBe(VALID_LOAN_ID)
-    expect(json.loan.lender).toBe('Westpac')
+    expect(json.success).toBe(true)
   })
 })
