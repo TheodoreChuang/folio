@@ -1,1 +1,9 @@
-export { findEntityById } from './repositories/entities'
+export {
+  findEntityById,
+  listEntities,
+  createEntity,
+  updateEntity,
+  deleteEntity,
+  hasPropertyForEntity,
+  hasLoanForEntity,
+} from './repositories/entities'

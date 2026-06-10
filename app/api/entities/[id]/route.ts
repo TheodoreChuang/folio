@@ -1,8 +1,6 @@
 import { z } from 'zod'
-import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { entities, properties, installmentLoans } from '@/db/schema'
+import { updateEntity, deleteEntity, hasPropertyForEntity, hasLoanForEntity } from '@/lib/entities'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -32,14 +30,9 @@ export async function PATCH(
     }
     const { name } = parsed.data
 
-    const [updated] = await db
-      .update(entities)
-      .set({ name })
-      .where(and(eq(entities.id, id), eq(entities.userId, user.id)))
-      .returning()
-
-    if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json({ entity: updated })
+    const entity = await updateEntity(user.id, id, name)
+    if (!entity) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ entity })
   } catch (err) {
     captureError(err, { route: 'PATCH /api/entities/[id]' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -58,30 +51,20 @@ export async function DELETE(
     const { id } = await params
     if (!UUID_REGEX.test(id)) return NextResponse.json({ error: 'Invalid entity ID' }, { status: 400 })
 
-    const [propCount, loanCount] = await Promise.all([
-      db.select({ id: properties.id })
-        .from(properties)
-        .where(and(eq(properties.userId, user.id), eq(properties.entityId, id)))
-        .limit(1),
-      db.select({ id: installmentLoans.id })
-        .from(installmentLoans)
-        .where(and(eq(installmentLoans.userId, user.id), eq(installmentLoans.entityId, id)))
-        .limit(1),
+    const [hasProp, hasLoan] = await Promise.all([
+      hasPropertyForEntity(user.id, id),
+      hasLoanForEntity(user.id, id),
     ])
 
-    if (propCount.length || loanCount.length) {
+    if (hasProp || hasLoan) {
       return NextResponse.json(
         { error: 'Reassign or remove all properties and loans before deleting this entity.' },
         { status: 409 }
       )
     }
 
-    const [deleted] = await db
-      .delete(entities)
-      .where(and(eq(entities.id, id), eq(entities.userId, user.id)))
-      .returning()
-
-    if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const entity = await deleteEntity(user.id, id)
+    if (!entity) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return NextResponse.json({ success: true })
   } catch (err) {
     captureError(err, { route: 'DELETE /api/entities/[id]' })

@@ -1,8 +1,6 @@
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { entities } from '@/db/schema'
+import { listEntities, createEntity } from '@/lib/entities'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 
@@ -23,7 +21,7 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const rows = await db.select().from(entities).where(eq(entities.userId, user.id))
+    const rows = await listEntities(user.id)
     return NextResponse.json({ entities: rows })
   } catch (err) {
     captureError(err, { route: 'GET /api/entities' })
@@ -43,8 +41,8 @@ export async function POST(request: Request) {
     }
     const { name, type } = parsed.data
 
-    const [inserted] = await db.insert(entities).values({ userId: user.id, name, type }).returning()
-    return NextResponse.json({ entity: inserted }, { status: 201 })
+    const entity = await createEntity(user.id, name, type)
+    return NextResponse.json({ entity }, { status: 201 })
   } catch (err) {
     captureError(err, { route: 'POST /api/entities' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

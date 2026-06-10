@@ -3,19 +3,17 @@ import { GET, POST } from '@/app/api/entities/route'
 import { PATCH, DELETE } from '@/app/api/entities/[id]/route'
 
 const ENTITY_ID = 'cccc0001-0000-4000-c000-000000000001'
-const PROP_ID   = 'aaaa0001-0000-4000-a000-000000000001'
-const LOAN_ID   = 'bbbb0001-0000-4000-b000-000000000001'
 
 const entityRow = { id: ENTITY_ID, userId: 'user-123', name: 'Personal', type: 'individual' as const, createdAt: new Date() }
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockSelect: vi.fn(),
-  mockInsertValues: vi.fn(),
-  mockInsertValuesCall: vi.fn(),
-  mockUpdateSet: vi.fn(),
-  mockUpdateSetCall: vi.fn(),
-  mockDeleteWhere: vi.fn(),
+  mockListEntities: vi.fn(),
+  mockCreateEntity: vi.fn(),
+  mockUpdateEntity: vi.fn(),
+  mockDeleteEntity: vi.fn(),
+  mockHasPropertyForEntity: vi.fn(),
+  mockHasLoanForEntity: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -24,44 +22,14 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockImplementation(() => {
-          // Lazy result — called either when awaited directly or via .limit()
-          const getResult = () => mocks.mockSelect()
-          return {
-            limit: vi.fn().mockImplementation(() => getResult()),
-            then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
-              getResult().then(resolve, reject),
-            catch: (reject: (e: unknown) => unknown) => getResult().catch(reject),
-          }
-        }),
-      }),
-    }),
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockImplementation((vals) => {
-        mocks.mockInsertValuesCall(vals)
-        return { returning: mocks.mockInsertValues }
-      }),
-    }),
-    update: vi.fn().mockReturnValue({
-      set: vi.fn().mockImplementation((vals) => {
-        mocks.mockUpdateSetCall(vals)
-        return {
-          where: vi.fn().mockReturnValue({
-            returning: mocks.mockUpdateSet,
-          }),
-        }
-      }),
-    }),
-    delete: vi.fn().mockReturnValue({
-      where: vi.fn().mockReturnValue({
-        returning: mocks.mockDeleteWhere,
-      }),
-    }),
-  },
+vi.mock('@/lib/entities', () => ({
+  listEntities: mocks.mockListEntities,
+  createEntity: mocks.mockCreateEntity,
+  updateEntity: mocks.mockUpdateEntity,
+  deleteEntity: mocks.mockDeleteEntity,
+  hasPropertyForEntity: mocks.mockHasPropertyForEntity,
+  hasLoanForEntity: mocks.mockHasLoanForEntity,
+  findEntityById: vi.fn(),
 }))
 
 function makeRequest(method: string, body?: unknown, id?: string) {
@@ -78,9 +46,8 @@ function makeRequest(method: string, body?: unknown, id?: string) {
 describe('GET /api/entities', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelect.mockResolvedValue([entityRow])
+    mocks.mockListEntities.mockResolvedValue([entityRow])
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -95,16 +62,15 @@ describe('GET /api/entities', () => {
     const { entities } = await res.json()
     expect(entities).toHaveLength(1)
     expect(entities[0].name).toBe('Personal')
-    expect(entities[0].type).toBe('individual')
+    expect(mocks.mockListEntities).toHaveBeenCalledWith('user-123')
   })
 })
 
 describe('POST /api/entities', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockInsertValues.mockResolvedValue([entityRow])
+    mocks.mockCreateEntity.mockResolvedValue(entityRow)
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -132,16 +98,13 @@ describe('POST /api/entities', () => {
     expect(res.status).toBe(201)
     const { entity } = await res.json()
     expect(entity.name).toBe('Personal')
-    expect(entity.type).toBe('individual')
-    expect(mocks.mockInsertValuesCall).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'user-123', name: 'Personal', type: 'individual' })
-    )
+    expect(mocks.mockCreateEntity).toHaveBeenCalledWith('user-123', 'Personal', 'individual')
   })
 
   it('accepts all valid entity types', async () => {
-    const types = ['individual', 'joint', 'trust', 'company', 'superannuation']
+    const types = ['individual', 'joint', 'trust', 'company', 'superannuation'] as const
     for (const type of types) {
-      mocks.mockInsertValues.mockResolvedValue([{ ...entityRow, type }])
+      mocks.mockCreateEntity.mockResolvedValue({ ...entityRow, type })
       const res = await POST(makeRequest('POST', { name: 'Test', type }))
       expect(res.status).toBe(201)
     }
@@ -151,9 +114,8 @@ describe('POST /api/entities', () => {
 describe('PATCH /api/entities/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockUpdateSet.mockResolvedValue([entityRow])
+    mocks.mockUpdateEntity.mockResolvedValue(entityRow)
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -173,29 +135,29 @@ describe('PATCH /api/entities/[id]', () => {
   })
 
   it('returns 404 when entity not found', async () => {
-    mocks.mockUpdateSet.mockResolvedValue([])
+    mocks.mockUpdateEntity.mockResolvedValue(undefined)
     const res = await PATCH(makeRequest('PATCH', { name: 'New' }, ENTITY_ID), { params: Promise.resolve({ id: ENTITY_ID }) })
     expect(res.status).toBe(404)
   })
 
   it('returns 200 with updated entity', async () => {
     const updated = { ...entityRow, name: 'Family Trust' }
-    mocks.mockUpdateSet.mockResolvedValue([updated])
+    mocks.mockUpdateEntity.mockResolvedValue(updated)
     const res = await PATCH(makeRequest('PATCH', { name: 'Family Trust' }, ENTITY_ID), { params: Promise.resolve({ id: ENTITY_ID }) })
     expect(res.status).toBe(200)
     const { entity } = await res.json()
     expect(entity.name).toBe('Family Trust')
-    expect(mocks.mockUpdateSetCall).toHaveBeenCalledWith({ name: 'Family Trust' })
+    expect(mocks.mockUpdateEntity).toHaveBeenCalledWith('user-123', ENTITY_ID, 'Family Trust')
   })
 })
 
 describe('DELETE /api/entities/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelect.mockResolvedValue([]) // no assigned properties or loans
-    mocks.mockDeleteWhere.mockResolvedValue([entityRow])
+    mocks.mockHasPropertyForEntity.mockResolvedValue(false)
+    mocks.mockHasLoanForEntity.mockResolvedValue(false)
+    mocks.mockDeleteEntity.mockResolvedValue(entityRow)
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -210,11 +172,7 @@ describe('DELETE /api/entities/[id]', () => {
   })
 
   it('returns 409 when entity has assigned properties', async () => {
-    let call = 0
-    mocks.mockSelect.mockImplementation(() => {
-      call++
-      return Promise.resolve(call === 1 ? [{ id: PROP_ID }] : []) // first select = properties
-    })
+    mocks.mockHasPropertyForEntity.mockResolvedValue(true)
     const res = await DELETE(makeRequest('DELETE', undefined, ENTITY_ID), { params: Promise.resolve({ id: ENTITY_ID }) })
     expect(res.status).toBe(409)
     const { error } = await res.json()
@@ -222,17 +180,13 @@ describe('DELETE /api/entities/[id]', () => {
   })
 
   it('returns 409 when entity has assigned loans', async () => {
-    let call = 0
-    mocks.mockSelect.mockImplementation(() => {
-      call++
-      return Promise.resolve(call === 2 ? [{ id: LOAN_ID }] : []) // second select = loans
-    })
+    mocks.mockHasLoanForEntity.mockResolvedValue(true)
     const res = await DELETE(makeRequest('DELETE', undefined, ENTITY_ID), { params: Promise.resolve({ id: ENTITY_ID }) })
     expect(res.status).toBe(409)
   })
 
   it('returns 404 when entity not found', async () => {
-    mocks.mockDeleteWhere.mockResolvedValue([])
+    mocks.mockDeleteEntity.mockResolvedValue(undefined)
     const res = await DELETE(makeRequest('DELETE', undefined, ENTITY_ID), { params: Promise.resolve({ id: ENTITY_ID }) })
     expect(res.status).toBe(404)
   })
@@ -242,5 +196,6 @@ describe('DELETE /api/entities/[id]', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.success).toBe(true)
+    expect(mocks.mockDeleteEntity).toHaveBeenCalledWith('user-123', ENTITY_ID)
   })
 })
