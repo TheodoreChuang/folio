@@ -1,13 +1,11 @@
 import { createHash } from 'crypto'
-import { and, eq, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db } from '@/lib/db'
-import { sourceDocuments } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import { captureError, getStorageStatusCode } from '@/lib/api-error'
 import { MAX_UPLOAD_BYTES } from '@/lib/constants'
+import { findSourceDocumentByHash, insertSourceDocument } from '@/lib/ingestion'
 
 const documentTypeSchema = z.enum(['pm_statement', 'loan_statement', 'unknown'])
 
@@ -86,22 +84,11 @@ export async function POST(request: Request) {
     .update(Buffer.from(buffer))
     .digest('hex')
 
-  const existing = await db
-    .select()
-    .from(sourceDocuments)
-    .where(
-      and(
-        eq(sourceDocuments.userId, userId),
-        eq(sourceDocuments.fileHash, hash),
-        isNull(sourceDocuments.deletedAt)
-      )
-    )
-    .limit(1)
-
-  if (existing.length > 0) {
+  const existing = await findSourceDocumentByHash(userId, hash)
+  if (existing) {
     return NextResponse.json({
-      sourceDocumentId: existing[0].id,
-      filePath: existing[0].filePath,
+      sourceDocumentId: existing.id,
+      filePath: existing.filePath,
       isDuplicate: true,
     })
   }
@@ -134,16 +121,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const [doc] = await db
-      .insert(sourceDocuments)
-      .values({
-        userId,
-        fileName: file.name,
-        fileHash: hash,
-        documentType: documentTypeStr,
-        filePath,
-      })
-      .returning()
+    const doc = await insertSourceDocument({
+      userId,
+      fileName: file.name,
+      fileHash: hash,
+      documentType: documentTypeStr,
+      filePath,
+    })
 
     if (!doc) {
       await supabase.storage.from('documents').remove([filePath])
@@ -168,22 +152,11 @@ export async function POST(request: Request) {
       (err as { code: string }).code === '23505'
 
     if (isUniqueViolation) {
-      const existingAfterRace = await db
-        .select()
-        .from(sourceDocuments)
-        .where(
-          and(
-            eq(sourceDocuments.userId, userId),
-            eq(sourceDocuments.fileHash, hash),
-            isNull(sourceDocuments.deletedAt)
-          )
-        )
-        .limit(1)
-
-      if (existingAfterRace.length > 0) {
+      const existingAfterRace = await findSourceDocumentByHash(userId, hash)
+      if (existingAfterRace) {
         return NextResponse.json({
-          sourceDocumentId: existingAfterRace[0].id,
-          filePath: existingAfterRace[0].filePath,
+          sourceDocumentId: existingAfterRace.id,
+          filePath: existingAfterRace.filePath,
           isDuplicate: true,
         })
       }

@@ -1,8 +1,5 @@
-import { and, eq, gte, isNull, sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db } from '@/lib/db'
-import { sourceDocuments } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import {
   extractTextFromPdf,
@@ -11,7 +8,13 @@ import {
   extractLoanStatementData,
 } from '@/lib/ingestion/extraction/parse'
 import type { LoanExtractionResult, ExtractionResult } from '@/lib/ingestion/extraction/schema'
-import { stageExtractionResult, stageLoanExtractionResult } from '@/lib/ingestion'
+import {
+  stageExtractionResult,
+  stageLoanExtractionResult,
+  countRecentUploads,
+  findSourceDocumentById,
+  updateSourceDocumentType,
+} from '@/lib/ingestion'
 import { logger } from '@/lib/logger'
 import { captureError } from '@/lib/api-error'
 
@@ -34,15 +37,7 @@ export async function POST(request: Request) {
 
   const EXTRACT_DAILY_LIMIT = 20
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-  const [{ count }] = await db
-    .select({ count: sql<number>`cast(count(*) as int)` })
-    .from(sourceDocuments)
-    .where(
-      and(
-        eq(sourceDocuments.userId, user.id),
-        gte(sourceDocuments.uploadedAt, oneDayAgo)
-      )
-    )
+  const count = await countRecentUploads(user.id, oneDayAgo)
 
   if (count >= EXTRACT_DAILY_LIMIT) {
     return NextResponse.json(
@@ -60,18 +55,7 @@ export async function POST(request: Request) {
   }
   const { sourceDocumentId } = parsed.data
 
-  const [doc] = await db
-    .select()
-    .from(sourceDocuments)
-    .where(
-      and(
-        eq(sourceDocuments.id, sourceDocumentId),
-        eq(sourceDocuments.userId, user.id),
-        isNull(sourceDocuments.deletedAt)
-      )
-    )
-    .limit(1)
-
+  const doc = await findSourceDocumentById(user.id, sourceDocumentId)
   if (!doc) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -137,11 +121,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      await db
-        .update(sourceDocuments)
-        .set({ documentType })
-        .where(and(eq(sourceDocuments.id, sourceDocumentId), eq(sourceDocuments.userId, user.id), isNull(sourceDocuments.deletedAt)))
-        .returning()
+      await updateSourceDocumentType(user.id, sourceDocumentId, documentType)
     } catch (err) {
       clearTimeout(timeoutId)
       captureError(err, { route: 'POST /api/extract', phase: 'type-update' })

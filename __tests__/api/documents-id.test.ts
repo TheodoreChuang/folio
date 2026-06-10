@@ -15,11 +15,9 @@ const docRow = {
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockSelectLimit: vi.fn(),
-  mockUpdateEntries: vi.fn(),
-  mockUpdateDoc: vi.fn(),
+  mockFindSourceDocumentById: vi.fn(),
+  mockSoftDeleteDocumentWithEntries: vi.fn(),
   mockStorageRemove: vi.fn(),
-  mockTransaction: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -33,17 +31,9 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: mocks.mockSelectLimit,
-        }),
-      }),
-    }),
-    transaction: mocks.mockTransaction,
-  },
+vi.mock('@/lib/ingestion', () => ({
+  findSourceDocumentById: (...args: unknown[]) => mocks.mockFindSourceDocumentById(...args),
+  softDeleteDocumentWithEntries: (...args: unknown[]) => mocks.mockSoftDeleteDocumentWithEntries(...args),
 }))
 
 function makeDeleteRequest(id = VALID_UUID) {
@@ -58,40 +48,9 @@ describe('DELETE /api/documents/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelectLimit.mockResolvedValue([docRow])
+    mocks.mockFindSourceDocumentById.mockResolvedValue(docRow)
+    mocks.mockSoftDeleteDocumentWithEntries.mockResolvedValue({ entriesDeleted: 2 })
     mocks.mockStorageRemove.mockResolvedValue({ error: null })
-    mocks.mockUpdateEntries.mockResolvedValue([{ id: 'entry-1' }, { id: 'entry-2' }])
-    mocks.mockUpdateDoc.mockResolvedValue([])
-
-    // Default transaction: soft-deletes entries then doc
-    mocks.mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
-      let updateCallCount = 0
-      const tx = {
-        update: vi.fn().mockImplementation(() => {
-          updateCallCount++
-          if (updateCallCount === 1) {
-            // First update: propertyLedger — has .returning()
-            return {
-              set: vi.fn().mockReturnValue({
-                where: vi.fn().mockReturnValue({
-                  returning: mocks.mockUpdateEntries,
-                }),
-              }),
-            }
-          }
-          // Second update: sourceDocuments — awaited directly (no returning)
-          return {
-            set: vi.fn().mockReturnValue({
-              where: vi.fn().mockImplementation(() => ({
-                then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
-                  mocks.mockUpdateDoc().then(resolve, reject),
-              })),
-            }),
-          }
-        }),
-      }
-      return fn(tx)
-    })
   })
 
   it('returns 401 when not authenticated', async () => {
@@ -108,16 +67,26 @@ describe('DELETE /api/documents/[id]', () => {
   })
 
   it('returns 404 when document not found', async () => {
-    mocks.mockSelectLimit.mockResolvedValue([])
+    mocks.mockFindSourceDocumentById.mockResolvedValue(null)
     const res = await DELETE(makeDeleteRequest(), makeParams(VALID_UUID))
     expect(res.status).toBe(404)
   })
 
   it('returns 404 when document belongs to another user', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-B' } } })
-    mocks.mockSelectLimit.mockResolvedValue([]) // ownership check returns nothing for user B
+    mocks.mockFindSourceDocumentById.mockResolvedValue(null)
     const res = await DELETE(makeDeleteRequest(), makeParams(VALID_UUID))
     expect(res.status).toBe(404)
+  })
+
+  it('calls findSourceDocumentById with userId from session', async () => {
+    await DELETE(makeDeleteRequest(), makeParams(VALID_UUID))
+    expect(mocks.mockFindSourceDocumentById).toHaveBeenCalledWith('user-123', VALID_UUID)
+  })
+
+  it('calls softDeleteDocumentWithEntries with userId and id', async () => {
+    await DELETE(makeDeleteRequest(), makeParams(VALID_UUID))
+    expect(mocks.mockSoftDeleteDocumentWithEntries).toHaveBeenCalledWith('user-123', VALID_UUID)
   })
 
   it('returns 200 with deleted:true and entriesDeleted count', async () => {
@@ -126,22 +95,6 @@ describe('DELETE /api/documents/[id]', () => {
     const json = await res.json()
     expect(json.deleted).toBe(true)
     expect(typeof json.entriesDeleted).toBe('number')
-  })
-
-  it('soft-deletes property_ledger_entries (first) before source_documents (second)', async () => {
-    const callOrder: string[] = []
-    mocks.mockUpdateEntries.mockImplementation(() => {
-      callOrder.push('entries')
-      return Promise.resolve([{ id: 'e1' }])
-    })
-    mocks.mockUpdateDoc.mockImplementation(() => {
-      callOrder.push('doc')
-      return Promise.resolve([])
-    })
-
-    const res = await DELETE(makeDeleteRequest(), makeParams(VALID_UUID))
-    expect(res.status).toBe(200)
-    expect(callOrder).toEqual(['entries', 'doc'])
   })
 
   it('calls storage remove with the correct filePath after DB commits', async () => {
@@ -159,7 +112,7 @@ describe('DELETE /api/documents/[id]', () => {
   })
 
   it('DB transaction failure returns 500', async () => {
-    mocks.mockTransaction.mockRejectedValue(new Error('DB error'))
+    mocks.mockSoftDeleteDocumentWithEntries.mockRejectedValue(new Error('DB error'))
     const res = await DELETE(makeDeleteRequest(), makeParams(VALID_UUID))
     expect(res.status).toBe(500)
     const json = await res.json()
@@ -167,9 +120,7 @@ describe('DELETE /api/documents/[id]', () => {
   })
 
   it('entriesDeleted count matches the number of rows soft-deleted', async () => {
-    mocks.mockUpdateEntries.mockResolvedValue([
-      { id: 'e1' }, { id: 'e2' }, { id: 'e3' },
-    ])
+    mocks.mockSoftDeleteDocumentWithEntries.mockResolvedValue({ entriesDeleted: 3 })
     const res = await DELETE(makeDeleteRequest(), makeParams(VALID_UUID))
     expect(res.status).toBe(200)
     const json = await res.json()

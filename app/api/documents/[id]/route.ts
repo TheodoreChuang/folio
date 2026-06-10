@@ -1,10 +1,8 @@
-import { and, eq, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { propertyLedger, sourceDocuments } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
 import { captureError } from '@/lib/api-error'
+import { findSourceDocumentById, softDeleteDocumentWithEntries } from '@/lib/ingestion'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -22,31 +20,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid document ID' }, { status: 400 })
     }
 
-    const [doc] = await db
-      .select()
-      .from(sourceDocuments)
-      .where(and(eq(sourceDocuments.id, id), eq(sourceDocuments.userId, user.id), isNull(sourceDocuments.deletedAt)))
-      .limit(1)
-
+    const doc = await findSourceDocumentById(user.id, id)
     if (!doc) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     let entriesDeleted = 0
     try {
-      await db.transaction(async (tx) => {
-        const softDeletedEntries = await tx
-          .update(propertyLedger)
-          .set({ deletedAt: new Date() })
-          .where(and(eq(propertyLedger.sourceDocumentId, id), isNull(propertyLedger.deletedAt)))
-          .returning()
-        entriesDeleted = softDeletedEntries.length
-
-        await tx
-          .update(sourceDocuments)
-          .set({ deletedAt: new Date() })
-          .where(and(eq(sourceDocuments.id, id), eq(sourceDocuments.userId, user.id)))
-      })
+      const result = await softDeleteDocumentWithEntries(user.id, id)
+      entriesDeleted = result.entriesDeleted
     } catch (err) {
       captureError(err, { route: 'DELETE /api/documents/[id]', phase: 'transaction' })
       return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
