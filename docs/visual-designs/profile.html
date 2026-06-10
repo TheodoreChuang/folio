@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280" />
+<title>Folio — Investor profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,30..100&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="folio.css" />
+<link rel="stylesheet" href="agent.css" />
+<style>
+  /* ===================================================================
+     PROFILE FORM — page-local styles
+     =================================================================== */
+  .profile-card {
+    max-width: 560px;
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: var(--space-7);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+  .profile-card .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .profile-card .field .input-label { margin-bottom: 0; }
+  .profile-card .field .hint {
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-subtle));
+    margin-top: -4px;
+  }
+  .profile-card .textarea {
+    font-size: 14px;
+    line-height: var(--leading-normal);
+  }
+  .profile-card .char-count {
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-subtle));
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .profile-card .char-count.is-warn { color: hsl(var(--warning)); }
+
+  .profile-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .profile-actions .btn--primary {
+    height: var(--density-cta);
+    padding: 0 var(--space-6);
+  }
+  .profile-actions .btn--ghost[hidden] { display: none; }
+
+  .profile-foot {
+    font-size: var(--text-xs);
+    color: hsl(var(--foreground-subtle));
+    margin-top: calc(var(--space-3) * -1);
+  }
+</style>
+</head>
+<!--
+  Folio — Investor profile
+  ─────────────────────────────────────────────────────────────────
+  Maps to Next.js route:  /settings/ai-profile
+  Opened from the "Profile" section card on /settings.
+  Kept generic: other features (e.g. an AI assistant) may read this
+  profile, but the page itself doesn't reference them.
+  Shared shell:           sidebar.js / folio.css / folio.js
+-->
+<body data-page="settings">
+<div class="app">
+
+  <!-- Sidebar is injected here by sidebar.js -->
+
+  <main class="main">
+    <div class="main-inner">
+
+    <section class="screen is-active" data-screen="profile" data-screen-label="Investor profile">
+
+      <a href="#" class="crumb-back" data-goto="settings">
+        <svg width="9" height="9" viewBox="0 0 10 10"><polyline points="6,2 2,5 6,8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Settings
+      </a>
+
+      <div class="page-head">
+        <div>
+          <h1 class="title">Investor profile</h1>
+          <p class="subtitle">Your investment goals and strategy, in one place.</p>
+        </div>
+      </div>
+
+      <div class="profile-card">
+
+        <div class="field">
+          <label class="input-label" for="profile-goal">Investment goal</label>
+          <div class="hint">e.g. $2,000/month passive income in 15 years</div>
+          <textarea class="textarea" id="profile-goal" rows="3" maxlength="200" placeholder="What are you working toward?"></textarea>
+          <div class="char-count" data-count-for="profile-goal">0 / 200</div>
+        </div>
+
+        <div class="field">
+          <label class="input-label" for="profile-strategy">Strategy notes</label>
+          <div class="hint">e.g. detached houses only, no units</div>
+          <textarea class="textarea" id="profile-strategy" rows="4" maxlength="500" placeholder="Rules of thumb you invest by"></textarea>
+          <div class="char-count" data-count-for="profile-strategy">0 / 500</div>
+        </div>
+
+        <div class="profile-actions">
+          <button type="button" class="btn btn--primary" data-save>Save profile</button>
+          <button type="button" class="btn btn--ghost" data-clear hidden>Clear</button>
+        </div>
+
+        <p class="profile-foot">Your profile is visible only to you.</p>
+
+      </div>
+
+    </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────
+     TWEAKS PANEL — design-time state switcher.
+     ───────────────────────────────────────────────────────────── -->
+<aside class="tweaks-panel" data-tweaks-panel hidden>
+  <header class="tweaks-head">
+    <div>
+      <div class="title">Tweaks</div>
+      <div class="sub">Design states · investor profile</div>
+    </div>
+    <button type="button" class="tweaks-close" data-tweaks-close aria-label="Close tweaks">✕</button>
+  </header>
+  <div class="tweaks-body">
+    <div class="tweaks-section-label">State</div>
+    <div class="tweaks-states" role="radiogroup" aria-label="Design state">
+      <label class="tweaks-state">
+        <input type="radio" name="design-state" value="filled" />
+        <span class="row">
+          <span class="key">Profile set</span>
+          <span class="desc">Both fields filled. Clear button visible.</span>
+        </span>
+      </label>
+      <label class="tweaks-state">
+        <input type="radio" name="design-state" value="empty" />
+        <span class="row">
+          <span class="key">Empty</span>
+          <span class="desc">First visit — placeholders only.</span>
+        </span>
+      </label>
+      <label class="tweaks-state">
+        <input type="radio" name="design-state" value="near-limit" />
+        <span class="row">
+          <span class="key">Near limit</span>
+          <span class="desc">Goal at 180+ chars — counter warns.</span>
+        </span>
+      </label>
+    </div>
+    <p class="tweaks-foot">
+      Switcher only exists in the design tool. Each state maps to local
+      component state in the Next.js port.
+    </p>
+  </div>
+</aside>
+
+<script>
+const FOLIO_TWEAKS = /*EDITMODE-BEGIN*/{
+  "designState": "near-limit"
+}/*EDITMODE-END*/;
+
+(function () {
+  const goal     = document.getElementById('profile-goal');
+  const strategy = document.getElementById('profile-strategy');
+  const clearBtn = document.querySelector('[data-clear]');
+  const saveBtn  = document.querySelector('[data-save]');
+
+  // --- Sample content per design state -------------------------------
+  const SAMPLE = {
+    filled: {
+      goal: 'Reach $2,000/month in passive income within 15 years, then wind paid work back to three days a week.',
+      strategy: 'Detached houses only — no units or townhouses. Buy below median in growth corridors and hold long term. Keep LVR under 70% across the portfolio.'
+    },
+    empty: { goal: '', strategy: '' },
+    'near-limit': {
+      goal: 'Reach $2,000/month in passive income within 15 years by holding four to five cashflow-positive properties, then wind paid work back to three days a week from age fifty.',
+      strategy: 'Detached houses only, no units.'
+    }
+  };
+
+  // --- Character counters ---------------------------------------------
+  function updateCount(field) {
+    const counter = document.querySelector('[data-count-for="' + field.id + '"]');
+    const max = parseInt(field.getAttribute('maxlength'), 10);
+    const len = field.value.length;
+    counter.textContent = len + ' / ' + max;
+    counter.classList.toggle('is-warn', len >= max * 0.9);
+  }
+
+  // --- Clear button visibility ----------------------------------------
+  function updateClear() {
+    clearBtn.hidden = (goal.value.trim() === '' && strategy.value.trim() === '');
+  }
+
+  function refresh() {
+    updateCount(goal);
+    updateCount(strategy);
+    updateClear();
+  }
+
+  [goal, strategy].forEach(f => f.addEventListener('input', refresh));
+
+  clearBtn.addEventListener('click', () => {
+    goal.value = '';
+    strategy.value = '';
+    refresh();
+    goal.focus();
+  });
+
+  saveBtn.addEventListener('click', () => {
+    const original = saveBtn.textContent;
+    saveBtn.textContent = 'Saved ✓';
+    saveBtn.disabled = true;
+    setTimeout(() => {
+      saveBtn.textContent = original;
+      saveBtn.disabled = false;
+    }, 1400);
+  });
+
+  // --- Tweaks: design-state switcher ----------------------------------
+  const panel = document.querySelector('[data-tweaks-panel]');
+
+  function setState(value) {
+    const sample = SAMPLE[value] || SAMPLE.filled;
+    goal.value = sample.goal;
+    strategy.value = sample.strategy;
+    refresh();
+    panel.querySelectorAll('input[name="design-state"]').forEach(r => {
+      r.checked = (r.value === value);
+    });
+  }
+  setState(FOLIO_TWEAKS.designState || 'filled');
+
+  panel.querySelectorAll('input[name="design-state"]').forEach(r => {
+    r.addEventListener('change', () => {
+      setState(r.value);
+      window.parent.postMessage({
+        type: '__edit_mode_set_keys',
+        edits: { designState: r.value }
+      }, '*');
+    });
+  });
+
+  window.addEventListener('message', e => {
+    const t = e && e.data && e.data.type;
+    if (t === '__activate_edit_mode')   panel.hidden = false;
+    if (t === '__deactivate_edit_mode') panel.hidden = true;
+  });
+  panel.querySelector('[data-tweaks-close]').addEventListener('click', () => {
+    panel.hidden = true;
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  });
+  window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+})();
+</script>
+
+<script src="sidebar.js"></script>
+<script src="folio.js"></script>
+<script src="agent.js"></script>
+</body>
+</html>
