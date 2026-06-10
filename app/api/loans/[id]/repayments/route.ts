@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import {
   findInstallmentLoanById,
@@ -35,6 +36,22 @@ export async function GET(
   }
 }
 
+const repaymentSchema = z.object({
+  paymentDate:    z.string().regex(DATE_REGEX, 'paymentDate must be YYYY-MM-DD'),
+  amountCents:    z.number({ invalid_type_error: 'amountCents must be a positive integer' })
+                   .int('amountCents must be a positive integer')
+                   .positive('amountCents must be a positive integer'),
+  interestCents:  z.number({ invalid_type_error: 'interestCents must be a non-negative integer or null' })
+                   .int('interestCents must be a non-negative integer or null')
+                   .min(0, 'interestCents must be a non-negative integer or null')
+                   .nullable().optional(),
+  principalCents: z.number({ invalid_type_error: 'principalCents must be a non-negative integer or null' })
+                   .int('principalCents must be a non-negative integer or null')
+                   .min(0, 'principalCents must be a non-negative integer or null')
+                   .nullable().optional(),
+  description:    z.string().max(500).transform(s => s.trim() || null).nullable().optional(),
+})
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -56,31 +73,11 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const raw = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {}
-
-    const paymentDate = typeof raw.paymentDate === 'string' ? raw.paymentDate.trim() : ''
-    if (!DATE_REGEX.test(paymentDate)) {
-      return NextResponse.json({ error: 'paymentDate must be YYYY-MM-DD' }, { status: 400 })
+    const parsed = repaymentSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
-
-    const amountCents = raw.amountCents
-    if (typeof amountCents !== 'number' || !Number.isInteger(amountCents) || amountCents <= 0) {
-      return NextResponse.json({ error: 'amountCents must be a positive integer' }, { status: 400 })
-    }
-
-    if (raw.interestCents != null && !(typeof raw.interestCents === 'number' && Number.isInteger(raw.interestCents) && raw.interestCents >= 0)) {
-      return NextResponse.json({ error: 'interestCents must be a non-negative integer or null' }, { status: 400 })
-    }
-    const interestCents = raw.interestCents != null ? (raw.interestCents as number) : null
-
-    if (raw.principalCents != null && !(typeof raw.principalCents === 'number' && Number.isInteger(raw.principalCents) && raw.principalCents >= 0)) {
-      return NextResponse.json({ error: 'principalCents must be a non-negative integer or null' }, { status: 400 })
-    }
-    const principalCents = raw.principalCents != null ? (raw.principalCents as number) : null
-
-    const description = raw.description != null
-      ? (typeof raw.description === 'string' ? raw.description.trim().slice(0, 500) || null : null)
-      : null
+    const { paymentDate, amountCents, interestCents, principalCents, description } = parsed.data
 
     const loan = await findInstallmentLoanById(user.id, id)
     if (!loan) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -88,9 +85,9 @@ export async function POST(
     const repayment = await createLoanLedgerEntry(user.id, id, {
       paymentDate,
       amountCents,
-      interestCents,
-      principalCents,
-      description,
+      interestCents: interestCents ?? null,
+      principalCents: principalCents ?? null,
+      description: description ?? null,
     })
     return NextResponse.json({ repayment }, { status: 201 })
   } catch (err) {

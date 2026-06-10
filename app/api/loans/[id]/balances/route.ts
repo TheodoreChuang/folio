@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import {
   findInstallmentLoanById,
@@ -35,6 +36,14 @@ export async function GET(
   }
 }
 
+const balanceSchema = z.object({
+  recordedAt:   z.string().regex(DATE_REGEX, 'recordedAt must be YYYY-MM-DD'),
+  balanceCents: z.number({ invalid_type_error: 'balanceCents must be a non-negative integer' })
+                 .int('balanceCents must be a non-negative integer')
+                 .min(0, 'balanceCents must be a non-negative integer'),
+  notes:        z.string().max(500, 'notes too long (max 500 characters)').transform(s => s.trim() || null).nullable().optional(),
+})
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -56,24 +65,11 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const raw = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {}
-
-    const recordedAt = typeof raw.recordedAt === 'string' ? raw.recordedAt.trim() : ''
-    if (!DATE_REGEX.test(recordedAt)) {
-      return NextResponse.json({ error: 'recordedAt must be YYYY-MM-DD' }, { status: 400 })
+    const parsed = balanceSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
-
-    const balanceCents = raw.balanceCents
-    if (typeof balanceCents !== 'number' || !Number.isInteger(balanceCents) || balanceCents < 0) {
-      return NextResponse.json({ error: 'balanceCents must be a non-negative integer' }, { status: 400 })
-    }
-
-    const notes = raw.notes != null
-      ? (typeof raw.notes === 'string' ? raw.notes.trim() || null : null)
-      : null
-    if (notes !== null && notes.length > 500) {
-      return NextResponse.json({ error: 'notes too long (max 500 characters)' }, { status: 400 })
-    }
+    const { recordedAt, balanceCents, notes } = parsed.data
 
     const loan = await findInstallmentLoanById(user.id, id)
     if (!loan) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -81,7 +77,7 @@ export async function POST(
     const balance = await createInstallmentLoanBalance(user.id, id, {
       recordedAt,
       balanceCents,
-      notes,
+      notes: notes ?? null,
     })
     return NextResponse.json({ balance }, { status: 201 })
   } catch (err) {

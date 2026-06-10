@@ -37,19 +37,7 @@ const mocks = vi.hoisted(() => ({
   mockGetUser:                   vi.fn(),
   mockFindInstallmentLoanDetail: vi.fn(),
   mockUpdateInstallmentLoanById: vi.fn(),
-  mockDbSelect:                  vi.fn(),
-}))
-
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockImplementation(() => mocks.mockDbSelect()),
-        }),
-      }),
-    }),
-  },
+  mockFindEntityById:            vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -61,6 +49,10 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/borrowings', () => ({
   findInstallmentLoanDetail: mocks.mockFindInstallmentLoanDetail,
   updateInstallmentLoanById: mocks.mockUpdateInstallmentLoanById,
+}))
+
+vi.mock('@/lib/entities', () => ({
+  findEntityById: mocks.mockFindEntityById,
 }))
 
 // ── GET ───────────────────────────────────────────────────────────────────────
@@ -118,7 +110,7 @@ describe('PATCH /api/loans/[id]', () => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
     mocks.mockUpdateInstallmentLoanById.mockResolvedValue(loanDetail)
-    mocks.mockDbSelect.mockResolvedValue([{ id: 'entity-1' }])
+    mocks.mockFindEntityById.mockResolvedValue({ id: 'entity-1' })
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -174,6 +166,21 @@ describe('PATCH /api/loans/[id]', () => {
     expect(res.status).toBe(200)
     const json = await res.json() as { loan: { lender: string } }
     expect(json.loan.lender).toBe('ANZ')
+    expect(mocks.mockUpdateInstallmentLoanById).toHaveBeenCalledWith(
+      'user-123',
+      VALID_LOAN_ID,
+      expect.objectContaining({ lender: 'ANZ' }),
+    )
+  })
+
+  it('returns 404 when entityId is not found or belongs to another user', async () => {
+    mocks.mockFindEntityById.mockResolvedValue(undefined)
+    const res = await PATCH(
+      makePatchRequest(VALID_LOAN_ID, { entityId: 'ffffffff-ffff-4fff-afff-ffffffffffff' }),
+      { params: Promise.resolve({ id: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(404)
+    expect(mocks.mockUpdateInstallmentLoanById).not.toHaveBeenCalled()
   })
 
   it('accepts loanType: interest_only with null ioEndDate', async () => {

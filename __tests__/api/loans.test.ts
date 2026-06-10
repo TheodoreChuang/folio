@@ -213,6 +213,10 @@ describe('POST /api/properties/[id]/loans', () => {
     const json = await res.json()
     expect(json.loan.lender).toBe('Westpac')
     expect(json.loan.nickname).toBe('Investment loan')
+    expect(mocks.mockCreateInstallmentLoan).toHaveBeenCalledWith(
+      'user-123',
+      expect.objectContaining({ lender: 'Westpac' }),
+    )
   })
 
   it('accepts nickname as null (omitted from body)', async () => {
