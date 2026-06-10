@@ -295,7 +295,7 @@
       <aside class="fa-drawer" role="dialog" aria-label="Ask Folio" aria-modal="false">
         <header class="fa-head">
           <span class="fa-mark">${I.spark}</span>
-          <span class="fa-title"><b>Ask Folio</b><span>Ephemeral \u00b7 this chat clears on reload</span></span>
+          <span class="fa-title"><b>Ask Folio</b></span>
           <button class="fa-iconbtn fa-reset" type="button" title="New chat" aria-label="New chat">${I.refresh}</button>
           <button class="fa-iconbtn fa-close" type="button" title="Close" aria-label="Close assistant">${I.close}</button>
         </header>
@@ -306,7 +306,7 @@
             <button class="fa-send" id="fa-send" type="button" aria-label="Send" disabled>${I.send}</button>
           </div>
           <div class="fa-foot">
-            <span class="fa-foot-note fa-left">Prototype \u00b7 answers are <b>scripted</b></span>
+            <span class="fa-foot-note fa-left">Folio Assist \u00b7 <b>alpha v1</b></span>
             <span class="fa-foot-note">Enter to send</span>
           </div>
         </div>
@@ -391,7 +391,7 @@
         footLeft.innerHTML = '<b>' + r + '</b> message' + (r === 1 ? '' : 's') + ' left today';
         footLeft.classList.add('is-low');
       } else {
-        footLeft.innerHTML = 'Prototype \u00b7 answers are <b>scripted</b>';
+        footLeft.innerHTML = 'Folio Assist \u00b7 <b>alpha v1</b>';
         footLeft.classList.remove('is-low');
       }
     }
