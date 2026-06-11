@@ -26,7 +26,7 @@ import {
   periodMeta,
 } from '@/lib/period'
 import type { PeriodKey } from '@/lib/period'
-import type { TrendPoint } from '@/app/api/reports/trends/route'
+import type { TrendPoint } from '@/lib/aggregate'
 
 // ---------- chart config ----------
 

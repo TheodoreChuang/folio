@@ -9,6 +9,9 @@ export type { PortfolioLVR } from './services/portfolio'
 export { listTrends, listPropertyTrends } from './repositories/trends'
 export type { TrendRow } from './repositories/trends'
 
+export { computeTrends } from './services/trends'
+export type { TrendPoint } from './services/trends'
+
 export { getPortfolioData } from './repositories/portfolio'
 export type { ValuationSnapshot, BalanceSnapshot } from './repositories/portfolio'
 
