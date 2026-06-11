@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,30..100&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="agent.css" />
 <style>
   /* =====================================================================
      FOLIO DESIGN TOKENS — imported from the canonical source.
@@ -1209,6 +1210,64 @@
   .input-help.is-positive { color: hsl(var(--positive)); }
 
   /* =====================================================================
+     14 — ASSISTANT — demo scaffolding only.
+     Component CSS is canonical in agent.css (linked in <head>); these
+     rules just un-fix the floating surfaces so they sit inline as specimens.
+     ===================================================================== */
+  .fa-demo-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 412px) minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+  }
+  .fa-demo-col { display: flex; flex-direction: column; gap: var(--space-6); }
+  .fa-demo-stage {
+    background: hsl(var(--background));
+    border: 1px dashed hsl(var(--border));
+    border-radius: var(--radius-sm);
+    padding: var(--space-6);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-6);
+    min-height: 80px;
+  }
+  /* static specimens must not depend on the one-shot entrance animation */
+  .fa-demo .fa-msg { animation: none; }
+  .fa-demo .fa-drawer {
+    position: static;
+    width: 100%;
+    max-width: none;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .fa-demo .fa-fab { position: relative; right: auto; bottom: auto; }
+  .fa-demo .fa-fab.is-peek .fa-fab-label {
+    max-width: 150px;
+    margin-left: var(--space-3);
+    opacity: 1;
+  }
+  .fa-demo-panel {
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius-lg);
+    background: hsl(var(--surface-raised));
+    padding: var(--space-6) var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+  .fa-demo-panel .fa-composer { border-top: none; padding: 0; background: transparent; }
+  .fa-demo-cap {
+    font-size: var(--text-sm);
+    color: hsl(var(--foreground-muted));
+    line-height: var(--leading-snug);
+    margin-top: var(--space-4);
+  }
+  .fa-demo-cap strong { color: hsl(var(--foreground)); font-weight: 600; }
+
+  /* =====================================================================
      PAGE OUTRO
      ===================================================================== */
   .colophon {
@@ -1241,7 +1300,7 @@
     <header class="masthead">
       <div>
         <div class="wordmark">Folio<em> · design system</em></div>
-        <div class="tag">v0.1 — Reference · May 2026</div>
+        <div class="tag">v0.2 — Reference · June 2026</div>
       </div>
       <p class="blurb">
         A calm decision surface for residential property investors. Tokens, type,
@@ -1951,7 +2010,9 @@
           <p>
             Prompts are first-class. They are how Folio gets the user's attention. The message uses
             the display face — this is Folio speaking, not data being displayed. Three severities,
-            shown side-by-side so the hierarchy is clear.
+            shown side-by-side so the hierarchy is clear. Prompts are the push channel; when the
+            <em>user</em> starts the conversation, that's the assistant —
+            see <a href="#assistant" style="color: hsl(var(--accent));">14 · Assistant</a>.
           </p>
         </div>
       </div>
@@ -3980,6 +4041,224 @@
     </section>
 
     <!-- ================================================================
+         14 — ASSISTANT
+         ================================================================ -->
+    <section class="sys" id="assistant">
+      <div class="sys-head">
+        <div class="label">14 — Assistant<span class="kind kind--domain">Domain composition</span></div>
+        <div>
+          <h2>Ask Folio. It reads, explains, cites — and asks before it acts.</h2>
+          <p>
+            Prompts (05) are Folio speaking first; the assistant is the user asking. One launcher and
+            one drawer overlay every authenticated screen — mounted once by
+            <code style="font-family:var(--font-mono); font-size:0.9em;">agent.js</code>, styled by
+            <code style="font-family:var(--font-mono); font-size:0.9em;">agent.css</code>, every class
+            namespaced <code style="font-family:var(--font-mono); font-size:0.9em;">fa-</code> so it sits
+            on top of any page without touching it. It speaks the system it lives in: the greeting in
+            the display face, answers in the data sans, the accent only where there is something to do.
+          </p>
+        </div>
+      </div>
+      <div class="sys-body">
+        <dl class="aside">
+          <dt>Anatomy</dt><dd>Launcher · drawer (header / thread / composer). A turn: plan → tool calls → streamed answer → citations → action.</dd>
+          <dt>Surface</dt><dd>412px drawer over the right edge. Overlays — never reflows the page.</dd>
+          <dt>Keys</dt><dd>⌘K toggle · Esc close · Enter send · Shift-Enter newline.</dd>
+          <dt>Persistence</dt><dd>Open state and thread survive in-app navigation; the thread resets on a true reload.</dd>
+          <dt>Cap</dt><dd>12 messages / day. At zero the composer locks; existing replies stay readable.</dd>
+        </dl>
+        <div>
+          <div class="fa-demo-grid">
+
+            <!-- ── the drawer · one full turn ── -->
+            <div class="fa-root fa-demo">
+              <div class="footnote" style="margin-bottom: var(--space-4);">The drawer · one full turn</div>
+              <aside class="fa-drawer">
+                <header class="fa-head">
+                  <span class="fa-mark"><svg class="fa-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><path d="M12 8.5l1.2 2.3 2.3 1.2-2.3 1.2L12 15.5l-1.2-2.3L8.5 12l2.3-1.2z" fill="currentColor" stroke="none"></path></svg></span>
+                  <span class="fa-title"><b>Ask Folio</b></span>
+                  <button class="fa-iconbtn" type="button" title="New chat" aria-label="New chat"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3v3h-3"></path><path d="M13 8a5 5 0 1 1-1.5-3.6L13 6"></path></svg></button>
+                  <button class="fa-iconbtn" type="button" title="Close" aria-label="Close assistant"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"></path></svg></button>
+                </header>
+                <div class="fa-thread">
+                  <div class="fa-msg fa-msg--user">
+                    <div class="fa-bubble">Why is my portfolio cashflow negative?</div>
+                  </div>
+                  <div class="fa-msg fa-msg--bot">
+                    <div class="fa-byline"><span class="fa-dot"><svg class="fa-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><path d="M12 8.5l1.2 2.3 2.3 1.2-2.3 1.2L12 15.5l-1.2-2.3L8.5 12l2.3-1.2z" fill="currentColor" stroke="none"></path></svg></span> Ask Folio</div>
+                    <div class="fa-body">
+                      <div class="fa-plan">
+                        <div class="fa-plan-head">Plan</div>
+                        <ul class="fa-steps">
+                          <li class="fa-step is-done"><span class="fa-st"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5l2.2 2.2L9.5 3.5"></path></svg></span><span>Pull 12-month cashflow by property</span></li>
+                          <li class="fa-step is-done"><span class="fa-st"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5l2.2 2.2L9.5 3.5"></path></svg></span><span>Split loan repayments vs rent</span></li>
+                          <li class="fa-step is-done"><span class="fa-st"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5l2.2 2.2L9.5 3.5"></path></svg></span><span>Identify the biggest drag</span></li>
+                        </ul>
+                      </div>
+                      <div class="fa-tool"><span class="fa-tool-ico"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><ellipse cx="7" cy="3.2" rx="4.5" ry="1.7"></ellipse><path d="M2.5 3.2v7.6c0 .9 2 1.7 4.5 1.7s4.5-.8 4.5-1.7V3.2"></path><path d="M2.5 7c0 .9 2 1.7 4.5 1.7s4.5-.8 4.5-1.7"></path></svg></span><span>Queried <b>3 properties</b> · rent &amp; expenses, 12-mo</span><span class="fa-tool-ok"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5.5"></circle><path d="M4.7 7.2l1.6 1.6 3-3.4"></path></svg></span></div>
+                      <div class="fa-tool"><span class="fa-tool-ico"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><ellipse cx="7" cy="3.2" rx="4.5" ry="1.7"></ellipse><path d="M2.5 3.2v7.6c0 .9 2 1.7 4.5 1.7s4.5-.8 4.5-1.7V3.2"></path><path d="M2.5 7c0 .9 2 1.7 4.5 1.7s4.5-.8 4.5-1.7"></path></svg></span><span>Queried <b>3 loans</b> · scheduled repayments</span><span class="fa-tool-ok"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5.5"></circle><path d="M4.7 7.2l1.6 1.6 3-3.4"></path></svg></span></div>
+                      <div class="fa-prose">
+                        <p>Across the portfolio you're running <span class="fa-num fa-neg">−$1,110/mo</span> after loan repayments. Most of it is one property:</p>
+                        <p><strong>8&nbsp;Daley&nbsp;St</strong> is <span class="fa-num fa-neg">−$890/mo</span> — your lowest yield (3.9%) and highest gearing (75%). Household surplus more than covers it, so total surplus is still <span class="fa-num fa-pos">+$1,290/mo</span>.</p>
+                      </div>
+                      <div class="fa-cites">
+                        <button class="fa-cite" type="button"><span class="fa-cite-n">1</span><span>8 Daley St</span></button>
+                        <button class="fa-cite" type="button"><span class="fa-cite-n">2</span><span>CBA · Daley St</span></button>
+                        <button class="fa-cite" type="button"><span class="fa-cite-n">3</span><span>Serviceability</span></button>
+                      </div>
+                      <div class="fa-action">
+                        <div class="fa-action-t"><span class="fa-ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><path d="M12 8.5l1.2 2.3 2.3 1.2-2.3 1.2L12 15.5l-1.2-2.3L8.5 12l2.3-1.2z" fill="currentColor" stroke="none"></path></svg></span><span>Model the Daley St IO rollover</span></div>
+                        <div class="fa-action-d">Runs the rollover in the Interest-only tool with the current balance and end date. Opens a draft — nothing changes until you save.</div>
+                        <div class="fa-action-row">
+                          <button class="btn btn--primary btn--sm" type="button">Open the model</button>
+                          <button class="btn btn--ghost btn--sm" type="button">Dismiss</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="fa-composer">
+                  <div class="fa-inputwrap">
+                    <textarea class="fa-input" rows="1" placeholder="Ask about your portfolio…"></textarea>
+                    <button class="fa-send" type="button" aria-label="Send" disabled="disabled"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9M8 4l4 4-4 4"></path></svg></button>
+                  </div>
+                  <div class="fa-foot">
+                    <span class="fa-foot-note">Folio Assist · <b>alpha v1</b></span>
+                    <span class="fa-foot-note">Enter to send</span>
+                  </div>
+                </div>
+              </aside>
+              <div class="fa-demo-cap">
+                A completed turn, rendered static. In motion: typing dots → plan steps tick →
+                tool lines spin then settle → the answer streams word-by-word → citations and the
+                action card land last. The send button becomes a square <strong>stop</strong> while streaming.
+              </div>
+            </div>
+
+            <!-- ── side column: launcher, empty state, limits ── -->
+            <div class="fa-demo-col">
+
+              <div class="fa-root fa-demo">
+                <div class="footnote" style="margin-bottom: var(--space-4);">Launcher · rest and hover</div>
+                <div class="fa-demo-stage">
+                  <button class="fa-fab" type="button" aria-label="Ask Folio"><svg class="fa-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><path d="M12 8.5l1.2 2.3 2.3 1.2-2.3 1.2L12 15.5l-1.2-2.3L8.5 12l2.3-1.2z" fill="currentColor" stroke="none"></path></svg><span class="fa-fab-label"><span>Ask Folio</span><span class="fa-fab-kbd">⌘K</span></span><span class="fa-pip"></span></button>
+                  <button class="fa-fab is-peek" type="button" aria-label="Ask Folio"><svg class="fa-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><path d="M12 8.5l1.2 2.3 2.3 1.2-2.3 1.2L12 15.5l-1.2-2.3L8.5 12l2.3-1.2z" fill="currentColor" stroke="none"></path></svg><span class="fa-fab-label"><span>Ask Folio</span><span class="fa-fab-kbd">⌘K</span></span></button>
+                </div>
+                <div class="fa-demo-cap">
+                  Icon-only 48px circle, fixed bottom-right; expands to a labelled pill on hover or
+                  focus. The pip marks unresolved attention while closed. Hidden entirely while the
+                  drawer is open.
+                </div>
+              </div>
+
+              <div class="fa-root fa-demo">
+                <div class="footnote" style="margin-bottom: var(--space-4);">Empty state · greeting and starters</div>
+                <div class="fa-demo-panel">
+                  <div class="fa-empty">
+                    <div class="fa-greet">Hi Theo — ask me anything about your <em>portfolio</em>.</div>
+                    <div class="fa-greet-sub">I can read your properties, loans and household, explain the numbers, and tee up actions for you to approve.</div>
+                    <div class="fa-suggest-label">Try</div>
+                    <div class="fa-suggests">
+                      <button class="fa-chip" type="button"><span class="fa-chip-ico"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 12h10"></path><path d="M4 12V8M7 12V4M10 12V6"></path></svg></span><span>Why is my portfolio cashflow negative?</span><span class="fa-chip-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h6M6.5 3.5L9 6l-2.5 2.5"></path></svg></span></button>
+                      <button class="fa-chip" type="button"><span class="fa-chip-ico"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 9.5h7.6l-.9-1.5V6a2.9 2.9 0 0 0-5.8 0v2z"></path><path d="M5.7 11a1.3 1.3 0 0 0 2.6 0"></path></svg></span><span>What needs my attention this week?</span><span class="fa-chip-arrow"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h6M6.5 3.5L9 6l-2.5 2.5"></path></svg></span></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="fa-demo-cap">
+                  The greeting is Folio's voice — display face, accent on the one italic word.
+                  Starter chips are static and hand-authored per page (Dashboard, Properties,
+                  Loans …), never model-generated.
+                </div>
+              </div>
+
+              <div class="fa-root fa-demo">
+                <div class="footnote" style="margin-bottom: var(--space-4);">Interruption · rate limit</div>
+                <div class="fa-demo-panel">
+                  <div class="fa-prose"><p>Across the portfolio you're running <span class="fa-num fa-neg">−$1,110/mo</span> after</p></div>
+                  <div class="fa-stopped">Stopped</div>
+                  <div class="fa-notice">You've reached today's limit of <b>12 messages</b>. The assistant is paused until midnight — your existing replies stay readable.</div>
+                  <div class="fa-composer is-locked">
+                    <div class="fa-inputwrap">
+                      <textarea class="fa-input" rows="1" placeholder="Daily limit reached — resets at midnight" disabled="disabled"></textarea>
+                    </div>
+                    <div class="fa-foot">
+                      <span class="fa-foot-note is-low"><b>Daily limit reached</b> · resets at midnight</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="fa-demo-cap">
+                  Stop keeps the partial answer and marks it <strong>Stopped</strong> — never discarded.
+                  The footer counts down from 5 messages left; at zero a quiet warning-tinted notice
+                  appears and the composer locks until midnight.
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ───────── Routing: assistant vs prompt ───────── -->
+          <div class="pattern-card" style="margin-top: var(--space-6);">
+            <div class="pc-eyebrow">14a · Assistant vs Prompt</div>
+            <h3 class="pc-title">The user pulls the assistant. Folio pushes a prompt.</h3>
+            <div class="pc-rule">
+              If Folio noticed it → Prompt (05). If the user asked → assistant. If it changes
+              data → neither acts alone; both route through a reviewed action.
+            </div>
+            <div class="pc-when">
+              <div class="col yes">
+                <h5>Route to the assistant</h5>
+                <ul>
+                  <li>Cross-record questions — "why is cashflow negative", "how much equity".</li>
+                  <li>Drafting on the user's behalf (rent-review note, chase email) — always shown for review.</li>
+                  <li>Teeing up a model (Interest-only, Purchase, Rate sensitivity) pre-filled with context.</li>
+                </ul>
+              </div>
+              <div class="col no">
+                <h5>Do not route here</h5>
+                <ul>
+                  <li>Folio-initiated alerts — that's a Prompt (05), pushed to the inbox.</li>
+                  <li>Lifecycle or destructive actions — confirmations (13b), never chat.</li>
+                  <li>The screen's primary action — that's a button in the header.</li>
+                  <li>Anything that mutates data silently. The assistant proposes; the user approves.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="pattern-note" style="margin-top: var(--space-3);">
+              <div class="tag">Reviewed action</div>
+              <div>
+                The assistant <strong>never writes to the portfolio</strong>. Every proposed change
+                ships as an action card — title, plain-language description of what it touches, an
+                explicit CTA, and Dismiss. Resolved cards dim and stay in the thread as a record of
+                what was approved.
+              </div>
+            </div>
+
+            <div class="pattern-note" style="margin-top: var(--space-3);">
+              <div class="tag">Trust surface</div>
+              <div>
+                The plan card and tool-call lines are not chrome — they are how the user audits the
+                answer. <strong>Every number traces to a citation chip</strong> that links to the
+                screen it came from. An uncited figure is a defect.
+              </div>
+            </div>
+
+            <div class="pattern-note" style="margin-top: var(--space-3);">
+              <div class="tag">Spark glyph</div>
+              <div>
+                The four-point spark is <strong>reserved for the assistant</strong> — launcher, drawer
+                mark, byline, action cards. It never appears decoratively elsewhere. The 14px
+                micro-glyphs in tool lines and chips are bespoke strokes today; at production they map
+                to the Lucide equivalents from 04a (database, file-text, bar-chart, home, bell).
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================
          COLOPHON
          ================================================================ -->
     <footer class="colophon">
@@ -3988,8 +4267,8 @@
         there is something worth saying.”
       </p>
       <div style="text-align:right;">
-        <div class="footnote">Folio · design system v0.1</div>
-        <div style="font-family: var(--font-mono); font-size: var(--text-2xs); color: hsl(var(--foreground-subtle)); margin-top: 4px;">May 2026 · reference build</div>
+        <div class="footnote">Folio · design system v0.2</div>
+        <div style="font-family: var(--font-mono); font-size: var(--text-2xs); color: hsl(var(--foreground-subtle)); margin-top: 4px;">June 2026 · reference build</div>
       </div>
     </footer>
   </main>
