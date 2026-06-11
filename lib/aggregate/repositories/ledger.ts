@@ -1,9 +1,37 @@
-import { and, eq, gte, inArray, isNull, lte } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { propertyLedger, properties, installmentLoans } from '@/db/schema'
 import type { Property, InstallmentLoan, PropertyLedger } from '@/db/schema'
 
-export async function fetchPropertiesActiveInRange(
+export async function findLedgerEntryById(
+  userId: string,
+  id: string,
+): Promise<PropertyLedger | undefined> {
+  const [entry] = await db
+    .select()
+    .from(propertyLedger)
+    .where(and(
+      eq(propertyLedger.id, id),
+      eq(propertyLedger.userId, userId),
+      isNull(propertyLedger.deletedAt),
+    ))
+    .limit(1)
+  return entry
+}
+
+export async function deleteLedgerEntry(
+  userId: string,
+  id: string,
+): Promise<PropertyLedger> {
+  const [updated] = await db
+    .update(propertyLedger)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(propertyLedger.id, id), eq(propertyLedger.userId, userId)))
+    .returning()
+  return updated
+}
+
+export async function listPropertiesActiveInRange(
   userId: string,
   from: string,
   to: string,
@@ -12,13 +40,15 @@ export async function fetchPropertiesActiveInRange(
 ): Promise<Property[]> {
   const where = [
     eq(properties.userId, userId),
+    lte(properties.startDate, to),
+    or(isNull(properties.endDate), gte(properties.endDate, from)),
     ...(propertyId ? [eq(properties.id, propertyId)] : []),
     ...(entityId ? [eq(properties.entityId, entityId)] : []),
   ]
   return db.select().from(properties).where(and(...where))
 }
 
-export async function fetchLoansActiveInRange(
+export async function listLoansActiveInRange(
   userId: string,
   from: string,
   to: string,
@@ -35,7 +65,7 @@ export async function fetchLoansActiveInRange(
 
 // Fetches ledger entries in range. If propertyIds is an empty array, returns [] immediately
 // (signals "filter applied but no matching properties"). If undefined, fetches for all user properties.
-export async function fetchLedgerEntriesInRange(
+export async function listLedgerEntriesInRange(
   userId: string,
   from: string,
   to: string,

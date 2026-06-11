@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { entities, properties, propertyLedger } from '@/db/schema'
-import { fetchTrendData } from '@/lib/aggregate'
+import { listTrends } from '@/lib/aggregate'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -11,7 +11,7 @@ const testEmail = process.env.TEST_USER_EMAIL
 const testPassword = process.env.TEST_USER_PASSWORD
 const hasEnv = !!url && !!anonKey && !!testEmail && !!testPassword && !!process.env.DATABASE_URL
 
-describe('fetchTrendData — entityId filter (integration)', () => {
+describe('listTrends — entityId filter (integration)', () => {
   let userId: string
   let entityAId: string
   let entityBId: string
@@ -90,7 +90,7 @@ describe('fetchTrendData — entityId filter (integration)', () => {
 
   it('no entityId: returns trend rows for both entities', async () => {
     if (!hasEnv) return
-    const rows = await fetchTrendData(userId, '2026-03-01', '2026-03-31')
+    const rows = await listTrends(userId, '2026-03-01', '2026-03-31')
     const march = rows.filter(r => r.month === '2026-03' && r.category === 'rent')
     const total = march.reduce((s, r) => s + Number(r.totalCents), 0)
     expect(total).toBeGreaterThanOrEqual(500000)
@@ -98,7 +98,7 @@ describe('fetchTrendData — entityId filter (integration)', () => {
 
   it('entityId for A: returns only rows for properties in entity A', async () => {
     if (!hasEnv) return
-    const rows = await fetchTrendData(userId, '2026-03-01', '2026-03-31', entityAId)
+    const rows = await listTrends(userId, '2026-03-01', '2026-03-31', entityAId)
     const march = rows.find(r => r.month === '2026-03' && r.category === 'rent')
     expect(march).toBeDefined()
     expect(Number(march!.totalCents)).toBe(200000)
@@ -106,7 +106,7 @@ describe('fetchTrendData — entityId filter (integration)', () => {
 
   it('entityId for B: returns only rows for properties in entity B', async () => {
     if (!hasEnv) return
-    const rows = await fetchTrendData(userId, '2026-03-01', '2026-03-31', entityBId)
+    const rows = await listTrends(userId, '2026-03-01', '2026-03-31', entityBId)
     const march = rows.find(r => r.month === '2026-03' && r.category === 'rent')
     expect(march).toBeDefined()
     expect(Number(march!.totalCents)).toBe(300000)
@@ -114,7 +114,7 @@ describe('fetchTrendData — entityId filter (integration)', () => {
 
   it('entityId with no matching properties: returns empty array', async () => {
     if (!hasEnv) return
-    const rows = await fetchTrendData(userId, '2026-03-01', '2026-03-31', crypto.randomUUID())
+    const rows = await listTrends(userId, '2026-03-01', '2026-03-31', crypto.randomUUID())
     expect(rows).toHaveLength(0)
   })
 })

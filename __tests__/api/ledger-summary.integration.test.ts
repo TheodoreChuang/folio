@@ -127,3 +127,94 @@ describe('GET /api/ledger/summary (integration — S-1 loan date-range filter)',
     expect(missing.some((m) => m.installmentLoanId === futureLoanId)).toBe(false)
   })
 })
+
+describe('GET /api/ledger/summary (integration — S-2 property date-range filter)', () => {
+  let userId: string
+  let activePropertyId: string   // startDate 2020-01-01, no endDate — overlaps March 2026
+  let soldPropertyId: string     // endDate 2025-12-31 — sold before March 2026
+  let futurePropertyId: string   // startDate 2026-04-01 — starts after March 2026
+
+  beforeAll(async () => {
+    if (!hasEnv) return
+
+    const anon = createClient(url!, anonKey!)
+    const { data: { session }, error } = await anon.auth.signInWithPassword({
+      email: testEmail!,
+      password: testPassword!,
+    })
+    if (error || !session) throw new Error(`Sign-in failed: ${error?.message ?? 'no session'}`)
+    userId = session.user.id
+
+    const serverClient = createServerClient(url!, anonKey!, {
+      cookies: {
+        getAll: () => refs.cookieStore,
+        setAll: (cs) => {
+          refs.cookieStore.length = 0
+          refs.cookieStore.push(...cs)
+        },
+      },
+    })
+    await serverClient.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    })
+
+    const [activeProp] = await db
+      .insert(properties)
+      .values({ userId, address: `S2 Active ${crypto.randomUUID()}`, startDate: '2020-01-01' })
+      .returning()
+    activePropertyId = activeProp.id
+
+    const [soldProp] = await db
+      .insert(properties)
+      .values({ userId, address: `S2 Sold ${crypto.randomUUID()}`, startDate: '2020-01-01', endDate: '2025-12-31' })
+      .returning()
+    soldPropertyId = soldProp.id
+
+    const [futureProp] = await db
+      .insert(properties)
+      .values({ userId, address: `S2 Future ${crypto.randomUUID()}`, startDate: '2026-04-01' })
+      .returning()
+    futurePropertyId = futureProp.id
+  })
+
+  afterAll(async () => {
+    if (!hasEnv) return
+    if (activePropertyId) await db.delete(properties).where(eq(properties.id, activePropertyId))
+    if (soldPropertyId) await db.delete(properties).where(eq(properties.id, soldPropertyId))
+    if (futurePropertyId) await db.delete(properties).where(eq(properties.id, futurePropertyId))
+  })
+
+  async function getLedgerSummaryForUser(from: string, to: string) {
+    const { GET } = await import('@/app/api/ledger/summary/route')
+    const params = new URLSearchParams({ from, to })
+    return GET(new Request(`http://localhost/api/ledger/summary?${params}`, { method: 'GET' }))
+  }
+
+  it('active property (overlapping period) appears in totals.properties', async () => {
+    if (!hasEnv) return
+    const res = await getLedgerSummaryForUser(FROM, TO)
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    const propIds = (json.totals.properties as { propertyId: string }[]).map(p => p.propertyId)
+    expect(propIds).toContain(activePropertyId)
+  })
+
+  it('sold property (endDate before period) excluded from totals.properties (S-2)', async () => {
+    if (!hasEnv) return
+    const res = await getLedgerSummaryForUser(FROM, TO)
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    const propIds = (json.totals.properties as { propertyId: string }[]).map(p => p.propertyId)
+    expect(propIds).not.toContain(soldPropertyId)
+  })
+
+  it('future property (startDate after period) excluded from totals.properties (S-2)', async () => {
+    if (!hasEnv) return
+    const res = await getLedgerSummaryForUser(FROM, TO)
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    const propIds = (json.totals.properties as { propertyId: string }[]).map(p => p.propertyId)
+    expect(propIds).not.toContain(futurePropertyId)
+  })
+})

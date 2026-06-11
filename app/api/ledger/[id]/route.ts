@@ -1,13 +1,10 @@
-import { and, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { propertyLedger } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
+import { findLedgerEntryById, deleteLedgerEntry } from '@/lib/aggregate'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-// DELETE /api/ledger/[id] — soft-delete a manual ledger entry.
 // Guard: entries linked to a source document (PDF-extracted) cannot be deleted here.
 // Those are removed at the statement level via DELETE /api/documents/[id].
 export async function DELETE(
@@ -25,11 +22,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const [entry] = await db
-      .select()
-      .from(propertyLedger)
-      .where(and(eq(propertyLedger.id, id), eq(propertyLedger.userId, user.id)))
-      .limit(1)
+    const entry = await findLedgerEntryById(user.id, id)
 
     if (!entry) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -42,13 +35,9 @@ export async function DELETE(
       )
     }
 
-    const [updated] = await db
-      .update(propertyLedger)
-      .set({ deletedAt: new Date() })
-      .where(and(eq(propertyLedger.id, id), eq(propertyLedger.userId, user.id)))
-      .returning()
+    await deleteLedgerEntry(user.id, id)
 
-    return NextResponse.json({ entry: updated })
+    return NextResponse.json({ success: true })
   } catch (err) {
     captureError(err, { route: 'DELETE /api/ledger/[id]' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

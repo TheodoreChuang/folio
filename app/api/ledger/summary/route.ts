@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import {
-  fetchPropertiesActiveInRange,
-  fetchLoansActiveInRange,
-  fetchLedgerEntriesInRange,
+  listPropertiesActiveInRange,
+  listLoansActiveInRange,
+  listLedgerEntriesInRange,
   computeReport,
 } from '@/lib/aggregate'
 
@@ -34,13 +34,13 @@ export async function GET(request: Request) {
     }
 
     const [props, loans] = await Promise.all([
-      fetchPropertiesActiveInRange(user.id, from, to, propertyId, entityId),
-      fetchLoansActiveInRange(user.id, from, to, entityId),
+      listPropertiesActiveInRange(user.id, from, to, propertyId, entityId),
+      listLoansActiveInRange(user.id, from, to, entityId),
     ])
 
     const filteredPropertyIds = props.map(p => p.id)
     const hasFilter = !!(propertyId || entityId)
-    const entries = await fetchLedgerEntriesInRange(
+    const entries = await listLedgerEntriesInRange(
       user.id,
       from,
       to,

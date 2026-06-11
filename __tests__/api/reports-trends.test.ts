@@ -16,7 +16,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 vi.mock('@/lib/aggregate', () => ({
-  fetchTrendData: mocks.mockFetchTrendData,
+  listTrends: mocks.mockFetchTrendData,
 }))
 
 function makeRequest(params: Record<string, string> = {}) {
@@ -25,7 +25,7 @@ function makeRequest(params: Record<string, string> = {}) {
   return new Request(url.toString(), { method: 'GET' })
 }
 
-// A DB row as returned from fetchTrendData
+// A DB row as returned from listTrends
 function makeRow(month: string, category: string, totalCents: number) {
   return { month, category, totalCents }
 }
@@ -179,7 +179,7 @@ describe('GET /api/reports/trends', () => {
     expect(mar.rentCents).toBe(400000)
   })
 
-  it('passes userId, from, to, and entityId to fetchTrendData', async () => {
+  it('passes userId, from, to, and entityId to listTrends', async () => {
     const ENTITY_ID = 'c3d4e5f6-a7b8-4901-c234-333333333333'
     await GET(makeRequest({ from: '2026-01-01', to: '2026-03-31', entityId: ENTITY_ID }))
     expect(mocks.mockFetchTrendData).toHaveBeenCalledWith(

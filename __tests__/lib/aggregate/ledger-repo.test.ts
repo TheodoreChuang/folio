@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
-  fetchPropertiesActiveInRange,
-  fetchLoansActiveInRange,
-  fetchLedgerEntriesInRange,
+  listPropertiesActiveInRange,
+  listLoansActiveInRange,
+  listLedgerEntriesInRange,
 } from '@/lib/aggregate/repositories/ledger'
 
 const PROP_ID = 'aaaa0001-0000-4000-a000-000000000001'
@@ -37,78 +37,82 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
-describe('fetchPropertiesActiveInRange', () => {
+describe('listPropertiesActiveInRange', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockWhere.mockResolvedValue([propRow])
   })
 
   it('returns properties from DB', async () => {
-    const result = await fetchPropertiesActiveInRange('user-123', '2026-03-01', '2026-03-31')
+    const result = await listPropertiesActiveInRange('user-123', '2026-03-01', '2026-03-31')
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe(PROP_ID)
   })
 
-  it('returns empty array when no properties', async () => {
+  it('returns empty array when no properties in range', async () => {
     mocks.mockWhere.mockResolvedValueOnce([])
-    const result = await fetchPropertiesActiveInRange('user-123', '2026-03-01', '2026-03-31')
+    const result = await listPropertiesActiveInRange('user-123', '2026-03-01', '2026-03-31')
     expect(result).toHaveLength(0)
   })
 
   it('applies userId filter (different user gets no results)', async () => {
     mocks.mockWhere.mockResolvedValueOnce([])
-    const result = await fetchPropertiesActiveInRange('other-user', '2026-03-01', '2026-03-31')
+    const result = await listPropertiesActiveInRange('other-user', '2026-03-01', '2026-03-31')
     expect(result).toHaveLength(0)
+  })
+
+  it('reaches the DB with date-range params (WHERE correctness verified by S-2 integration test)', async () => {
+    await listPropertiesActiveInRange('user-123', '2026-03-01', '2026-03-31')
+    expect(mocks.mockWhere).toHaveBeenCalled()
   })
 })
 
-describe('fetchLoansActiveInRange', () => {
+describe('listLoansActiveInRange', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockWhere.mockResolvedValue([loanRow])
   })
 
   it('returns loans from DB', async () => {
-    const result = await fetchLoansActiveInRange('user-123', '2026-03-01', '2026-03-31')
+    const result = await listLoansActiveInRange('user-123', '2026-03-01', '2026-03-31')
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe(LOAN_ID)
   })
 
   it('returns empty array when no loans active in range', async () => {
     mocks.mockWhere.mockResolvedValueOnce([])
-    const result = await fetchLoansActiveInRange('user-123', '2026-03-01', '2026-03-31')
+    const result = await listLoansActiveInRange('user-123', '2026-03-01', '2026-03-31')
     expect(result).toHaveLength(0)
   })
 })
 
-describe('fetchLedgerEntriesInRange', () => {
+describe('listLedgerEntriesInRange', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockWhere.mockResolvedValue([entryRow])
   })
 
   it('returns entries from DB', async () => {
-    const result = await fetchLedgerEntriesInRange('user-123', '2026-03-01', '2026-03-31', [PROP_ID])
+    const result = await listLedgerEntriesInRange('user-123', '2026-03-01', '2026-03-31', [PROP_ID])
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe('entry-001')
   })
 
   it('returns [] immediately when propertyIds is empty array', async () => {
-    const result = await fetchLedgerEntriesInRange('user-123', '2026-03-01', '2026-03-31', [])
+    const result = await listLedgerEntriesInRange('user-123', '2026-03-01', '2026-03-31', [])
     expect(result).toHaveLength(0)
     expect(mocks.mockWhere).not.toHaveBeenCalled()
   })
 
   it('fetches all user entries when propertyIds is undefined (no property filter)', async () => {
-    const result = await fetchLedgerEntriesInRange('user-123', '2026-03-01', '2026-03-31')
+    const result = await listLedgerEntriesInRange('user-123', '2026-03-01', '2026-03-31')
     expect(result).toHaveLength(1)
     expect(mocks.mockWhere).toHaveBeenCalled()
   })
 
-  it('applies soft-delete filter — does not return deleted entries', async () => {
-    // The isNull(deletedAt) condition is in the query; integration tests verify correctness.
-    // Here: assert the function hits the DB (not short-circuited) when propertyIds has items.
-    await fetchLedgerEntriesInRange('user-123', '2026-03-01', '2026-03-31', [PROP_ID])
+  it('reaches the DB (does not short-circuit) when propertyIds array is non-empty', async () => {
+    // isNull(deletedAt) correctness is verified at the integration test level.
+    await listLedgerEntriesInRange('user-123', '2026-03-01', '2026-03-31', [PROP_ID])
     expect(mocks.mockWhere).toHaveBeenCalled()
   })
 })

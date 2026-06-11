@@ -14,7 +14,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 vi.mock('@/lib/aggregate', () => ({
-  fetchReturnData: mocks.mockFetchReturnData,
+  getReturnData: mocks.mockFetchReturnData,
   computeReturn:   mocks.mockComputeReturn,
 }))
 
@@ -98,7 +98,7 @@ describe('GET /api/portfolio/return', () => {
     })
   })
 
-  it('passes entityId to fetchReturnData when provided', async () => {
+  it('passes entityId to getReturnData when provided', async () => {
     const entityId = 'aaaaaaaa-0000-4000-a000-000000000001'
     await GET(makeRequest({ from: '2025-06-01', to: '2026-06-30', entityId }))
     expect(mocks.mockFetchReturnData).toHaveBeenCalledWith(
@@ -106,10 +106,24 @@ describe('GET /api/portfolio/return', () => {
     )
   })
 
-  it('passes null entityId to fetchReturnData when not provided', async () => {
+  it('passes null entityId to getReturnData when not provided', async () => {
     await GET(makeRequest({ from: '2025-06-01', to: '2026-06-30' }))
     expect(mocks.mockFetchReturnData).toHaveBeenCalledWith(
       'user-123', '2025-06-01', '2026-06-30', null
+    )
+  })
+
+  it('passes correct periodMonths to computeReturn (13 months for 2025-06-01 to 2026-06-30)', async () => {
+    await GET(makeRequest({ from: '2025-06-01', to: '2026-06-30' }))
+    expect(mocks.mockComputeReturn).toHaveBeenCalledWith(
+      expect.objectContaining({ periodMonths: 13 })
+    )
+  })
+
+  it('passes correct periodMonths to computeReturn (1 month for single-month range)', async () => {
+    await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
+    expect(mocks.mockComputeReturn).toHaveBeenCalledWith(
+      expect.objectContaining({ periodMonths: 1 })
     )
   })
 })

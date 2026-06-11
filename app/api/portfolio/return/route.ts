@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
-import { fetchReturnData, computeReturn } from '@/lib/aggregate'
+import { getReturnData, computeReturn } from '@/lib/aggregate'
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     }
 
     const periodMonths = calendarMonths(from, to)
-    const data = await fetchReturnData(user.id, from, to, entityIdParam)
+    const data = await getReturnData(user.id, from, to, entityIdParam)
     const result = computeReturn({ ...data, periodMonths })
 
     return NextResponse.json({ return: result })

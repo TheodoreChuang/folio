@@ -1,5 +1,5 @@
-import { fetchPortfolioData } from '@/lib/aggregate/repositories/portfolio'
-import { fetchLedgerEntriesInRange } from '@/lib/aggregate/repositories/ledger'
+import { getPortfolioData } from '@/lib/aggregate/repositories/portfolio'
+import { listLedgerEntriesInRange } from '@/lib/aggregate/repositories/ledger'
 import { listBudgetItems } from '@/lib/household/repositories/budget-items'
 import { computeSummary } from '@/lib/household/compute'
 import { computeReport } from '@/lib/aggregate/services/compute'
@@ -88,9 +88,9 @@ export async function fetchPlanContext(userId: string): Promise<PlanContext> {
 
   const [{ properties, valuations, balances, loans }, budgetItems, ledgerEntries] =
     await Promise.all([
-      fetchPortfolioData(userId),
+      getPortfolioData(userId),
       listBudgetItems(userId),
-      fetchLedgerEntriesInRange(userId, from, to),
+      listLedgerEntriesInRange(userId, from, to),
     ])
 
   const activeProperties = properties.filter(p => !p.endDate || p.endDate >= todayStr)

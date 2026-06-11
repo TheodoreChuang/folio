@@ -2,7 +2,7 @@ import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { properties, propertyLedger, propertyValuations } from '@/db/schema'
 
-export async function fetchReturnData(
+export async function getReturnData(
   userId: string,
   fromDate: string,
   toDate: string,

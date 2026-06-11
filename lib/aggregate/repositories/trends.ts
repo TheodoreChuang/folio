@@ -9,7 +9,7 @@ export type TrendRow = {
   totalCents: number
 }
 
-export async function fetchTrendData(
+export async function listTrends(
   userId: string,
   from: string,
   to: string,
@@ -48,7 +48,7 @@ export async function fetchTrendData(
     )
 }
 
-export async function fetchPropertyTrendData(
+export async function listPropertyTrends(
   userId: string,
   propertyId: string,
   from: string,
