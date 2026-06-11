@@ -1,5 +1,5 @@
 import type { TrendRow } from '@/lib/aggregate/repositories/trends'
-import { CATEGORY_BUCKET } from '@/lib/ledger-categories'
+import { CATEGORY_BUCKET } from './compute'
 
 export type TrendPoint = {
   month: string
