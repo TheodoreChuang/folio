@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getPropertyWithStats } from '@/lib/property/services/property'
 
 const mocks = vi.hoisted(() => ({
-  mockFindById: vi.fn(),
-  mockFindLatestValuation: vi.fn(),
-  mockFindTrailing12m: vi.fn(),
-  mockDbWhere: vi.fn(),
-  mockDbOrderBy: vi.fn(),
+  mockFindById:                   vi.fn(),
+  mockFindLatestValuation:        vi.fn(),
+  mockFindTrailing12m:            vi.fn(),
+  mockFindLoanIdsByProperty:      vi.fn(),
+  mockFindLatestBalancesByLoanIds: vi.fn(),
 }))
 
 vi.mock('@/lib/property/repositories/properties', () => ({
@@ -21,14 +21,9 @@ vi.mock('@/lib/property/repositories/ledger', () => ({
   findTrailing12mEntries: mocks.mockFindTrailing12m,
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: mocks.mockDbWhere,
-      }),
-    }),
-  },
+vi.mock('@/lib/borrowings', () => ({
+  findLoanIdsByProperty:       mocks.mockFindLoanIdsByProperty,
+  findLatestBalancesByLoanIds: mocks.mockFindLatestBalancesByLoanIds,
 }))
 
 const PROP_ID = 'prop-1111-2222-3333-4444-555555555555'
@@ -47,8 +42,7 @@ const prop = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  // Default: no installment loans for this property
-  mocks.mockDbWhere.mockResolvedValue([])
+  mocks.mockFindLoanIdsByProperty.mockResolvedValue([])
 })
 
 describe('getPropertyWithStats', () => {
@@ -118,7 +112,6 @@ describe('getPropertyWithStats', () => {
       id: 'v1', valueCents: 80000000, valuedAt: '2026-01-01', source: null,
     })
     mocks.mockFindTrailing12m.mockResolvedValue([])
-    mocks.mockDbWhere.mockResolvedValue([])
     const result = await getPropertyWithStats(USER_ID, PROP_ID)
     expect(result?.totalDebtCents).toBe(0)
     expect(result?.equityCents).toBe(80000000)
@@ -132,18 +125,22 @@ describe('getPropertyWithStats', () => {
       id: 'v1', valueCents: 100000000, valuedAt: '2026-01-01', source: null,
     })
     mocks.mockFindTrailing12m.mockResolvedValue([])
-    // First where() call: loan IDs for this property
-    mocks.mockDbWhere
-      .mockResolvedValueOnce([{ id: loanId }])
-      // Second where() call (for balances) — needs orderBy chain
-      .mockReturnValueOnce({ orderBy: mocks.mockDbOrderBy })
-    mocks.mockDbOrderBy.mockResolvedValue([
-      { installmentLoanId: loanId, balanceCents: 50000000, recordedAt: new Date() },
+    mocks.mockFindLoanIdsByProperty.mockResolvedValue([loanId])
+    mocks.mockFindLatestBalancesByLoanIds.mockResolvedValue([
+      { installmentLoanId: loanId, balanceCents: 50000000 },
     ])
     const result = await getPropertyWithStats(USER_ID, PROP_ID)
     expect(result?.totalDebtCents).toBe(50000000)
     expect(result?.equityCents).toBe(50000000)
     expect(result?.lvrDecimal).toBeCloseTo(0.5)
+  })
+
+  it('verifies findLoanIdsByProperty is called with the correct userId and propertyId', async () => {
+    mocks.mockFindById.mockResolvedValue(prop)
+    mocks.mockFindLatestValuation.mockResolvedValue(null)
+    mocks.mockFindTrailing12m.mockResolvedValue([])
+    await getPropertyWithStats(USER_ID, PROP_ID)
+    expect(mocks.mockFindLoanIdsByProperty).toHaveBeenCalledWith(USER_ID, PROP_ID)
   })
 
   it('computes totalAppreciationCents when purchasePriceCents is set', async () => {
@@ -152,7 +149,6 @@ describe('getPropertyWithStats', () => {
       id: 'v1', valueCents: 80000000, valuedAt: '2026-01-01', source: null,
     })
     mocks.mockFindTrailing12m.mockResolvedValue([])
-    mocks.mockDbWhere.mockResolvedValue([])
     const result = await getPropertyWithStats(USER_ID, PROP_ID)
     expect(result?.totalAppreciationCents).toBe(20000000)
   })
