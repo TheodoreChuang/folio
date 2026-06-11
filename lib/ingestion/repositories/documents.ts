@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { propertyLedger, sourceDocuments } from '@/db/schema'
 import type { NewSourceDocument, SourceDocument } from '@/db/schema'
 
-export type DocumentForMonth = {
+export type DocumentForDateRange = {
   id: string
   fileName: string
   propertyId: string
@@ -74,11 +74,11 @@ export async function updateSourceDocumentType(userId: string, id: string, docum
     .returning()
 }
 
-export async function listDocumentsForMonth(
+export async function listDocumentsForDateRange(
   userId: string,
   startDate: string,
   endDate: string,
-): Promise<DocumentForMonth[]> {
+): Promise<DocumentForDateRange[]> {
   const rows = await db
     .selectDistinctOn(
       [propertyLedger.propertyId, propertyLedger.sourceDocumentId],

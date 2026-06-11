@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import { lastDayOfMonth } from '@/lib/format'
-import { listDocumentsForMonth } from '@/lib/ingestion'
+import { listDocumentsForDateRange } from '@/lib/ingestion'
 
 const MONTH_REGEX = /^\d{4}-\d{2}$/
 
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     const startDate = `${month}-01`
     const endDate = lastDayOfMonth(month)
 
-    const docs = await listDocumentsForMonth(user.id, startDate, endDate)
+    const docs = await listDocumentsForDateRange(user.id, startDate, endDate)
 
     return NextResponse.json({ documents: docs })
   } catch (err) {

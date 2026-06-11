@@ -7,7 +7,7 @@ export {
   findSourceDocumentById,
   countRecentUploads,
   updateSourceDocumentType,
-  listDocumentsForMonth,
+  listDocumentsForDateRange,
   softDeleteDocumentWithEntries,
 } from './repositories/documents'
 export { stageExtractionResult, commitStagedItems } from './services/ingestion'

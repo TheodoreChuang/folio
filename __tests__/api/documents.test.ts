@@ -10,7 +10,7 @@ const docRow = {
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockListDocumentsForMonth: vi.fn(),
+  mockListDocumentsForDateRange: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -22,7 +22,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 vi.mock('@/lib/ingestion', () => ({
-  listDocumentsForMonth: (...args: unknown[]) => mocks.mockListDocumentsForMonth(...args),
+  listDocumentsForDateRange: (...args: unknown[]) => mocks.mockListDocumentsForDateRange(...args),
 }))
 
 function makeGetRequest(month?: string) {
@@ -36,7 +36,7 @@ describe('GET /api/documents', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockListDocumentsForMonth.mockResolvedValue([])
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([])
   })
 
   it('returns 401 when not authenticated', async () => {
@@ -62,7 +62,7 @@ describe('GET /api/documents', () => {
   })
 
   it('returns 200 with empty documents array when no linked docs', async () => {
-    mocks.mockListDocumentsForMonth.mockResolvedValue([])
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([])
     const res = await GET(makeGetRequest('2026-01'))
     expect(res.status).toBe(200)
     const json = await res.json()
@@ -70,7 +70,7 @@ describe('GET /api/documents', () => {
   })
 
   it('returns 200 with correct shape for matching docs', async () => {
-    mocks.mockListDocumentsForMonth.mockResolvedValue([docRow])
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([docRow])
     const res = await GET(makeGetRequest('2026-01'))
     expect(res.status).toBe(200)
     const json = await res.json()
@@ -84,19 +84,19 @@ describe('GET /api/documents', () => {
   })
 
   it('returns empty array for a month with no docs (another month excluded)', async () => {
-    mocks.mockListDocumentsForMonth.mockResolvedValue([])
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([])
     const res = await GET(makeGetRequest('2026-02'))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.documents).toEqual([])
   })
 
-  it('RLS: calls listDocumentsForMonth with userId from session', async () => {
+  it('RLS: calls listDocumentsForDateRange with userId from session', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-B' } } })
-    mocks.mockListDocumentsForMonth.mockResolvedValue([])
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([])
     const res = await GET(makeGetRequest('2026-01'))
     expect(res.status).toBe(200)
-    expect(mocks.mockListDocumentsForMonth).toHaveBeenCalledWith(
+    expect(mocks.mockListDocumentsForDateRange).toHaveBeenCalledWith(
       'user-B',
       expect.any(String),
       expect.any(String),
@@ -106,7 +106,7 @@ describe('GET /api/documents', () => {
   })
 
   it('de-duplicates: same doc across multiple entries returns one entry', async () => {
-    mocks.mockListDocumentsForMonth.mockResolvedValue([docRow])
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([docRow])
     const res = await GET(makeGetRequest('2026-01'))
     expect(res.status).toBe(200)
     const json = await res.json()
