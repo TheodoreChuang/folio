@@ -16,7 +16,7 @@ export {
   fetchPropertiesActiveInRange,
   fetchLoansActiveInRange,
   fetchLedgerEntriesInRange,
-  fetchLedgerEntryForDelete,
+  fetchLedgerEntryById,
   softDeleteLedgerEntry,
 } from './repositories/ledger'
 

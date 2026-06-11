@@ -44,7 +44,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 vi.mock('@/lib/aggregate', () => ({
-  fetchLedgerEntryForDelete: mocks.mockFetchLedgerEntryForDelete,
+  fetchLedgerEntryById: mocks.mockFetchLedgerEntryForDelete,
   softDeleteLedgerEntry: mocks.mockSoftDeleteLedgerEntry,
 }))
 
@@ -101,7 +101,7 @@ describe('DELETE /api/ledger/[id]', () => {
     expect(mocks.mockSoftDeleteLedgerEntry).not.toHaveBeenCalled()
   })
 
-  it('passes userId from auth session to fetchLedgerEntryForDelete', async () => {
+  it('passes userId from auth session to fetchLedgerEntryById', async () => {
     await DELETE(makeDeleteRequest(VALID_ENTRY_ID), { params: Promise.resolve({ id: VALID_ENTRY_ID }) })
     expect(mocks.mockFetchLedgerEntryForDelete).toHaveBeenCalledWith('user-123', VALID_ENTRY_ID)
   })

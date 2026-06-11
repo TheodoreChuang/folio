@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { propertyLedger, properties, installmentLoans } from '@/db/schema'
 import type { Property, InstallmentLoan, PropertyLedger } from '@/db/schema'
 
-export async function fetchLedgerEntryForDelete(
+export async function fetchLedgerEntryById(
   userId: string,
   id: string,
 ): Promise<PropertyLedger | undefined> {

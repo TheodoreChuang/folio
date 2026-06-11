@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
-import { fetchLedgerEntryForDelete, softDeleteLedgerEntry } from '@/lib/aggregate'
+import { fetchLedgerEntryById, softDeleteLedgerEntry } from '@/lib/aggregate'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -22,7 +22,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const entry = await fetchLedgerEntryForDelete(user.id, id)
+    const entry = await fetchLedgerEntryById(user.id, id)
 
     if (!entry) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
