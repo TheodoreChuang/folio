@@ -9,7 +9,8 @@ const PROP_ID = 'a1b2c3d4-e5f6-4789-a012-345678901234'
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockFindPropertyById: vi.fn(),
-  mockFetchPropertyTrendData: vi.fn(),
+  mockListPropertyTrends: vi.fn(),
+  mockComputeTrends: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -23,7 +24,8 @@ vi.mock('@/lib/property', () => ({
 }))
 
 vi.mock('@/lib/aggregate', () => ({
-  listPropertyTrends: mocks.mockFetchPropertyTrendData,
+  listPropertyTrends: mocks.mockListPropertyTrends,
+  computeTrends: mocks.mockComputeTrends,
 }))
 
 function makeRequest(id: string, params: Record<string, string> = {}) {
@@ -34,10 +36,6 @@ function makeRequest(id: string, params: Record<string, string> = {}) {
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
-}
-
-function makeRow(month: string, category: string, totalCents: number) {
-  return { month, category, totalCents }
 }
 
 const propRow = {
@@ -53,7 +51,8 @@ describe('GET /api/properties/[id]/trends', () => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
     mocks.mockFindPropertyById.mockResolvedValue(propRow)
-    mocks.mockFetchPropertyTrendData.mockResolvedValue([])
+    mocks.mockListPropertyTrends.mockResolvedValue([])
+    mocks.mockComputeTrends.mockReturnValue([])
   })
 
   it('returns 401 when not authenticated', async () => {
@@ -98,35 +97,26 @@ describe('GET /api/properties/[id]/trends', () => {
     expect(json.error).toBe('Not found')
   })
 
-  it('returns 200 with trends array of correct length for valid request', async () => {
-    const res = await GET(makeRequest(PROP_ID, { months: '6' }), makeParams(PROP_ID))
+  it('returns 200 with trends from computeTrends and avgMonthlyNetCents', async () => {
+    const fakeTrends = [{ month: '2026-03', rentCents: 0, expensesCents: 0, mortgageCents: 0, netCents: 0, hasData: false }]
+    mocks.mockComputeTrends.mockReturnValueOnce(fakeTrends)
+    const res = await GET(makeRequest(PROP_ID, { months: '1' }), makeParams(PROP_ID))
     expect(res.status).toBe(200)
     const json = await res.json()
-    expect(json.trends).toHaveLength(6)
+    expect(json.trends).toEqual(fakeTrends)
+    expect(json.avgMonthlyNetCents).toBeNull()
   })
 
   it('defaults to 12 months when param is absent', async () => {
-    const res = await GET(makeRequest(PROP_ID), makeParams(PROP_ID))
-    expect(res.status).toBe(200)
-    const json = await res.json()
-    expect(json.trends).toHaveLength(12)
-  })
-
-  it('months with no data return hasData false and zero amounts', async () => {
-    const res = await GET(makeRequest(PROP_ID, { months: '3' }), makeParams(PROP_ID))
-    expect(res.status).toBe(200)
-    const json = await res.json()
-    json.trends.forEach((t: { hasData: boolean; rentCents: number; netCents: number }) => {
-      expect(t.hasData).toBe(false)
-      expect(t.rentCents).toBe(0)
-      expect(t.netCents).toBe(0)
-    })
+    await GET(makeRequest(PROP_ID), makeParams(PROP_ID))
+    const months = mocks.mockComputeTrends.mock.calls[0][1] as string[]
+    expect(months).toHaveLength(12)
   })
 
   it('passes userId, propertyId, and date range to listPropertyTrends', async () => {
     await GET(makeRequest(PROP_ID, { months: '3' }), makeParams(PROP_ID))
     // months=3 ending 2026-03: range is 2026-01 to 2026-03-31
-    expect(mocks.mockFetchPropertyTrendData).toHaveBeenCalledWith(
+    expect(mocks.mockListPropertyTrends).toHaveBeenCalledWith(
       'user-123',
       PROP_ID,
       '2026-01-01',
@@ -134,39 +124,32 @@ describe('GET /api/properties/[id]/trends', () => {
     )
   })
 
-  it('returns months in ascending order ending at current month', async () => {
-    const res = await GET(makeRequest(PROP_ID, { months: '3' }), makeParams(PROP_ID))
-    const json = await res.json()
-    const months = json.trends.map((t: { month: string }) => t.month)
+  it('calls computeTrends with months in ascending order ending at current month', async () => {
+    await GET(makeRequest(PROP_ID, { months: '3' }), makeParams(PROP_ID))
+    const months = mocks.mockComputeTrends.mock.calls[0][1] as string[]
     expect(months[0]).toBe('2026-01')
     expect(months[2]).toBe('2026-03')
   })
 
-  it('derives netCents from rent - expenses - mortgage', async () => {
-    mocks.mockFetchPropertyTrendData.mockResolvedValueOnce([
-      makeRow('2026-03', 'rent', 400000),
-      makeRow('2026-03', 'repairs', 90000),
-      makeRow('2026-03', 'loan_payment', 210000),
+  it('computes avgMonthlyNetCents from active months', async () => {
+    mocks.mockComputeTrends.mockReturnValueOnce([
+      { month: '2026-01', rentCents: 100, expensesCents: 0, mortgageCents: 0, netCents: 100, hasData: true },
+      { month: '2026-02', rentCents: 0,   expensesCents: 0, mortgageCents: 0, netCents: 0,   hasData: false },
+      { month: '2026-03', rentCents: 200, expensesCents: 0, mortgageCents: 0, netCents: 200, hasData: true },
     ])
-    const res = await GET(makeRequest(PROP_ID, { months: '1' }), makeParams(PROP_ID))
+    const res = await GET(makeRequest(PROP_ID, { months: '3' }), makeParams(PROP_ID))
     const json = await res.json()
-    const point = json.trends[0]
-    expect(point.rentCents).toBe(400000)
-    expect(point.expensesCents).toBe(90000)
-    expect(point.mortgageCents).toBe(210000)
-    expect(point.netCents).toBe(400000 - 90000 - 210000)
-    expect(point.hasData).toBe(true)
+    // Active months: Jan (100) + Mar (200) → avg = 150
+    expect(json.avgMonthlyNetCents).toBe(150)
   })
 
-  it('aggregates multiple expense categories into expensesCents', async () => {
-    mocks.mockFetchPropertyTrendData.mockResolvedValueOnce([
-      makeRow('2026-03', 'insurance', 10000),
-      makeRow('2026-03', 'rates', 5000),
-      makeRow('2026-03', 'repairs', 20000),
+  it('returns null avgMonthlyNetCents when no months have data', async () => {
+    mocks.mockComputeTrends.mockReturnValueOnce([
+      { month: '2026-03', rentCents: 0, expensesCents: 0, mortgageCents: 0, netCents: 0, hasData: false },
     ])
     const res = await GET(makeRequest(PROP_ID, { months: '1' }), makeParams(PROP_ID))
     const json = await res.json()
-    expect(json.trends[0].expensesCents).toBe(35000)
+    expect(json.avgMonthlyNetCents).toBeNull()
   })
 
   it('passes userId to findPropertyById for ownership check', async () => {

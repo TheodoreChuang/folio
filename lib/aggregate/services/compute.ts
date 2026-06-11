@@ -1,4 +1,5 @@
 import type { PropertyLedger, Property, InstallmentLoan } from '@/db/schema'
+import { CATEGORY_BUCKET } from '@/lib/ledger-categories'
 
 // ── return metrics ──────────────────────────────────────────────────────────
 
@@ -100,16 +101,6 @@ export type ReportFlags = {
   missingMortgages: MissingMortgage[]
 }
 
-const EXPENSE_CATEGORIES = new Set([
-  'insurance',
-  'rates',
-  'repairs',
-  'property_management',
-  'utilities',
-  'strata_fees',
-  'other_expense',
-])
-
 export function computeReport(
   entries: PropertyLedger[],
   properties: Property[],
@@ -123,7 +114,7 @@ export function computeReport(
       .reduce((s, e) => s + e.amountCents, 0)
 
     const expensesCents = propEntries
-      .filter((e) => EXPENSE_CATEGORIES.has(e.category))
+      .filter((e) => CATEGORY_BUCKET[e.category] === 'expense')
       .reduce((s, e) => s + e.amountCents, 0)
 
     const mortgageCents = propEntries

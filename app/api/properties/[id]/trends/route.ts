@@ -2,24 +2,10 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import { lastDayOfMonth } from '@/lib/format'
-import { listPropertyTrends } from '@/lib/aggregate'
+import { listPropertyTrends, computeTrends } from '@/lib/aggregate'
 import { findPropertyById } from '@/lib/property'
 
-export type TrendPoint = {
-  month: string
-  rentCents: number
-  expensesCents: number
-  mortgageCents: number
-  netCents: number
-  hasData: boolean
-}
-
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-const EXPENSE_CATEGORIES = new Set([
-  'insurance', 'rates', 'repairs', 'property_management',
-  'utilities', 'strata_fees', 'other_expense',
-])
 
 function currentMonth(): string {
   const now = new Date()
@@ -71,33 +57,7 @@ export async function GET(
     const to = lastDayOfMonth(months[months.length - 1])
 
     const rows = await listPropertyTrends(user.id, id, from, to)
-
-    type MonthBucket = { rent: number; expenses: number; mortgage: number }
-    const buckets = new Map<string, MonthBucket>()
-    for (const row of rows) {
-      const b = buckets.get(row.month) ?? { rent: 0, expenses: 0, mortgage: 0 }
-      if (row.category === 'rent') {
-        b.rent += Number(row.totalCents)
-      } else if (EXPENSE_CATEGORIES.has(row.category)) {
-        b.expenses += Number(row.totalCents)
-      } else if (row.category === 'loan_payment') {
-        b.mortgage += Number(row.totalCents)
-      }
-      buckets.set(row.month, b)
-    }
-
-    const trends: TrendPoint[] = months.map(month => {
-      const b = buckets.get(month) ?? { rent: 0, expenses: 0, mortgage: 0 }
-      const hasData = b.rent > 0 || b.expenses > 0 || b.mortgage > 0
-      return {
-        month,
-        rentCents:     b.rent,
-        expensesCents: b.expenses,
-        mortgageCents: b.mortgage,
-        netCents:      b.rent - b.expenses - b.mortgage,
-        hasData,
-      }
-    })
+    const trends = computeTrends(rows, months)
 
     const activeMonths = trends.filter(t => t.hasData)
     const avgMonthlyNetCents =
