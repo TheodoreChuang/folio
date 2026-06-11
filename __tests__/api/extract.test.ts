@@ -39,10 +39,9 @@ const loanResult = {
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockDownload: vi.fn(),
-  mockSelectLimit: vi.fn(),
-  mockCountSelect: vi.fn(),
-  mockDbSet: vi.fn(),
-  mockDbUpdate: vi.fn(),
+  mockCountRecentUploads: vi.fn(),
+  mockFindSourceDocumentById: vi.fn(),
+  mockUpdateSourceDocumentType: vi.fn(),
   mockExtractTextFromPdf: vi.fn(),
   mockClassifyDocument: vi.fn(),
   mockExtractStatementData: vi.fn(),
@@ -64,34 +63,10 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        // Support both patterns:
-        //   - rate limit: await db.select().from().where()  (triggers .then)
-        //   - doc lookup: await db.select().from().where().limit()  (calls .limit, skips .then)
-        where: vi.fn().mockImplementation(() => ({
-          then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
-            mocks.mockCountSelect().then(resolve, reject),
-          limit: mocks.mockSelectLimit,
-        })),
-      }),
-    }),
-    update: vi.fn().mockReturnValue({
-      set: vi.fn().mockImplementation((v) => {
-        mocks.mockDbSet(v)
-        return {
-          where: vi.fn().mockReturnValue({
-            returning: vi.fn().mockImplementation(() => mocks.mockDbUpdate()),
-          }),
-        }
-      }),
-    }),
-  },
-}))
-
 vi.mock('@/lib/ingestion', () => ({
+  countRecentUploads: (...args: unknown[]) => mocks.mockCountRecentUploads(...args),
+  findSourceDocumentById: (...args: unknown[]) => mocks.mockFindSourceDocumentById(...args),
+  updateSourceDocumentType: (...args: unknown[]) => mocks.mockUpdateSourceDocumentType(...args),
   stageExtractionResult: (...args: unknown[]) => mocks.mockStageExtractionResult(...args),
   stageLoanExtractionResult: (...args: unknown[]) => mocks.mockStageLoanExtractionResult(...args),
 }))
@@ -109,15 +84,15 @@ describe('POST /api/extract', () => {
     mocks.mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
     })
-    mocks.mockCountSelect.mockResolvedValue([{ count: 0 }]) // under rate limit by default
-    mocks.mockSelectLimit.mockResolvedValue([docRow])
+    mocks.mockCountRecentUploads.mockResolvedValue(0)
+    mocks.mockFindSourceDocumentById.mockResolvedValue(docRow)
+    mocks.mockUpdateSourceDocumentType.mockResolvedValue(undefined)
     mocks.mockDownload.mockResolvedValue({
       data: new Blob(['fake pdf bytes']),
       error: null,
     })
     mocks.mockExtractTextFromPdf.mockResolvedValue('Extracted PDF text content here.')
     mocks.mockClassifyDocument.mockResolvedValue({ documentType: 'pm_statement', confidence: 'high' })
-    mocks.mockDbUpdate.mockResolvedValue([])
     mocks.mockExtractStatementData.mockResolvedValue(sampleResult)
     mocks.mockExtractLoanStatementData.mockResolvedValue(loanResult)
     mocks.mockStageExtractionResult.mockResolvedValue({ stagedCount: 1 })
@@ -149,7 +124,7 @@ describe('POST /api/extract', () => {
   })
 
   it('returns 404 when sourceDocumentId not found', async () => {
-    mocks.mockSelectLimit.mockResolvedValue([])
+    mocks.mockFindSourceDocumentById.mockResolvedValue(null)
     const res = await POST(
       new Request('http://localhost/api/extract', {
         method: 'POST',
@@ -162,7 +137,7 @@ describe('POST /api/extract', () => {
   })
 
   it('returns 404 when sourceDocument belongs to another user', async () => {
-    mocks.mockSelectLimit.mockResolvedValue([])
+    mocks.mockFindSourceDocumentById.mockResolvedValue(null)
     const res = await POST(
       new Request('http://localhost/api/extract', {
         method: 'POST',
@@ -171,6 +146,17 @@ describe('POST /api/extract', () => {
       })
     )
     expect(res.status).toBe(404)
+  })
+
+  it('calls findSourceDocumentById with userId from session', async () => {
+    await POST(
+      new Request('http://localhost/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceDocumentId: docRow.id }),
+      })
+    )
+    expect(mocks.mockFindSourceDocumentById).toHaveBeenCalledWith('user-123', docRow.id)
   })
 
   it('returns 422 when PDF text is too short (scanned PDF)', async () => {
@@ -217,7 +203,7 @@ describe('POST /api/extract', () => {
     expect(mocks.mockExtractLoanStatementData).not.toHaveBeenCalled()
   })
 
-  it('updates source_documents.documentType after classification', async () => {
+  it('calls updateSourceDocumentType with correct args after classification', async () => {
     mocks.mockClassifyDocument.mockResolvedValue({ documentType: 'loan_statement', confidence: 'high' })
     await POST(
       new Request('http://localhost/api/extract', {
@@ -226,11 +212,11 @@ describe('POST /api/extract', () => {
         body: JSON.stringify({ sourceDocumentId: docRow.id }),
       })
     )
-    expect(mocks.mockDbSet).toHaveBeenCalledWith({ documentType: 'loan_statement' })
+    expect(mocks.mockUpdateSourceDocumentType).toHaveBeenCalledWith('user-123', docRow.id, 'loan_statement')
   })
 
   it('skips classification when document already has a definitive type', async () => {
-    mocks.mockSelectLimit.mockResolvedValue([{ ...docRow, documentType: 'pm_statement' }])
+    mocks.mockFindSourceDocumentById.mockResolvedValue({ ...docRow, documentType: 'pm_statement' })
     await POST(
       new Request('http://localhost/api/extract', {
         method: 'POST',
@@ -378,7 +364,7 @@ describe('POST /api/extract', () => {
   })
 
   it('returns 429 when upload count is at the daily limit (count >= 20)', async () => {
-    mocks.mockCountSelect.mockResolvedValue([{ count: 20 }])
+    mocks.mockCountRecentUploads.mockResolvedValue(20)
     const res = await POST(
       new Request('http://localhost/api/extract', {
         method: 'POST',
@@ -393,7 +379,7 @@ describe('POST /api/extract', () => {
   })
 
   it('does NOT rate limit when count is below 20 (count = 19)', async () => {
-    mocks.mockCountSelect.mockResolvedValue([{ count: 19 }])
+    mocks.mockCountRecentUploads.mockResolvedValue(19)
     const res = await POST(
       new Request('http://localhost/api/extract', {
         method: 'POST',
@@ -405,8 +391,8 @@ describe('POST /api/extract', () => {
     expect(mocks.mockExtractTextFromPdf).toHaveBeenCalled()
   })
 
-  it('rate limit check queries sourceDocuments.uploadedAt >= oneDayAgo', async () => {
-    mocks.mockCountSelect.mockResolvedValue([{ count: 0 }])
+  it('rate limit check passes userId and a 24h window to countRecentUploads', async () => {
+    mocks.mockCountRecentUploads.mockResolvedValue(0)
     const before = new Date(Date.now() - 24 * 60 * 60 * 1000 - 1000)
     await POST(
       new Request('http://localhost/api/extract', {
@@ -415,8 +401,8 @@ describe('POST /api/extract', () => {
         body: JSON.stringify({ sourceDocumentId: docRow.id }),
       })
     )
-    expect(mocks.mockCountSelect).toHaveBeenCalled()
-    expect(mocks.mockExtractTextFromPdf).toHaveBeenCalled()
-    expect(before.getTime()).toBeLessThan(Date.now())
+    expect(mocks.mockCountRecentUploads).toHaveBeenCalledWith('user-123', expect.any(Date))
+    const sinceArg: Date = mocks.mockCountRecentUploads.mock.calls[0][1]
+    expect(sinceArg.getTime()).toBeGreaterThan(before.getTime())
   })
 })

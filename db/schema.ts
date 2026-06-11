@@ -311,6 +311,7 @@ export const personalBudgetItems = pgTable('personal_budget_items', {
 
 export type Property               = typeof properties.$inferSelect
 export type SourceDocument         = typeof sourceDocuments.$inferSelect
+export type NewSourceDocument      = typeof sourceDocuments.$inferInsert
 export type InstallmentLoan        = typeof installmentLoans.$inferSelect
 export type PropertyLedger         = typeof propertyLedger.$inferSelect
 export type LedgerCategory         = typeof ledgerCategoryEnum.enumValues[number]

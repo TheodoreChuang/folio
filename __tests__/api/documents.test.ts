@@ -10,7 +10,7 @@ const docRow = {
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockSelectDistinct: vi.fn(),
+  mockListDocumentsForDateRange: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -21,16 +21,8 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    selectDistinctOn: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        innerJoin: vi.fn().mockReturnValue({
-          where: mocks.mockSelectDistinct,
-        }),
-      }),
-    }),
-  },
+vi.mock('@/lib/ingestion', () => ({
+  listDocumentsForDateRange: (...args: unknown[]) => mocks.mockListDocumentsForDateRange(...args),
 }))
 
 function makeGetRequest(month?: string) {
@@ -44,7 +36,7 @@ describe('GET /api/documents', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockSelectDistinct.mockResolvedValue([])
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([])
   })
 
   it('returns 401 when not authenticated', async () => {
@@ -70,7 +62,7 @@ describe('GET /api/documents', () => {
   })
 
   it('returns 200 with empty documents array when no linked docs', async () => {
-    mocks.mockSelectDistinct.mockResolvedValue([])
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([])
     const res = await GET(makeGetRequest('2026-01'))
     expect(res.status).toBe(200)
     const json = await res.json()
@@ -78,7 +70,7 @@ describe('GET /api/documents', () => {
   })
 
   it('returns 200 with correct shape for matching docs', async () => {
-    mocks.mockSelectDistinct.mockResolvedValue([docRow])
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([docRow])
     const res = await GET(makeGetRequest('2026-01'))
     expect(res.status).toBe(200)
     const json = await res.json()
@@ -92,26 +84,29 @@ describe('GET /api/documents', () => {
   })
 
   it('returns empty array for a month with no docs (another month excluded)', async () => {
-    // Mock returns [] for user asking about 2026-02 even though 2026-01 has docs
-    mocks.mockSelectDistinct.mockResolvedValue([])
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([])
     const res = await GET(makeGetRequest('2026-02'))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.documents).toEqual([])
   })
 
-  it('RLS: user B gets empty array when user A has docs', async () => {
+  it('RLS: calls listDocumentsForDateRange with userId from session', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-B' } } })
-    mocks.mockSelectDistinct.mockResolvedValue([]) // DB filters by userId, returns nothing for user B
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([])
     const res = await GET(makeGetRequest('2026-01'))
     expect(res.status).toBe(200)
+    expect(mocks.mockListDocumentsForDateRange).toHaveBeenCalledWith(
+      'user-B',
+      expect.any(String),
+      expect.any(String),
+    )
     const json = await res.json()
     expect(json.documents).toEqual([])
   })
 
   it('de-duplicates: same doc across multiple entries returns one entry', async () => {
-    // selectDistinctOn handles dedup at DB level; mock already returns one row
-    mocks.mockSelectDistinct.mockResolvedValue([docRow])
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([docRow])
     const res = await GET(makeGetRequest('2026-01'))
     expect(res.status).toBe(200)
     const json = await res.json()

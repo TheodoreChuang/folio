@@ -1,7 +1,5 @@
-import { and, eq, gte, isNull, sql } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { sourceDocuments } from '@/db/schema'
+import { z } from 'zod'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import {
   extractTextFromPdf,
@@ -10,16 +8,19 @@ import {
   extractLoanStatementData,
 } from '@/lib/ingestion/extraction/parse'
 import type { LoanExtractionResult, ExtractionResult } from '@/lib/ingestion/extraction/schema'
-import { stageExtractionResult, stageLoanExtractionResult } from '@/lib/ingestion'
+import {
+  stageExtractionResult,
+  stageLoanExtractionResult,
+  countRecentUploads,
+  findSourceDocumentById,
+  updateSourceDocumentType,
+} from '@/lib/ingestion'
 import { logger } from '@/lib/logger'
 import { captureError } from '@/lib/api-error'
 
-function isValidUuid(s: unknown): s is string {
-  if (typeof s !== 'string') return false
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  return uuidRegex.test(s)
-}
+const extractBodySchema = z.object({
+  sourceDocumentId: z.string().uuid('Missing or invalid sourceDocumentId'),
+})
 
 function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === 'AbortError'
@@ -36,15 +37,7 @@ export async function POST(request: Request) {
 
   const EXTRACT_DAILY_LIMIT = 20
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-  const [{ count }] = await db
-    .select({ count: sql<number>`cast(count(*) as int)` })
-    .from(sourceDocuments)
-    .where(
-      and(
-        eq(sourceDocuments.userId, user.id),
-        gte(sourceDocuments.uploadedAt, oneDayAgo)
-      )
-    )
+  const count = await countRecentUploads(user.id, oneDayAgo)
 
   if (count >= EXTRACT_DAILY_LIMIT) {
     return NextResponse.json(
@@ -53,40 +46,16 @@ export async function POST(request: Request) {
     )
   }
 
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
+  const parsed = extractBodySchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Invalid JSON body' },
+      { error: parsed.error.errors[0].message },
       { status: 400 }
     )
   }
+  const { sourceDocumentId } = parsed.data
 
-  const sourceDocumentId =
-    body && typeof body === 'object' && 'sourceDocumentId' in body
-      ? (body as { sourceDocumentId: unknown }).sourceDocumentId
-      : undefined
-
-  if (!isValidUuid(sourceDocumentId)) {
-    return NextResponse.json(
-      { error: 'Missing or invalid sourceDocumentId' },
-      { status: 400 }
-    )
-  }
-
-  const [doc] = await db
-    .select()
-    .from(sourceDocuments)
-    .where(
-      and(
-        eq(sourceDocuments.id, sourceDocumentId),
-        eq(sourceDocuments.userId, user.id),
-        isNull(sourceDocuments.deletedAt)
-      )
-    )
-    .limit(1)
-
+  const doc = await findSourceDocumentById(user.id, sourceDocumentId)
   if (!doc) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -152,11 +121,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      await db
-        .update(sourceDocuments)
-        .set({ documentType })
-        .where(and(eq(sourceDocuments.id, sourceDocumentId), eq(sourceDocuments.userId, user.id), isNull(sourceDocuments.deletedAt)))
-        .returning()
+      await updateSourceDocumentType(user.id, sourceDocumentId, documentType)
     } catch (err) {
       clearTimeout(timeoutId)
       captureError(err, { route: 'POST /api/extract', phase: 'type-update' })

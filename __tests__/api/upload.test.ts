@@ -5,8 +5,8 @@ const mocks = vi.hoisted(() => ({
   mockUpload: vi.fn(),
   mockRemove: vi.fn(),
   mockGetUser: vi.fn(),
-  mockSelectLimit: vi.fn(),
-  mockInsertReturning: vi.fn(),
+  mockFindSourceDocumentByHash: vi.fn(),
+  mockInsertSourceDocument: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -23,21 +23,9 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/db', () => ({
-  db: {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: mocks.mockSelectLimit,
-        }),
-      }),
-    }),
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        returning: mocks.mockInsertReturning,
-      }),
-    }),
-  },
+vi.mock('@/lib/ingestion', () => ({
+  findSourceDocumentByHash: (...args: unknown[]) => mocks.mockFindSourceDocumentByHash(...args),
+  insertSourceDocument: (...args: unknown[]) => mocks.mockInsertSourceDocument(...args),
 }))
 
 function formDataWithFile(opts: {
@@ -72,13 +60,11 @@ describe('POST /api/upload', () => {
     mocks.mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
     })
-    mocks.mockSelectLimit.mockResolvedValue([])
-    mocks.mockInsertReturning.mockResolvedValue([
-      {
-        id: 'doc-uuid',
-        filePath: 'documents/user-123/pm_statements/test.pdf',
-      },
-    ])
+    mocks.mockFindSourceDocumentByHash.mockResolvedValue(null)
+    mocks.mockInsertSourceDocument.mockResolvedValue({
+      id: 'doc-uuid',
+      filePath: 'documents/user-123/pm_statements/test.pdf',
+    })
     mocks.mockUpload.mockResolvedValue({ error: null })
     mocks.mockRemove.mockResolvedValue({ error: null })
   })
@@ -116,7 +102,7 @@ describe('POST /api/upload', () => {
       size: exactlyOneMb,
     })
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(201)
   })
 
   it('rejects invalid documentType (400)', async () => {
@@ -127,9 +113,13 @@ describe('POST /api/upload', () => {
   })
 
   it('succeeds when documentType is absent (defaults to unknown)', async () => {
+    mocks.mockInsertSourceDocument.mockResolvedValue({
+      id: 'doc-uuid',
+      filePath: 'documents/user-123/documents/test.pdf',
+    })
     const form = formDataWithFile({ documentType: null })
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(201)
     expect(mocks.mockUpload).toHaveBeenCalledWith(
       'documents/user-123/documents/test.pdf',
       expect.any(ArrayBuffer),
@@ -138,9 +128,9 @@ describe('POST /api/upload', () => {
   })
 
   it('returns isDuplicate: true when hash already exists', async () => {
-    mocks.mockSelectLimit.mockResolvedValue([
-      { id: 'existing-id', filePath: 'documents/user-123/pm_statements/existing.pdf' },
-    ])
+    mocks.mockFindSourceDocumentByHash.mockResolvedValue(
+      { id: 'existing-id', filePath: 'documents/user-123/pm_statements/existing.pdf' }
+    )
     const form = formDataWithFile({})
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
     expect(res.status).toBe(200)
@@ -154,7 +144,7 @@ describe('POST /api/upload', () => {
   it('returns isDuplicate: false and correct shape on new upload', async () => {
     const form = formDataWithFile({})
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(201)
     const json = await res.json()
     expect(json.isDuplicate).toBe(false)
     expect(json.sourceDocumentId).toBe('doc-uuid')
@@ -167,16 +157,25 @@ describe('POST /api/upload', () => {
   })
 
   it('does not call storage.upload when duplicate detected', async () => {
-    mocks.mockSelectLimit.mockResolvedValue([
-      { id: 'existing-id', filePath: 'documents/user-123/pm_statements/existing.pdf' },
-    ])
+    mocks.mockFindSourceDocumentByHash.mockResolvedValue(
+      { id: 'existing-id', filePath: 'documents/user-123/pm_statements/existing.pdf' }
+    )
     const form = formDataWithFile({})
     await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
     expect(mocks.mockUpload).not.toHaveBeenCalled()
   })
 
-  it('deletes storage object if DB insert fails (cleanup)', async () => {
-    mocks.mockInsertReturning.mockRejectedValue(new Error('DB error'))
+  it('calls findSourceDocumentByHash with userId from session', async () => {
+    const form = formDataWithFile({})
+    await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
+    expect(mocks.mockFindSourceDocumentByHash).toHaveBeenCalledWith(
+      'user-123',
+      expect.any(String),
+    )
+  })
+
+  it('deletes storage object if DB insert fails and returns 500', async () => {
+    mocks.mockInsertSourceDocument.mockRejectedValue(new Error('DB error'))
     const form = formDataWithFile({ fileName: 'cleanup-test.pdf' })
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
     expect(res.status).toBe(500)
@@ -184,15 +183,13 @@ describe('POST /api/upload', () => {
   })
 
   it('returns duplicate response on unique constraint (race)', async () => {
-    mocks.mockSelectLimit
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: 'existing-id',
-          filePath: 'documents/user-123/pm_statements/test.pdf',
-        },
-      ])
-    mocks.mockInsertReturning.mockRejectedValueOnce(
+    mocks.mockFindSourceDocumentByHash
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: 'existing-id',
+        filePath: 'documents/user-123/pm_statements/test.pdf',
+      })
+    mocks.mockInsertSourceDocument.mockRejectedValueOnce(
       Object.assign(new Error('unique'), { code: '23505' })
     )
     const form = formDataWithFile({})

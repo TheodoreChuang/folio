@@ -26,6 +26,7 @@ export async function stageLoanExtractionResult(
       .where(and(
         eq(sourceDocuments.id, sourceDocumentId),
         eq(sourceDocuments.userId, userId),
+        isNull(sourceDocuments.deletedAt),
       ))
       .returning()
 

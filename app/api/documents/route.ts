@@ -1,10 +1,8 @@
-import { and, eq, gte, isNotNull, isNull, lte } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { propertyLedger, sourceDocuments } from '@/db/schema'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import { lastDayOfMonth } from '@/lib/format'
+import { listDocumentsForDateRange } from '@/lib/ingestion'
 
 const MONTH_REGEX = /^\d{4}-\d{2}$/
 
@@ -27,37 +25,9 @@ export async function GET(request: Request) {
     const startDate = `${month}-01`
     const endDate = lastDayOfMonth(month)
 
-    const docs = await db
-      .selectDistinctOn(
-        [propertyLedger.propertyId, propertyLedger.sourceDocumentId],
-        {
-          id: sourceDocuments.id,
-          fileName: sourceDocuments.fileName,
-          propertyId: propertyLedger.propertyId,
-          uploadedAt: sourceDocuments.uploadedAt,
-        }
-      )
-      .from(propertyLedger)
-      .innerJoin(sourceDocuments, eq(propertyLedger.sourceDocumentId, sourceDocuments.id))
-      .where(
-        and(
-          eq(propertyLedger.userId, user.id),
-          gte(propertyLedger.lineItemDate, startDate),
-          lte(propertyLedger.lineItemDate, endDate),
-          isNotNull(propertyLedger.sourceDocumentId),
-          isNull(propertyLedger.deletedAt),
-          isNull(sourceDocuments.deletedAt),
-        )
-      )
+    const docs = await listDocumentsForDateRange(user.id, startDate, endDate)
 
-    return NextResponse.json({
-      documents: docs.map(d => ({
-        id: d.id,
-        fileName: d.fileName,
-        propertyId: d.propertyId,
-        uploadedAt: d.uploadedAt,
-      })),
-    })
+    return NextResponse.json({ documents: docs })
   } catch (err) {
     captureError(err, { route: 'GET /api/documents' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

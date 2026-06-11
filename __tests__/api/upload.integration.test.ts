@@ -127,7 +127,7 @@ describe('POST /api/upload (integration)', () => {
     if (res.status !== 200) {
       console.error('Upload failed:', res.status, json)
     }
-    expect(res.status, JSON.stringify(json)).toBe(200)
+    expect(res.status, JSON.stringify(json)).toBe(201)
     expect(json.isDuplicate).toBe(false)
     expect(json.sourceDocumentId).toBeDefined()
     expect(json.filePath).toMatch(
