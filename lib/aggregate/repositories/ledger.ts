@@ -31,7 +31,7 @@ export async function softDeleteLedgerEntry(
   return updated
 }
 
-export async function fetchPropertiesActiveInRange(
+export async function listPropertiesActiveInRange(
   userId: string,
   from: string,
   to: string,

@@ -241,7 +241,7 @@ Delivered:
 | File | Notes |
 |---|---|
 | `repositories/trends.ts` → `fetchTrendData(userId, from, to)` | GROUP BY aggregation on `property_ledger` by `YYYY-MM` + category; applies `isNull(deletedAt)`. Signature uses date strings, not a `TrendMonth[]` array (plan differed). |
-| `repositories/ledger.ts` → `fetchPropertiesActiveInRange`, `fetchLoansActiveInRange`, `fetchLedgerEntriesInRange` | Date-range overlap queries. `fetchLedgerEntriesInRange` returns `[]` immediately when `propertyIds` is an empty array (no DB hit). |
+| `repositories/ledger.ts` → `listPropertiesActiveInRange`, `fetchLoansActiveInRange`, `fetchLedgerEntriesInRange` | Date-range overlap queries. `fetchLedgerEntriesInRange` returns `[]` immediately when `propertyIds` is an empty array (no DB hit). |
 | `repositories/portfolio.ts` → `fetchPortfolioData(userId, entityId?)` | Runs 4 queries in parallel (properties, valuations DESC, balances DESC, loans). Consolidated into one function rather than the two the plan specified (`fetchLatestPropertyValuations` + `fetchActiveLoansWithLatestBalance`). |
 | `services/compute.ts` | Moved verbatim from `lib/reports/compute.ts`. No logic changes. |
 | `services/portfolio.ts` → `computePortfolioLVR(allProperties, valuations, balances, loans)` | LVR aggregation extracted from inline route logic. Filters active loans (`endDate > today`); picks first valuation/balance per property/loan from ordered data. |
@@ -252,7 +252,7 @@ Delivered:
 | Route | Change |
 |---|---|
 | `app/api/reports/trends/route.ts` | Calls `fetchTrendData()`; month-range generation and response mapping stays in handler. |
-| `app/api/ledger/summary/route.ts` | Calls `fetchPropertiesActiveInRange`, `fetchLoansActiveInRange`, `fetchLedgerEntriesInRange`, `computeReport`. |
+| `app/api/ledger/summary/route.ts` | Calls `listPropertiesActiveInRange`, `fetchLoansActiveInRange`, `fetchLedgerEntriesInRange`, `computeReport`. |
 | `app/api/portfolio/summary/route.ts` | Calls `fetchPortfolioData` + `computePortfolioLVR`. Re-exports `PortfolioLVR` type so dashboard import is unchanged. |
 
 **Migration:** `drizzle/0011_drop_portfolio_reports.sql` — `DROP TABLE IF EXISTS portfolio_reports` + its index.

@@ -13,7 +13,7 @@ export { fetchPortfolioData } from './repositories/portfolio'
 export type { ValuationSnapshot, BalanceSnapshot } from './repositories/portfolio'
 
 export {
-  fetchPropertiesActiveInRange,
+  listPropertiesActiveInRange,
   fetchLoansActiveInRange,
   fetchLedgerEntriesInRange,
   fetchLedgerEntryById,

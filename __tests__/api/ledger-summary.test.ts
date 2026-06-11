@@ -24,7 +24,7 @@ vi.mock('@/lib/aggregate', async () => {
     '@/lib/aggregate/services/compute'
   )
   return {
-    fetchPropertiesActiveInRange: mocks.mockFetchProperties,
+    listPropertiesActiveInRange: mocks.mockFetchProperties,
     fetchLoansActiveInRange: mocks.mockFetchLoans,
     fetchLedgerEntriesInRange: mocks.mockFetchEntries,
     computeReport,
@@ -188,7 +188,7 @@ describe('GET /api/ledger/summary', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.totals.propertyCount).toBe(1)
-    // propertyId is passed through to fetchPropertiesActiveInRange
+    // propertyId is passed through to listPropertiesActiveInRange
     expect(mocks.mockFetchProperties).toHaveBeenCalledWith(
       'user-123', '2026-03-01', '2026-03-31', PROP_ID, null,
     )

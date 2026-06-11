@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import {
-  fetchPropertiesActiveInRange,
+  listPropertiesActiveInRange,
   fetchLoansActiveInRange,
   fetchLedgerEntriesInRange,
   computeReport,
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     }
 
     const [props, loans] = await Promise.all([
-      fetchPropertiesActiveInRange(user.id, from, to, propertyId, entityId),
+      listPropertiesActiveInRange(user.id, from, to, propertyId, entityId),
       fetchLoansActiveInRange(user.id, from, to, entityId),
     ])
 
