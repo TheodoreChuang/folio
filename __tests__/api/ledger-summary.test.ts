@@ -25,8 +25,8 @@ vi.mock('@/lib/aggregate', async () => {
   )
   return {
     listPropertiesActiveInRange: mocks.mockFetchProperties,
-    fetchLoansActiveInRange: mocks.mockFetchLoans,
-    fetchLedgerEntriesInRange: mocks.mockFetchEntries,
+    listLoansActiveInRange: mocks.mockFetchLoans,
+    listLedgerEntriesInRange: mocks.mockFetchEntries,
     computeReport,
   }
 })

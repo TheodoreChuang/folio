@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
 import { lastDayOfMonth } from '@/lib/format'
-import { fetchPropertyTrendData } from '@/lib/aggregate'
+import { listPropertyTrends } from '@/lib/aggregate'
 import { findPropertyById } from '@/lib/property'
 
 export type TrendPoint = {
@@ -70,7 +70,7 @@ export async function GET(
     const from = `${months[0]}-01`
     const to = lastDayOfMonth(months[months.length - 1])
 
-    const rows = await fetchPropertyTrendData(user.id, id, from, to)
+    const rows = await listPropertyTrends(user.id, id, from, to)
 
     type MonthBucket = { rent: number; expenses: number; mortgage: number }
     const buckets = new Map<string, MonthBucket>()

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchPortfolioData } from '@/lib/aggregate/repositories/portfolio'
+import { getPortfolioData } from '@/lib/aggregate/repositories/portfolio'
 
 const PROP_ID = 'aaaa0001-0000-4000-a000-000000000001'
 const LOAN_ID = 'bbbb0001-0000-4000-b000-000000000001'
@@ -40,7 +40,7 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
-describe('fetchPortfolioData', () => {
+describe('getPortfolioData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     selectCallCount = 0
@@ -51,7 +51,7 @@ describe('fetchPortfolioData', () => {
   })
 
   it('returns all four data collections', async () => {
-    const result = await fetchPortfolioData('user-123')
+    const result = await getPortfolioData('user-123')
     expect(result.properties).toHaveLength(1)
     expect(result.valuations).toHaveLength(1)
     expect(result.balances).toHaveLength(1)
@@ -63,7 +63,7 @@ describe('fetchPortfolioData', () => {
     mocks.mockValuations.mockResolvedValue([])
     mocks.mockBalances.mockResolvedValue([])
     mocks.mockLoans.mockResolvedValue([])
-    const result = await fetchPortfolioData('user-123')
+    const result = await getPortfolioData('user-123')
     expect(result.properties).toHaveLength(0)
     expect(result.valuations).toHaveLength(0)
     expect(result.balances).toHaveLength(0)
@@ -71,7 +71,7 @@ describe('fetchPortfolioData', () => {
   })
 
   it('returns correct shape for valuations', async () => {
-    const result = await fetchPortfolioData('user-123')
+    const result = await getPortfolioData('user-123')
     expect(result.valuations[0]).toMatchObject({
       propertyId: PROP_ID,
       valueCents: 65000000,
@@ -80,7 +80,7 @@ describe('fetchPortfolioData', () => {
   })
 
   it('returns correct shape for balances', async () => {
-    const result = await fetchPortfolioData('user-123')
+    const result = await getPortfolioData('user-123')
     expect(result.balances[0]).toMatchObject({
       installmentLoanId: LOAN_ID,
       balanceCents: 45000000,
@@ -90,7 +90,7 @@ describe('fetchPortfolioData', () => {
 
   it('makes 4 parallel DB calls', async () => {
     const { db } = await import('@/lib/db')
-    await fetchPortfolioData('user-123')
+    await getPortfolioData('user-123')
     expect(db.select).toHaveBeenCalledTimes(4)
   })
 })

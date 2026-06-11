@@ -38,7 +38,7 @@ vi.mock('@/lib/aggregate', async () => {
     '@/lib/aggregate/services/portfolio'
   )
   return {
-    fetchPortfolioData: mocks.mockFetchPortfolioData,
+    getPortfolioData: mocks.mockFetchPortfolioData,
     computePortfolioLVR,
   }
 })
@@ -188,7 +188,7 @@ describe('GET /api/portfolio/summary', () => {
     expect(portfolio.propertiesTotal).toBe(1)
   })
 
-  it('passes entityId to fetchPortfolioData when provided', async () => {
+  it('passes entityId to getPortfolioData when provided', async () => {
     const ENTITY_ID = 'entity-001'
     await GET(new Request(`http://localhost/api/portfolio/summary?entityId=${ENTITY_ID}`))
     expect(mocks.mockFetchPortfolioData).toHaveBeenCalledWith('user-123', ENTITY_ID)

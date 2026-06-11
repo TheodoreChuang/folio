@@ -44,8 +44,8 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 vi.mock('@/lib/aggregate', () => ({
-  fetchLedgerEntryById: mocks.mockFetchLedgerEntryForDelete,
-  softDeleteLedgerEntry: mocks.mockSoftDeleteLedgerEntry,
+  findLedgerEntryById: mocks.mockFetchLedgerEntryForDelete,
+  deleteLedgerEntry: mocks.mockSoftDeleteLedgerEntry,
 }))
 
 describe('DELETE /api/ledger/[id]', () => {
@@ -101,12 +101,12 @@ describe('DELETE /api/ledger/[id]', () => {
     expect(mocks.mockSoftDeleteLedgerEntry).not.toHaveBeenCalled()
   })
 
-  it('passes userId from auth session to fetchLedgerEntryById', async () => {
+  it('passes userId from auth session to findLedgerEntryById', async () => {
     await DELETE(makeDeleteRequest(VALID_ENTRY_ID), { params: Promise.resolve({ id: VALID_ENTRY_ID }) })
     expect(mocks.mockFetchLedgerEntryForDelete).toHaveBeenCalledWith('user-123', VALID_ENTRY_ID)
   })
 
-  it('passes userId from auth session to softDeleteLedgerEntry', async () => {
+  it('passes userId from auth session to deleteLedgerEntry', async () => {
     await DELETE(makeDeleteRequest(VALID_ENTRY_ID), { params: Promise.resolve({ id: VALID_ENTRY_ID }) })
     expect(mocks.mockSoftDeleteLedgerEntry).toHaveBeenCalledWith('user-123', VALID_ENTRY_ID)
   })

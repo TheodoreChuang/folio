@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
-import { fetchPortfolioData, computePortfolioLVR } from '@/lib/aggregate'
+import { getPortfolioData, computePortfolioLVR } from '@/lib/aggregate'
 
 export type { PortfolioLVR } from '@/lib/aggregate'
 
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const entityId = searchParams.get('entityId')
 
-    const { properties, valuations, balances, loans } = await fetchPortfolioData(user.id, entityId)
+    const { properties, valuations, balances, loans } = await getPortfolioData(user.id, entityId)
     const portfolio = computePortfolioLVR(properties, valuations, balances, loans)
 
     return NextResponse.json({ portfolio })

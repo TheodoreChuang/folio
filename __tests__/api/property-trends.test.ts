@@ -23,7 +23,7 @@ vi.mock('@/lib/property', () => ({
 }))
 
 vi.mock('@/lib/aggregate', () => ({
-  fetchPropertyTrendData: mocks.mockFetchPropertyTrendData,
+  listPropertyTrends: mocks.mockFetchPropertyTrendData,
 }))
 
 function makeRequest(id: string, params: Record<string, string> = {}) {
@@ -123,7 +123,7 @@ describe('GET /api/properties/[id]/trends', () => {
     })
   })
 
-  it('passes userId, propertyId, and date range to fetchPropertyTrendData', async () => {
+  it('passes userId, propertyId, and date range to listPropertyTrends', async () => {
     await GET(makeRequest(PROP_ID, { months: '3' }), makeParams(PROP_ID))
     // months=3 ending 2026-03: range is 2026-01 to 2026-03-31
     expect(mocks.mockFetchPropertyTrendData).toHaveBeenCalledWith(

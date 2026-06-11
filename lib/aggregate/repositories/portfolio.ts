@@ -15,7 +15,7 @@ export type BalanceSnapshot = {
   recordedAt: string
 }
 
-export async function fetchPortfolioData(
+export async function getPortfolioData(
   userId: string,
   entityId?: string | null,
 ): Promise<{

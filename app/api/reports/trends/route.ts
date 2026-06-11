@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { captureError } from '@/lib/api-error'
-import { fetchTrendData } from '@/lib/aggregate'
+import { listTrends } from '@/lib/aggregate'
 
 export type TrendPoint = {
   month: string
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'entityId must be a valid UUID' }, { status: 400 })
     }
 
-    const rows = await fetchTrendData(user.id, from, to, entityIdParam)
+    const rows = await listTrends(user.id, from, to, entityIdParam)
 
     type MonthBucket = { rent: number; expenses: number; mortgage: number }
     const buckets = new Map<string, MonthBucket>()

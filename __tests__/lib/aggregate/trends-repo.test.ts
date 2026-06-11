@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchTrendData } from '@/lib/aggregate/repositories/trends'
+import { listTrends } from '@/lib/aggregate/repositories/trends'
 
 const mocks = vi.hoisted(() => ({
   mockGroupBy: vi.fn(),
@@ -17,14 +17,14 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
-describe('fetchTrendData', () => {
+describe('listTrends', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGroupBy.mockResolvedValue([])
   })
 
   it('returns empty array when no rows', async () => {
-    const result = await fetchTrendData('user-123', '2026-01-01', '2026-03-31')
+    const result = await listTrends('user-123', '2026-01-01', '2026-03-31')
     expect(result).toEqual([])
   })
 
@@ -33,7 +33,7 @@ describe('fetchTrendData', () => {
       { month: '2026-03', category: 'rent', totalCents: 400000 },
       { month: '2026-03', category: 'repairs', totalCents: 50000 },
     ])
-    const result = await fetchTrendData('user-123', '2026-01-01', '2026-03-31')
+    const result = await listTrends('user-123', '2026-01-01', '2026-03-31')
     expect(result).toHaveLength(2)
     expect(result[0].month).toBe('2026-03')
     expect(result[0].category).toBe('rent')
@@ -42,7 +42,7 @@ describe('fetchTrendData', () => {
 
   it('calls the db with the correct userId filter', async () => {
     const { db } = await import('@/lib/db')
-    await fetchTrendData('user-abc', '2026-01-01', '2026-03-31')
+    await listTrends('user-abc', '2026-01-01', '2026-03-31')
     expect(db.select).toHaveBeenCalled()
     // userId is applied in the where clause (verified by RLS isolation)
   })
@@ -50,7 +50,7 @@ describe('fetchTrendData', () => {
   it('reaches groupBy (does not short-circuit) for a normal userId query', async () => {
     // isNull(deletedAt) correctness is verified at the integration test level.
     mocks.mockGroupBy.mockResolvedValueOnce([{ month: '2026-03', category: 'rent', totalCents: 100 }])
-    const result = await fetchTrendData('user-123', '2026-01-01', '2026-03-31')
+    const result = await listTrends('user-123', '2026-01-01', '2026-03-31')
     expect(result).toHaveLength(1)
     expect(mocks.mockGroupBy).toHaveBeenCalled()
   })

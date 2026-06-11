@@ -17,11 +17,11 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 vi.mock('@/lib/aggregate/repositories/portfolio', () => ({
-  fetchPortfolioData: mocks.mockFetchPortfolioData,
+  getPortfolioData: mocks.mockFetchPortfolioData,
 }))
 
 vi.mock('@/lib/aggregate/repositories/ledger', () => ({
-  fetchLedgerEntriesInRange: mocks.mockFetchLedgerEntriesInRange,
+  listLedgerEntriesInRange: mocks.mockFetchLedgerEntriesInRange,
 }))
 
 vi.mock('@/lib/household/repositories/budget-items', () => ({

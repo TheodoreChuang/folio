@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { propertyLedger, properties, installmentLoans } from '@/db/schema'
 import type { Property, InstallmentLoan, PropertyLedger } from '@/db/schema'
 
-export async function fetchLedgerEntryById(
+export async function findLedgerEntryById(
   userId: string,
   id: string,
 ): Promise<PropertyLedger | undefined> {
@@ -19,7 +19,7 @@ export async function fetchLedgerEntryById(
   return entry
 }
 
-export async function softDeleteLedgerEntry(
+export async function deleteLedgerEntry(
   userId: string,
   id: string,
 ): Promise<PropertyLedger> {
@@ -48,7 +48,7 @@ export async function listPropertiesActiveInRange(
   return db.select().from(properties).where(and(...where))
 }
 
-export async function fetchLoansActiveInRange(
+export async function listLoansActiveInRange(
   userId: string,
   from: string,
   to: string,
@@ -65,7 +65,7 @@ export async function fetchLoansActiveInRange(
 
 // Fetches ledger entries in range. If propertyIds is an empty array, returns [] immediately
 // (signals "filter applied but no matching properties"). If undefined, fetches for all user properties.
-export async function fetchLedgerEntriesInRange(
+export async function listLedgerEntriesInRange(
   userId: string,
   from: string,
   to: string,
