@@ -14,7 +14,7 @@ const postSchema = z.object({
   detail: z.string().max(200).optional(),
 })
 
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   try {
     const user = await resolveUser(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

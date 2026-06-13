@@ -86,13 +86,13 @@ describe('GET /api/ingestion/loan-staged', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(res.status).toBe(401)
     expect(mocks.mockListLoanStagedByUser).not.toHaveBeenCalled()
   })
 
   it('returns sessions grouped by sourceDocumentId', async () => {
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.sessions).toHaveLength(1)
@@ -104,7 +104,7 @@ describe('GET /api/ingestion/loan-staged', () => {
 
   it('returns empty sessions when no staging items exist', async () => {
     mocks.mockListLoanStagedByUser.mockResolvedValue([])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.sessions).toHaveLength(0)
@@ -113,7 +113,7 @@ describe('GET /api/ingestion/loan-staged', () => {
   it('groups multiple items under same session', async () => {
     const secondItem = { ...loanStagingItem, id: 'd4e5f6a7-b8c9-4012-d345-444444444444', lineItemIndex: 1 }
     mocks.mockListLoanStagedByUser.mockResolvedValue([loanStagingItem, secondItem])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     const json = await res.json()
     expect(json.sessions).toHaveLength(1)
     expect(json.sessions[0].items).toHaveLength(2)
@@ -125,7 +125,7 @@ describe('GET /api/ingestion/loan-staged', () => {
     const secondDoc = { ...sourceDoc, id: secondDocId, fileName: 'loan-stmt-2.pdf' }
     mocks.mockListLoanStagedByUser.mockResolvedValue([loanStagingItem, secondDocItem])
     mocks.mockGetDocumentsByUser.mockResolvedValue([sourceDoc, secondDoc])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     const json = await res.json()
     expect(json.sessions).toHaveLength(2)
     const docIds = json.sessions.map((s: { sourceDocumentId: string }) => s.sourceDocumentId)
@@ -136,7 +136,7 @@ describe('GET /api/ingestion/loan-staged', () => {
   it('does not return sessions belonging to other users', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'other-user' } } })
     mocks.mockListLoanStagedByUser.mockResolvedValue([])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     const json = await res.json()
     expect(json.sessions).toHaveLength(0)
     expect(mocks.mockListLoanStagedByUser).toHaveBeenCalledWith('other-user')
@@ -144,13 +144,13 @@ describe('GET /api/ingestion/loan-staged', () => {
 
   it('uses Unknown filename when doc not found in map', async () => {
     mocks.mockGetDocumentsByUser.mockResolvedValue([])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     const json = await res.json()
     expect(json.sessions[0].documentFileName).toBe('Unknown')
   })
 
   it('passes userId to listLoanStagedByUser', async () => {
-    await GET()
+    await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(mocks.mockListLoanStagedByUser).toHaveBeenCalledWith('user-123')
   })
 })

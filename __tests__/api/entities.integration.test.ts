@@ -79,7 +79,7 @@ describe('entities API — user isolation (integration)', () => {
   it('GET: returns own entities, excludes other user entities', async () => {
     if (!hasEnv) return
     const { GET } = await import('@/app/api/v1/entities/route')
-    const res = await GET()
+    const res = await GET(new Request('http://localhost/api/v1/entities'))
     expect(res.status).toBe(200)
     const { entities: rows } = await res.json() as { entities: { id: string }[] }
     const ids = rows.map(r => r.id)

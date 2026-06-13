@@ -91,13 +91,13 @@ describe('GET /api/ingestion/loan-staged', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(res.status).toBe(401)
     expect(mocks.mockListLoanStagedByUser).not.toHaveBeenCalled()
   })
 
   it('returns sessions grouped by sourceDocumentId', async () => {
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.sessions).toHaveLength(1)
@@ -109,19 +109,19 @@ describe('GET /api/ingestion/loan-staged', () => {
   it('returns empty sessions when no staged items', async () => {
     mocks.mockListLoanStagedByUser.mockResolvedValue([])
     mocks.mockGroupStagedItemsByDocument.mockReturnValue([])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.sessions).toHaveLength(0)
   })
 
   it('passes userId to listLoanStagedByUser', async () => {
-    await GET()
+    await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(mocks.mockListLoanStagedByUser).toHaveBeenCalledWith('user-123')
   })
 
   it('passes userId to getDocumentsByUser', async () => {
-    await GET()
+    await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(mocks.mockGetDocumentsByUser).toHaveBeenCalledWith('user-123')
   })
 })

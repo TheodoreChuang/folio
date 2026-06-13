@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   mockListApiKeys: vi.fn(),
   mockCreateApiKey: vi.fn(),
   mockRevokeApiKey: vi.fn(),
+  mockFindApiKeyByHash: vi.fn(),
+  mockTouchLastUsed: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -19,8 +21,8 @@ vi.mock('@/lib/api-keys', () => ({
   listApiKeys: mocks.mockListApiKeys,
   createApiKey: mocks.mockCreateApiKey,
   revokeApiKey: mocks.mockRevokeApiKey,
-  findApiKeyByHash: vi.fn(),
-  touchLastUsed: vi.fn(),
+  findApiKeyByHash: mocks.mockFindApiKeyByHash,
+  touchLastUsed: mocks.mockTouchLastUsed,
 }))
 
 const VALID_KEY_ID = 'aaaaaaaa-0000-4000-a000-000000000001'
@@ -37,13 +39,16 @@ const keyRow = {
   revokedAt: null,
 }
 
-function makeRequest(method: string, body?: unknown, id?: string) {
+function makeRequest(method: string, body?: unknown, id?: string, bearerToken?: string) {
   const url = id
     ? `http://localhost/api/v1/api-keys/${id}`
     : 'http://localhost/api/v1/api-keys'
+  const headers: Record<string, string> = {}
+  if (body) headers['Content-Type'] = 'application/json'
+  if (bearerToken) headers['Authorization'] = `Bearer ${bearerToken}`
   return new Request(url, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   })
 }
@@ -53,12 +58,20 @@ describe('GET /api/v1/api-keys', () => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: USER_ID } } })
     mocks.mockListApiKeys.mockResolvedValue([keyRow])
+    mocks.mockTouchLastUsed.mockResolvedValue(undefined)
   })
 
   it('returns 401 when not authenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
     const res = await GET(makeRequest('GET'))
     expect(res.status).toBe(401)
+  })
+
+  it('returns 403 when authenticated via bearer token', async () => {
+    mocks.mockFindApiKeyByHash.mockResolvedValue(keyRow)
+    const res = await GET(makeRequest('GET', undefined, undefined, 'sk_live_testtoken123456'))
+    expect(res.status).toBe(403)
+    expect(mocks.mockListApiKeys).not.toHaveBeenCalled()
   })
 
   it('returns list of keys without keyHash', async () => {
@@ -83,12 +96,20 @@ describe('POST /api/v1/api-keys', () => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: USER_ID } } })
     mocks.mockCreateApiKey.mockResolvedValue(keyRow)
+    mocks.mockTouchLastUsed.mockResolvedValue(undefined)
   })
 
   it('returns 401 when not authenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
     const res = await POST(makeRequest('POST', { name: 'test' }))
     expect(res.status).toBe(401)
+  })
+
+  it('returns 403 when authenticated via bearer token', async () => {
+    mocks.mockFindApiKeyByHash.mockResolvedValue(keyRow)
+    const res = await POST(makeRequest('POST', { name: 'new key' }, undefined, 'sk_live_testtoken123456'))
+    expect(res.status).toBe(403)
+    expect(mocks.mockCreateApiKey).not.toHaveBeenCalled()
   })
 
   it('returns 400 when name is missing', async () => {
@@ -133,6 +154,7 @@ describe('DELETE /api/v1/api-keys/[id]', () => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: USER_ID } } })
     mocks.mockRevokeApiKey.mockResolvedValue(true)
+    mocks.mockTouchLastUsed.mockResolvedValue(undefined)
   })
 
   it('returns 401 when not authenticated', async () => {
@@ -141,6 +163,16 @@ describe('DELETE /api/v1/api-keys/[id]', () => {
       params: Promise.resolve({ id: VALID_KEY_ID }),
     })
     expect(res.status).toBe(401)
+  })
+
+  it('returns 403 when authenticated via bearer token', async () => {
+    mocks.mockFindApiKeyByHash.mockResolvedValue(keyRow)
+    const res = await DELETE(
+      makeRequest('DELETE', undefined, VALID_KEY_ID, 'sk_live_testtoken123456'),
+      { params: Promise.resolve({ id: VALID_KEY_ID }) },
+    )
+    expect(res.status).toBe(403)
+    expect(mocks.mockRevokeApiKey).not.toHaveBeenCalled()
   })
 
   it('returns 400 for invalid UUID', async () => {

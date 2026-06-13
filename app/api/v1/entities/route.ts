@@ -13,7 +13,7 @@ const postSchema = z.object({
   type: z.enum(ENTITY_TYPES, { error: `type must be one of: ${ENTITY_TYPES.join(', ')}` }),
 })
 
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   try {
     const user = await resolveUser(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

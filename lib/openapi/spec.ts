@@ -313,9 +313,12 @@ registry.registerPath({
 
 // ── Spec generator ────────────────────────────────────────────────────────────
 
+let cachedSpec: ReturnType<OpenApiGeneratorV31['generateDocument']> | null = null
+
 export function generateOpenApiSpec() {
+  if (cachedSpec) return cachedSpec
   const generator = new OpenApiGeneratorV31(registry.definitions)
-  return generator.generateDocument({
+  cachedSpec = generator.generateDocument({
     openapi: '3.1.0',
     info: {
       title: 'Folio API',
@@ -335,4 +338,5 @@ Generate API keys from Folio Settings → API Keys.
     },
     servers: [{ url: 'https://folio.app', description: 'Production' }],
   })
+  return cachedSpec
 }

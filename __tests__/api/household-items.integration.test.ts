@@ -94,7 +94,7 @@ describe('GET /api/household/items — soft-delete filter', () => {
       .set({ deletedAt: new Date() })
       .where(eq(personalBudgetItems.id, deleted.id))
 
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/household/items"))
     expect(res.status).toBe(200)
     const body = await res.json() as { items: { id: string }[], summary: { totalIncomeMonthlyCents: number } }
 
@@ -132,7 +132,7 @@ describe('GET /api/household/items — soft-delete filter', () => {
       .set({ deletedAt: new Date() })
       .where(eq(personalBudgetItems.id, deleted.id))
 
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/household/items"))
     const body = await res.json() as { summary: { totalIncomeMonthlyCents: number } }
 
     expect(body.summary.totalIncomeMonthlyCents).toBe(100000)
@@ -214,7 +214,7 @@ describe('Auth isolation', () => {
       effectiveFrom: '2024-01-01',
     }).returning()
 
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/household/items"))
     const body = await res.json() as { items: { id: string }[] }
     const ids = body.items.map((i) => i.id)
     expect(ids).not.toContain(otherItem.id)

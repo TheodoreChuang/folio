@@ -1,5 +1,6 @@
 import { createHash } from 'crypto'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger'
 
 export interface ResolvedUser {
   id: string
@@ -17,7 +18,7 @@ export async function resolveUser(request?: Request): Promise<ResolvedUser | nul
     const { findApiKeyByHash, touchLastUsed } = await import('@/lib/api-keys')
     const apiKey = await findApiKeyByHash(hash)
     if (!apiKey) return null
-    void touchLastUsed(apiKey.id)
+    Promise.resolve(touchLastUsed(apiKey.id)).catch(err => logger.error('touchLastUsed failed', { keyId: apiKey.id, err }))
     return { id: apiKey.userId, authMethod: 'bearer' }
   }
 

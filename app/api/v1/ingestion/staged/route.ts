@@ -3,7 +3,7 @@ import { resolveUser } from '@/lib/api-auth'
 import { listStagedByUser, getDocumentsByUser } from '@/lib/ingestion'
 import { captureError } from '@/lib/api-error'
 
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   try {
     const user = await resolveUser(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

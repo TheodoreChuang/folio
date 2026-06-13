@@ -94,13 +94,13 @@ describe('GET /api/household/items', () => {
 
   it('returns 401 when unauthenticated', async () => {
     mockAuth(null)
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/household/items"))
     expect(res.status).toBe(401)
   })
 
   it('returns 200 with empty items and zero summary when no items exist', async () => {
     vi.mocked(listBudgetItems).mockResolvedValue([])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/household/items"))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.items).toEqual([])
@@ -120,7 +120,7 @@ describe('GET /api/household/items', () => {
       surplusMonthlyCents: 500000,
     })
 
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/household/items"))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.items).toHaveLength(1)
@@ -129,13 +129,13 @@ describe('GET /api/household/items', () => {
   })
 
   it('calls listBudgetItems with userId', async () => {
-    await GET()
+    await GET(new Request("http://localhost/api/v1/household/items"))
     expect(listBudgetItems).toHaveBeenCalledWith(USER_ID)
   })
 
   it('calls computeSummary with raw items', async () => {
     vi.mocked(listBudgetItems).mockResolvedValue([incomeItem, expenseItem])
-    await GET()
+    await GET(new Request("http://localhost/api/v1/household/items"))
     expect(computeSummary).toHaveBeenCalledWith([incomeItem, expenseItem])
   })
 })

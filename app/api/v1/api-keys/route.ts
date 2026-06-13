@@ -15,6 +15,9 @@ export async function GET(request: Request) {
   try {
     const user = await resolveUser(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (user.authMethod === 'bearer') {
+      return NextResponse.json({ error: 'API key management requires session authentication.' }, { status: 403 })
+    }
 
     const keys = await listApiKeys(user.id)
     return NextResponse.json({
@@ -36,6 +39,9 @@ export async function POST(request: Request) {
   try {
     const user = await resolveUser(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (user.authMethod === 'bearer') {
+      return NextResponse.json({ error: 'API key management requires session authentication.' }, { status: 403 })
+    }
 
     const parsed = postSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) {

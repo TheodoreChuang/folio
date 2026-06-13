@@ -12,6 +12,9 @@ export async function DELETE(
   try {
     const user = await resolveUser(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (user.authMethod === 'bearer') {
+      return NextResponse.json({ error: 'API key management requires session authentication.' }, { status: 403 })
+    }
 
     const { id } = await params
     if (!UUID_REGEX.test(id)) {
