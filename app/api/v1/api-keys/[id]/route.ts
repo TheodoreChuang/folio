@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { revokeApiKey } from '@/lib/api-keys'
 import { captureError } from '@/lib/api-error'
+import { ApiKeyRevokedResponseSchema } from '@/lib/openapi/schemas'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -26,7 +27,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json(ApiKeyRevokedResponseSchema.parse({ success: true }))
   } catch (err) {
     captureError(err, { route: 'DELETE /api/v1/api-keys/[id]' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

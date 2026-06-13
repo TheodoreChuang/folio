@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
+import { LedgerFyResponseSchema } from '@/lib/openapi/schemas'
 
 // GET /api/ledger/fy?year=YYYY-YY
 // Returns { from: 'YYYY-07-01', to: 'YYYY-06-30' } for the given Australian FY.
@@ -30,10 +31,10 @@ export async function GET(request: Request) {
     }
 
     const endYear = startYear + 1
-    return NextResponse.json({
+    return NextResponse.json(LedgerFyResponseSchema.parse({
       from: `${startYear}-07-01`,
       to: `${endYear}-06-30`,
-    })
+    }))
   } catch (err) {
     captureError(err, { route: 'GET /api/v1/ledger/fy' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

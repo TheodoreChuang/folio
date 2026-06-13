@@ -4,6 +4,13 @@ import {
   extendZodWithOpenApi,
 } from '@asteasolutions/zod-to-openapi'
 import { z } from 'zod'
+import {
+  ApiKeyCreatedResponseSchema,
+  ApiKeyRevokedResponseSchema,
+  ApiKeysListResponseSchema,
+  LedgerFyResponseSchema,
+  PortfolioSummaryResponseSchema,
+} from './schemas'
 
 extendZodWithOpenApi(z)
 
@@ -133,21 +140,7 @@ registry.registerPath({
   responses: {
     200: {
       description: 'Portfolio summary',
-      content: {
-        'application/json': {
-          schema: z.object({
-            portfolio: z.object({
-              totalValueCents: z.number().int().openapi({ description: 'Sum of latest property valuations in cents' }),
-              totalDebtCents: z.number().int().openapi({ description: 'Sum of latest loan balances in cents' }),
-              lvr: z.number().nullable().openapi({ description: 'Loan-to-value ratio as a percentage (0–100), null if no valuations' }),
-              propertiesValued: z.number().int().openapi({ description: 'Number of properties with a recorded valuation' }),
-              propertiesTotal: z.number().int().openapi({ description: 'Total number of active properties' }),
-              loansWithBalance: z.number().int().openapi({ description: 'Number of loans with a recorded balance' }),
-              activeLoansTotal: z.number().int().openapi({ description: 'Total number of active loans' }),
-            }),
-          }),
-        },
-      },
+      content: { 'application/json': { schema: PortfolioSummaryResponseSchema } },
     },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
@@ -211,14 +204,7 @@ registry.registerPath({
   responses: {
     200: {
       description: 'Date range for the requested financial year',
-      content: {
-        'application/json': {
-          schema: z.object({
-            from: z.string().openapi({ description: 'Start of financial year (YYYY-07-01)', example: '2025-07-01' }),
-            to: z.string().openapi({ description: 'End of financial year (YYYY-06-30)', example: '2026-06-30' }),
-          }),
-        },
-      },
+      content: { 'application/json': { schema: LedgerFyResponseSchema } },
     },
     400: { description: 'Invalid or missing year param', content: { 'application/json': { schema: ErrorSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
@@ -259,19 +245,7 @@ registry.registerPath({
   responses: {
     200: {
       description: 'List of API keys',
-      content: {
-        'application/json': {
-          schema: z.object({
-            apiKeys: z.array(z.object({
-              id: UUIDParam,
-              name: z.string(),
-              keyPrefix: z.string().openapi({ description: 'First 14 characters of the key (safe to display)' }),
-              lastUsedAt: z.string().nullable(),
-              createdAt: z.string(),
-            })),
-          }),
-        },
-      },
+      content: { 'application/json': { schema: ApiKeysListResponseSchema } },
     },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
@@ -298,19 +272,7 @@ registry.registerPath({
   responses: {
     201: {
       description: 'API key created — key value shown once',
-      content: {
-        'application/json': {
-          schema: z.object({
-            apiKey: z.object({
-              id: UUIDParam,
-              name: z.string(),
-              key: z.string().openapi({ description: 'Full API key — store immediately, not shown again', example: 'sk_live_abc123...' }),
-              keyPrefix: z.string(),
-              createdAt: z.string(),
-            }),
-          }),
-        },
-      },
+      content: { 'application/json': { schema: ApiKeyCreatedResponseSchema } },
     },
     400: { description: 'Validation error', content: { 'application/json': { schema: ErrorSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
@@ -326,7 +288,7 @@ registry.registerPath({
   security: [{ BearerAuth: [] }],
   request: { params: z.object({ id: UUIDParam }) },
   responses: {
-    200: { description: 'Key revoked', content: { 'application/json': { schema: z.object({ success: z.literal(true) }) } } },
+    200: { description: 'Key revoked', content: { 'application/json': { schema: ApiKeyRevokedResponseSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
     404: { description: 'Key not found', content: { 'application/json': { schema: ErrorSchema } } },
   },

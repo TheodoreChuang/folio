@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { listApiKeys, createApiKey } from '@/lib/api-keys'
 import { captureError } from '@/lib/api-error'
+import { ApiKeysListResponseSchema, ApiKeyCreatedResponseSchema } from '@/lib/openapi/schemas'
 
 const postSchema = z.object({
   name: z.string({ error: 'name is required' })
@@ -20,15 +21,15 @@ export async function GET(request: Request) {
     }
 
     const keys = await listApiKeys(user.id)
-    return NextResponse.json({
+    return NextResponse.json(ApiKeysListResponseSchema.parse({
       apiKeys: keys.map(k => ({
         id: k.id,
         name: k.name,
         keyPrefix: k.keyPrefix,
-        lastUsedAt: k.lastUsedAt,
-        createdAt: k.createdAt,
+        lastUsedAt: k.lastUsedAt?.toISOString() ?? null,
+        createdAt: k.createdAt.toISOString(),
       })),
-    })
+    }))
   } catch (err) {
     captureError(err, { route: 'GET /api/v1/api-keys' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -55,15 +56,15 @@ export async function POST(request: Request) {
 
     const apiKey = await createApiKey(user.id, name, keyHash, keyPrefix)
 
-    return NextResponse.json({
+    return NextResponse.json(ApiKeyCreatedResponseSchema.parse({
       apiKey: {
         id: apiKey.id,
         name: apiKey.name,
         key: rawToken,
         keyPrefix: apiKey.keyPrefix,
-        createdAt: apiKey.createdAt,
+        createdAt: apiKey.createdAt.toISOString(),
       },
-    }, { status: 201 })
+    }), { status: 201 })
   } catch (err) {
     captureError(err, { route: 'POST /api/v1/api-keys' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
