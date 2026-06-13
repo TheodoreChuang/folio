@@ -136,10 +136,15 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: z.object({
-            totalValueCents: z.number().int().openapi({ description: 'Sum of latest valuations in cents' }),
-            totalDebtCents: z.number().int().openapi({ description: 'Sum of latest loan balances in cents' }),
-            lvrPercent: z.number().nullable().openapi({ description: 'Loan-to-value ratio as a percentage (0–100)' }),
-            equityCents: z.number().int().openapi({ description: 'Net equity in cents (value minus debt)' }),
+            portfolio: z.object({
+              totalValueCents: z.number().int().openapi({ description: 'Sum of latest property valuations in cents' }),
+              totalDebtCents: z.number().int().openapi({ description: 'Sum of latest loan balances in cents' }),
+              lvr: z.number().nullable().openapi({ description: 'Loan-to-value ratio as a percentage (0–100), null if no valuations' }),
+              propertiesValued: z.number().int().openapi({ description: 'Number of properties with a recorded valuation' }),
+              propertiesTotal: z.number().int().openapi({ description: 'Total number of active properties' }),
+              loansWithBalance: z.number().int().openapi({ description: 'Number of loans with a recorded balance' }),
+              activeLoansTotal: z.number().int().openapi({ description: 'Total number of active loans' }),
+            }),
           }),
         },
       },
@@ -195,11 +200,27 @@ registry.registerPath({
   method: 'get',
   path: '/api/v1/ledger/fy',
   tags: ['Ledger'],
-  summary: 'Get cashflow grouped by Australian financial year',
-  description: 'Returns cashflow totals grouped by financial year (July–June). Useful for tax and year-on-year comparisons.',
+  summary: 'Resolve an Australian financial year to a date range',
+  description: 'Converts an Australian financial year notation (e.g. 2025-26) to its ISO date range (July 1 – June 30). Use the returned from/to values as inputs to other endpoints such as /api/v1/ledger/summary.',
   security: [{ BearerAuth: [] }],
+  request: {
+    query: z.object({
+      year: z.string().openapi({ description: 'Financial year in YYYY-YY format', example: '2025-26' }),
+    }),
+  },
   responses: {
-    200: { description: 'Cashflow by financial year', content: { 'application/json': { schema: z.unknown() } } },
+    200: {
+      description: 'Date range for the requested financial year',
+      content: {
+        'application/json': {
+          schema: z.object({
+            from: z.string().openapi({ description: 'Start of financial year (YYYY-07-01)', example: '2025-07-01' }),
+            to: z.string().openapi({ description: 'End of financial year (YYYY-06-30)', example: '2026-06-30' }),
+          }),
+        },
+      },
+    },
+    400: { description: 'Invalid or missing year param', content: { 'application/json': { schema: ErrorSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })
@@ -215,9 +236,9 @@ registry.registerPath({
   security: [{ BearerAuth: [] }],
   request: {
     query: z.object({
-      from: z.string().optional(),
-      to: z.string().optional(),
-      entityId: z.string().uuid().optional(),
+      from: z.string().openapi({ description: 'Start date (YYYY-MM-DD)', example: '2025-07-01' }),
+      to: z.string().openapi({ description: 'End date (YYYY-MM-DD)', example: '2026-06-30' }),
+      entityId: z.string().uuid().optional().openapi({ description: 'Scope to a specific entity' }),
     }),
   },
   responses: {
