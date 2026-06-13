@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { installmentLoans, installmentLoanBalances, properties, entities } from '@/db/schema'
 import type { InstallmentLoan, LoanType } from '@/db/schema'
@@ -268,6 +268,38 @@ export async function endInstallmentLoan(
     ))
     .returning()
   return row
+}
+
+export async function findLoanIdsByProperty(
+  userId: string,
+  propertyId: string,
+): Promise<string[]> {
+  const rows = await db
+    .select({ id: installmentLoans.id })
+    .from(installmentLoans)
+    .where(and(eq(installmentLoans.propertyId, propertyId), eq(installmentLoans.userId, userId)))
+  return rows.map(r => r.id)
+}
+
+export async function findLatestBalancesByLoanIds(
+  userId: string,
+  loanIds: string[],
+): Promise<{ installmentLoanId: string; balanceCents: number }[]> {
+  if (loanIds.length === 0) return []
+  const rows = await db
+    .select()
+    .from(installmentLoanBalances)
+    .where(and(
+      eq(installmentLoanBalances.userId, userId),
+      inArray(installmentLoanBalances.installmentLoanId, loanIds),
+    ))
+    .orderBy(installmentLoanBalances.installmentLoanId, desc(installmentLoanBalances.recordedAt))
+  const seen = new Set<string>()
+  return rows.filter(r => {
+    if (seen.has(r.installmentLoanId)) return false
+    seen.add(r.installmentLoanId)
+    return true
+  })
 }
 
 export async function hasLoanForEntity(userId: string, entityId: string): Promise<boolean> {

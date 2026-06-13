@@ -1,7 +1,5 @@
-import { and, desc, eq, inArray } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { installmentLoans, installmentLoanBalances } from '@/db/schema'
 import { findPropertyById } from '@/lib/property/repositories/properties'
+import { findLoanIdsByProperty, findLatestBalancesByLoanIds } from '@/lib/borrowings'
 import { findLatestValuation } from '@/lib/property/repositories/valuations'
 import { findTrailing12mEntries } from '@/lib/property/repositories/ledger'
 import type { Property, PropertyValuation } from '@/db/schema'
@@ -31,12 +29,10 @@ export async function getPropertyWithStats(
   const property = await findPropertyById(userId, propertyId)
   if (!property) return null
 
-  const [valuationRow, ledgerEntries, propertyLoans] = await Promise.all([
+  const [valuationRow, ledgerEntries, loanIds] = await Promise.all([
     findLatestValuation(userId, propertyId),
     findTrailing12mEntries(userId, propertyId),
-    db.select({ id: installmentLoans.id })
-      .from(installmentLoans)
-      .where(and(eq(installmentLoans.propertyId, propertyId), eq(installmentLoans.userId, userId))),
+    findLoanIdsByProperty(userId, propertyId),
   ])
 
   const latestValuation = valuationRow
@@ -44,22 +40,10 @@ export async function getPropertyWithStats(
     : null
 
   let totalDebtCents = 0
-  if (propertyLoans.length > 0) {
-    const loanIds = propertyLoans.map(l => l.id)
-    const balanceRows = await db
-      .select()
-      .from(installmentLoanBalances)
-      .where(and(
-        eq(installmentLoanBalances.userId, userId),
-        inArray(installmentLoanBalances.installmentLoanId, loanIds),
-      ))
-      .orderBy(installmentLoanBalances.installmentLoanId, desc(installmentLoanBalances.recordedAt))
-    const seen = new Set<string>()
-    for (const row of balanceRows) {
-      if (!seen.has(row.installmentLoanId)) {
-        seen.add(row.installmentLoanId)
-        totalDebtCents += row.balanceCents
-      }
+  if (loanIds.length > 0) {
+    const latestBalances = await findLatestBalancesByLoanIds(userId, loanIds)
+    for (const b of latestBalances) {
+      totalDebtCents += b.balanceCents
     }
   }
 
