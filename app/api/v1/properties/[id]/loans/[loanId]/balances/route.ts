@@ -11,9 +11,9 @@ import { captureError } from '@/lib/api-error'
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const postSchema = z.object({
-  recordedAt: z.string({ required_error: 'recordedAt is required' })
+  recordedAt: z.string({ error: 'recordedAt is required' })
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'recordedAt must be YYYY-MM-DD'),
-  balanceCents: z.number({ required_error: 'balanceCents is required', invalid_type_error: 'balanceCents must be a non-negative integer' })
+  balanceCents: z.number({ error: 'balanceCents must be a non-negative integer' })
     .int('balanceCents must be a non-negative integer')
     .nonnegative('balanceCents must be a non-negative integer'),
   notes: z.string().max(500, 'notes too long (max 500 characters)').nullable().optional()
@@ -67,7 +67,7 @@ export async function POST(
 
     const parsed = postSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
     const { recordedAt, balanceCents, notes } = parsed.data
 

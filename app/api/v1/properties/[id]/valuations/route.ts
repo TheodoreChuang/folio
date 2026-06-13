@@ -8,7 +8,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 const postSchema = z.object({
   valuedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'valuedAt must be YYYY-MM-DD'),
-  valueCents: z.number({ required_error: 'valueCents is required', invalid_type_error: 'valueCents must be a positive integer' })
+  valueCents: z.number({ error: 'valueCents must be a positive integer' })
     .int('valueCents must be a positive integer')
     .positive('valueCents must be a positive integer'),
   source: z.string().max(200, 'source too long (max 200 characters)').nullable().optional()
@@ -58,7 +58,7 @@ export async function POST(
 
     const parsed = postSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
     const { valuedAt, valueCents, source, notes } = parsed.data
 

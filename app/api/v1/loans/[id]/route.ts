@@ -51,7 +51,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const rawResult = z.record(z.unknown()).safeParse(body)
+    const rawResult = z.record(z.string(), z.unknown()).safeParse(body)
     const raw = rawResult.success ? rawResult.data : {}
 
     const updates: {
@@ -72,42 +72,42 @@ export async function PATCH(
         .refine(s => s.length > 0, 'lender cannot be empty')
         .refine(s => s.length <= 200, 'lender too long (max 200 characters)')
         .safeParse(raw.lender)
-      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      if (!r.success) return NextResponse.json({ error: r.error.issues[0].message }, { status: 400 })
       updates.lender = r.data
     }
 
     if ('nickname' in raw) {
       const r = z.string().max(200).transform(s => s.trim() || null).nullable()
         .safeParse(typeof raw.nickname === 'string' ? raw.nickname : null)
-      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      if (!r.success) return NextResponse.json({ error: r.error.issues[0].message }, { status: 400 })
       updates.nickname = r.data
     }
 
     if ('accountReference' in raw) {
       const r = z.string().max(100, 'accountReference too long (max 100 characters)').transform(s => s.trim() || null).nullable()
         .safeParse(typeof raw.accountReference === 'string' ? raw.accountReference : null)
-      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      if (!r.success) return NextResponse.json({ error: r.error.issues[0].message }, { status: 400 })
       updates.accountReference = r.data
     }
 
     if ('startDate' in raw) {
       const r = z.string().regex(DATE_REGEX, 'startDate must be YYYY-MM-DD')
         .safeParse(typeof raw.startDate === 'string' ? raw.startDate.trim() : '')
-      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      if (!r.success) return NextResponse.json({ error: r.error.issues[0].message }, { status: 400 })
       updates.startDate = r.data
     }
 
     if ('endDate' in raw) {
       const r = z.string().regex(DATE_REGEX, 'endDate must be YYYY-MM-DD')
         .safeParse(typeof raw.endDate === 'string' ? raw.endDate.trim() : '')
-      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      if (!r.success) return NextResponse.json({ error: r.error.issues[0].message }, { status: 400 })
       updates.endDate = r.data
     }
 
     if ('entityId' in raw) {
       const r = z.string().regex(UUID_REGEX, 'entityId must be a valid UUID').nullable()
         .safeParse(raw.entityId === null ? null : raw.entityId)
-      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      if (!r.success) return NextResponse.json({ error: r.error.issues[0].message }, { status: 400 })
       if (r.data) {
         const ent = await findEntityById(user.id, r.data)
         if (!ent) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -125,7 +125,7 @@ export async function PATCH(
     if ('ioEndDate' in raw) {
       const r = z.string().regex(DATE_REGEX, 'ioEndDate must be YYYY-MM-DD').nullable()
         .safeParse(typeof raw.ioEndDate === 'string' ? raw.ioEndDate.trim() : raw.ioEndDate === null ? null : '')
-      if (!r.success) return NextResponse.json({ error: r.error.errors[0].message }, { status: 400 })
+      if (!r.success) return NextResponse.json({ error: r.error.issues[0].message }, { status: 400 })
       updates.ioEndDate = r.data
     }
 

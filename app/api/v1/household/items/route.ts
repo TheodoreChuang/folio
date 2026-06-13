@@ -6,8 +6,8 @@ import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
 
 const postSchema = z.object({
-  type: z.enum(['income', 'expense'], { errorMap: () => ({ message: 'type must be "income" or "expense"' }) }),
-  name: z.string({ required_error: 'name is required' }).trim().min(1, 'name is required').max(200),
+  type: z.enum(['income', 'expense'], 'type must be "income" or "expense"'),
+  name: z.string({ error: 'name is required' }).trim().min(1, 'name is required').max(200),
   amountCents: z.number().int().positive('amountCents must be a positive integer'),
   frequency: z.enum(['weekly', 'fortnightly', 'monthly', 'annual']),
   effectiveFrom: z.string().optional(),
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     const parsed = postSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
 
     const created = await createBudgetItem({ userId: user.id, ...parsed.data })

@@ -7,12 +7,12 @@ import { captureError } from '@/lib/api-error'
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const postSchema = z.object({
-  address: z.string({ required_error: 'Missing or empty address' })
+  address: z.string({ error: 'Missing or empty address' })
     .transform(s => s.trim())
     .refine(s => s.length > 0, 'Missing or empty address')
     .refine(s => s.length <= 500, 'Address too long (max 500 characters)'),
   nickname: z.string().nullable().optional(),
-  startDate: z.string({ required_error: 'startDate is required' }).min(1, 'startDate is required'),
+  startDate: z.string({ error: 'startDate is required' }).min(1, 'startDate is required'),
   endDate: z.string().nullable().optional(),
   entityId: z.string().nullable().optional(),
   propertyType: z.enum(['house', 'unit', 'townhouse', 'land'], { message: 'Invalid propertyType' }).nullable().optional(),
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
     const parsed = postSchema.safeParse(rawBody)
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
 
     const { address, nickname, startDate, endDate, entityId, propertyType, purchasePriceCents } = parsed.data

@@ -8,13 +8,13 @@ import { captureError } from '@/lib/api-error'
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const postSchema = z.object({
-  lender: z.string({ required_error: 'lender is required' })
+  lender: z.string({ error: 'lender is required' })
     .transform(s => s.trim())
     .refine(s => s.length > 0, 'lender is required')
     .refine(s => s.length <= 200, 'lender too long (max 200 characters)'),
   nickname: z.string().nullable().optional(),
-  startDate: z.string({ required_error: 'startDate is required' }).min(1, 'startDate is required'),
-  endDate: z.string({ required_error: 'endDate is required' }).min(1, 'endDate is required'),
+  startDate: z.string({ error: 'startDate is required' }).min(1, 'startDate is required'),
+  endDate: z.string({ error: 'endDate is required' }).min(1, 'endDate is required'),
 })
 
 export async function GET(
@@ -58,7 +58,7 @@ export async function POST(
 
     const parsed = postSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
     const { lender, nickname, startDate, endDate } = parsed.data
 

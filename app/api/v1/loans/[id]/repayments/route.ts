@@ -37,14 +37,14 @@ export async function GET(
 
 const repaymentSchema = z.object({
   paymentDate:    z.string().regex(DATE_REGEX, 'paymentDate must be YYYY-MM-DD'),
-  amountCents:    z.number({ invalid_type_error: 'amountCents must be a positive integer' })
+  amountCents:    z.number({ error: 'amountCents must be a positive integer' })
                    .int('amountCents must be a positive integer')
                    .positive('amountCents must be a positive integer'),
-  interestCents:  z.number({ invalid_type_error: 'interestCents must be a non-negative integer or null' })
+  interestCents:  z.number({ error: 'interestCents must be a non-negative integer or null' })
                    .int('interestCents must be a non-negative integer or null')
                    .min(0, 'interestCents must be a non-negative integer or null')
                    .nullable().optional(),
-  principalCents: z.number({ invalid_type_error: 'principalCents must be a non-negative integer or null' })
+  principalCents: z.number({ error: 'principalCents must be a non-negative integer or null' })
                    .int('principalCents must be a non-negative integer or null')
                    .min(0, 'principalCents must be a non-negative integer or null')
                    .nullable().optional(),
@@ -73,7 +73,7 @@ export async function POST(
 
     const parsed = repaymentSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
     const { paymentDate, amountCents, interestCents, principalCents, description } = parsed.data
 

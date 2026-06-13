@@ -7,12 +7,10 @@ import { captureError } from '@/lib/api-error'
 const ENTITY_TYPES = ['individual', 'joint', 'trust', 'company', 'superannuation'] as const
 
 const postSchema = z.object({
-  name: z.string({ required_error: 'name is required' })
+  name: z.string({ error: 'name is required' })
     .min(1, 'name is required')
     .max(200, 'name too long (max 200)'),
-  type: z.enum(ENTITY_TYPES, {
-    errorMap: () => ({ message: `type must be one of: ${ENTITY_TYPES.join(', ')}` }),
-  }),
+  type: z.enum(ENTITY_TYPES, { error: `type must be one of: ${ENTITY_TYPES.join(', ')}` }),
 })
 
 export async function GET(request?: Request) {
@@ -35,7 +33,7 @@ export async function POST(request: Request) {
 
     const parsed = postSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
     const { name, type } = parsed.data
 

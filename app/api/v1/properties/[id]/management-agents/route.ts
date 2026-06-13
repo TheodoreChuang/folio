@@ -7,11 +7,10 @@ import { captureError } from '@/lib/api-error'
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const postSchema = z.object({
-  agencyName: z.string({ required_error: 'agencyName is required' }).min(1, 'agencyName is required'),
-  statementCadence: z.enum(['weekly', 'fortnightly', 'monthly', 'bi_monthly'], {
-    errorMap: () => ({ message: 'statementCadence must be one of: weekly, fortnightly, monthly, bi_monthly' }),
-  }),
-  effectiveFrom: z.string({ required_error: 'effectiveFrom is required' }).min(1, 'effectiveFrom is required'),
+  agencyName: z.string({ error: 'agencyName is required' }).min(1, 'agencyName is required'),
+  statementCadence: z.enum(['weekly', 'fortnightly', 'monthly', 'bi_monthly'],
+    'statementCadence must be one of: weekly, fortnightly, monthly, bi_monthly'),
+  effectiveFrom: z.string({ error: 'effectiveFrom is required' }).min(1, 'effectiveFrom is required'),
   contactName: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
@@ -62,7 +61,7 @@ export async function POST(
 
     const parsed = postSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
 
     const agent = await addManagementAgent(user.id, id, parsed.data)

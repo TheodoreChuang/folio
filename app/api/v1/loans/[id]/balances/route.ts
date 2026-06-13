@@ -37,7 +37,7 @@ export async function GET(
 
 const balanceSchema = z.object({
   recordedAt:   z.string().regex(DATE_REGEX, 'recordedAt must be YYYY-MM-DD'),
-  balanceCents: z.number({ invalid_type_error: 'balanceCents must be a non-negative integer' })
+  balanceCents: z.number({ error: 'balanceCents must be a non-negative integer' })
                  .int('balanceCents must be a non-negative integer')
                  .min(0, 'balanceCents must be a non-negative integer'),
   notes:        z.string().max(500, 'notes too long (max 500 characters)').transform(s => s.trim() || null).nullable().optional(),
@@ -65,7 +65,7 @@ export async function POST(
 
     const parsed = balanceSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
     const { recordedAt, balanceCents, notes } = parsed.data
 

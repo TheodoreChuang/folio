@@ -46,7 +46,7 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const LOAN_TYPES = ['interest_only', 'principal_and_interest', 'line_of_credit'] as const
 
 const schema = z.object({
-  lender:              z.string({ required_error: 'lender is required' })
+  lender:              z.string({ error: 'lender is required' })
                          .transform(s => s.trim())
                          .refine(s => s.length > 0, 'lender is required')
                          .refine(s => s.length <= 200, 'lender too long (max 200 characters)'),
@@ -54,16 +54,14 @@ const schema = z.object({
   accountReference:    z.string().max(100).transform(s => s.trim() || null).nullable().optional(),
   propertyId:          z.string().regex(UUID_REGEX, 'propertyId must be a valid UUID').nullable().optional(),
   entityId:            z.string().regex(UUID_REGEX, 'entityId must be a valid UUID').nullable().optional(),
-  loanType:            z.enum(['interest_only', 'principal_and_interest', 'line_of_credit'], {
-                         errorMap: () => ({ message: 'loanType must be interest_only, principal_and_interest, or line_of_credit' }),
-                       }).nullable().optional(),
+  loanType:            z.enum(['interest_only', 'principal_and_interest', 'line_of_credit'],
+                       'loanType must be interest_only, principal_and_interest, or line_of_credit').nullable().optional(),
   startDate:           z.string().regex(DATE_REGEX, 'startDate must be YYYY-MM-DD').nullable().optional(),
   endDate:             z.string().regex(DATE_REGEX, 'endDate must be YYYY-MM-DD').nullable().optional(),
   ioEndDate:           z.string().regex(DATE_REGEX, 'ioEndDate must be YYYY-MM-DD').nullable().optional(),
   interestRate:        z.number().min(0).max(100).nullable().optional(),
-  rateType:            z.enum(['variable', 'fixed'], {
-                         errorMap: () => ({ message: 'rateType must be variable or fixed' }),
-                       }).nullable().optional(),
+  rateType:            z.enum(['variable', 'fixed'],
+                       'rateType must be variable or fixed').nullable().optional(),
   loanTermYears:       z.number().int().min(1).max(99).nullable().optional(),
   originalAmountCents: z.number().int().min(0).nullable().optional(),
 })
@@ -80,7 +78,7 @@ export async function POST(request: Request) {
 
     const parsed = schema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
 
     const {

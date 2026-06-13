@@ -6,7 +6,7 @@ import { listApiKeys, createApiKey } from '@/lib/api-keys'
 import { captureError } from '@/lib/api-error'
 
 const postSchema = z.object({
-  name: z.string({ required_error: 'name is required' })
+  name: z.string({ error: 'name is required' })
     .min(1, 'name is required')
     .max(100, 'name too long (max 100 characters)'),
 })
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
     const parsed = postSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
     const { name } = parsed.data
 
