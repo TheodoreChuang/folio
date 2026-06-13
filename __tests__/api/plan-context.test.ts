@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET } from '@/app/api/plan/context/route'
+import { GET } from '@/app/api/v1/plan/context/route'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 

@@ -147,7 +147,7 @@ describe('GET /api/loans — filter params (integration)', () => {
   })
 
   async function getLoans(params?: Record<string, string>) {
-    const { GET } = await import('@/app/api/loans/route')
+    const { GET } = await import('@/app/api/v1/loans/route')
     const qs = params ? `?${new URLSearchParams(params)}` : ''
     return GET(new Request(`http://localhost/api/loans${qs}`, { method: 'GET' }))
   }

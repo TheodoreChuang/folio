@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { POST } from '@/app/api/upload/route'
+import { POST } from '@/app/api/v1/upload/route'
 
 const mocks = vi.hoisted(() => ({
   mockUpload: vi.fn(),

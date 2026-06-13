@@ -1022,7 +1022,7 @@ export default function HoldReinvestPage() {
       const { signal } = currentController
       timeoutId = setTimeout(() => currentController?.abort(), 15_000)
 
-      fetch('/api/plan/context', { signal })
+      fetch('/api/v1/plan/context', { signal })
         .then(res => {
           if (res.status === 401) { router.push('/login'); return null }
           return res.json()

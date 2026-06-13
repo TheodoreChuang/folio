@@ -342,5 +342,22 @@ export type NewPersonalBudgetItem = typeof personalBudgetItems.$inferInsert
 export type BudgetItemType        = typeof budgetItemTypeEnum.enumValues[number]
 export type BudgetItemFrequency   = typeof budgetItemFrequencyEnum.enumValues[number]
 
+export const apiKeys = pgTable('api_keys', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  userId:     uuid('user_id').notNull(),
+  name:       text('name').notNull(),
+  keyHash:    text('key_hash').notNull().unique(),
+  keyPrefix:  text('key_prefix').notNull(),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+  revokedAt:  timestamp('revoked_at', { withTimezone: true }),
+}, (t) => [
+  index('idx_api_keys_user').on(t.userId),
+  index('idx_api_keys_hash').on(t.keyHash),
+])
+
+export type ApiKey    = typeof apiKeys.$inferSelect
+export type NewApiKey = typeof apiKeys.$inferInsert
+
 // Backward-compatible aliases — used by frontend pages pending the Frontend rebuild phase
 export type LoanBalance = InstallmentLoanBalance

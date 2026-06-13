@@ -47,13 +47,13 @@ export default function PropertiesPage() {
       if (entityId) ledgerParams.set('entityId', entityId)
 
       // Start the unfiltered properties fetch in parallel when a filter is active
-      const allPropsPromise = entityId ? fetch('/api/properties') : null
+      const allPropsPromise = entityId ? fetch('/api/v1/properties') : null
 
       const [entRes, propsRes, portfolioRes, ledgerRes] = await Promise.all([
-        fetch('/api/entities'),
-        fetch(`/api/properties${entityQs}`),
-        fetch(`/api/portfolio/summary${entityQs}`),
-        fetch(`/api/ledger/summary?${ledgerParams}`),
+        fetch('/api/v1/entities'),
+        fetch(`/api/v1/properties${entityQs}`),
+        fetch(`/api/v1/portfolio/summary${entityQs}`),
+        fetch(`/api/v1/ledger/summary?${ledgerParams}`),
       ])
 
       if (propsRes.status === 401) { router.push('/login'); return }

@@ -346,7 +346,7 @@ export default function PropertyDetailPage() {
   const loadEntries = useCallback(async (signal: AbortSignal) => {
     setEntriesLoading(true)
     try {
-      const res = await fetch(`/api/properties/${id}/entries?month=${txMonth}`, { signal })
+      const res = await fetch(`/api/v1/properties/${id}/entries?month=${txMonth}`, { signal })
       if (res.ok) {
         const data = await res.json() as { entries?: PropertyLedger[] }
         setEntries(data.entries ?? [])
@@ -364,13 +364,13 @@ export default function PropertyDetailPage() {
       setLoading(true)
       try {
         const [propRes, loansRes, valsRes, entitiesRes, trendsRes, tenRes, agentRes] = await Promise.all([
-          fetch(`/api/properties/${id}`),
-          fetch(`/api/properties/${id}/loans`),
-          fetch(`/api/properties/${id}/valuations`),
-          fetch('/api/entities'),
-          fetch(`/api/properties/${id}/trends?months=12`),
-          fetch(`/api/properties/${id}/tenancies`),
-          fetch(`/api/properties/${id}/management-agents`),
+          fetch(`/api/v1/properties/${id}`),
+          fetch(`/api/v1/properties/${id}/loans`),
+          fetch(`/api/v1/properties/${id}/valuations`),
+          fetch('/api/v1/entities'),
+          fetch(`/api/v1/properties/${id}/trends?months=12`),
+          fetch(`/api/v1/properties/${id}/tenancies`),
+          fetch(`/api/v1/properties/${id}/management-agents`),
         ])
 
         if (propRes.status === 401) { router.push('/login'); return }
@@ -446,8 +446,8 @@ export default function PropertyDetailPage() {
     if (mgmtLoaded) return
     try {
       const [tenRes, agentRes] = await Promise.all([
-        fetch(`/api/properties/${id}/tenancies`),
-        fetch(`/api/properties/${id}/management-agents`),
+        fetch(`/api/v1/properties/${id}/tenancies`),
+        fetch(`/api/v1/properties/${id}/management-agents`),
       ])
       if (tenRes.ok) {
         const data = await tenRes.json() as { tenancies?: PropertyTenancy[] }
@@ -464,7 +464,7 @@ export default function PropertyDetailPage() {
   }, [id, mgmtLoaded])
 
   async function patchProperty(updates: Record<string, unknown>) {
-    const res = await fetch(`/api/properties/${id}`, {
+    const res = await fetch(`/api/v1/properties/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -544,7 +544,7 @@ export default function PropertyDetailPage() {
         valNotes.trim(),
       ].filter(Boolean).join(' — ') || null
 
-      const res = await fetch(`/api/properties/${id}/valuations`, {
+      const res = await fetch(`/api/v1/properties/${id}/valuations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -586,7 +586,7 @@ export default function PropertyDetailPage() {
   async function handleDeleteValuation(valuationId: string) {
     setDeletingVal(true)
     try {
-      const res = await fetch(`/api/properties/${id}/valuations/${valuationId}`, {
+      const res = await fetch(`/api/v1/properties/${id}/valuations/${valuationId}`, {
         method: 'DELETE',
       })
       if (!res.ok) { toast.error('Failed to delete'); return }
@@ -612,7 +612,7 @@ export default function PropertyDetailPage() {
     if (!entryDate) { toast.error('Date is required'); return }
     setSavingEntry(true)
     try {
-      const res = await fetch(`/api/properties/${id}/entries`, {
+      const res = await fetch(`/api/v1/properties/${id}/entries`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -644,7 +644,7 @@ export default function PropertyDetailPage() {
   async function handleDeleteEntry(entry: PropertyLedger) {
     if (!confirm('Delete this transaction?')) return
     try {
-      const res = await fetch(`/api/ledger/${entry.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/v1/ledger/${entry.id}`, { method: 'DELETE' })
       if (!res.ok) { toast.error('Failed to delete transaction'); return }
       setEntries(prev => prev.filter(e => e.id !== entry.id))
     } catch {
@@ -659,7 +659,7 @@ export default function PropertyDetailPage() {
     }
     setSavingTenancy(true)
     try {
-      const res = await fetch(`/api/properties/${id}/tenancies`, {
+      const res = await fetch(`/api/v1/properties/${id}/tenancies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -691,7 +691,7 @@ export default function PropertyDetailPage() {
   async function handleDeleteTenancy(tenancyId: string) {
     if (!confirm('Delete this tenancy record?')) return
     try {
-      const res = await fetch(`/api/properties/${id}/tenancies/${tenancyId}`, {
+      const res = await fetch(`/api/v1/properties/${id}/tenancies/${tenancyId}`, {
         method: 'DELETE',
       })
       if (!res.ok) { toast.error('Failed to delete tenancy'); return }
@@ -710,7 +710,7 @@ export default function PropertyDetailPage() {
     }
     setSavingAgent(true)
     try {
-      const res = await fetch(`/api/properties/${id}/management-agents`, {
+      const res = await fetch(`/api/v1/properties/${id}/management-agents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -744,7 +744,7 @@ export default function PropertyDetailPage() {
   async function handleDeleteAgent(agentId: string) {
     if (!confirm('Delete this management agent record?')) return
     try {
-      const res = await fetch(`/api/properties/${id}/management-agents/${agentId}`, {
+      const res = await fetch(`/api/v1/properties/${id}/management-agents/${agentId}`, {
         method: 'DELETE',
       })
       if (!res.ok) { toast.error('Failed to delete agent'); return }
@@ -761,7 +761,7 @@ export default function PropertyDetailPage() {
     }
     setMarkingSold(true)
     try {
-      const res = await fetch(`/api/properties/${id}`, {
+      const res = await fetch(`/api/v1/properties/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -788,7 +788,7 @@ export default function PropertyDetailPage() {
   async function handleDeleteProperty() {
     setDeletingProperty(true)
     try {
-      const res = await fetch(`/api/properties/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/v1/properties/${id}`, { method: 'DELETE' })
       if (!res.ok) { toast.error('Failed to delete property'); return }
       router.push('/properties')
     } finally {

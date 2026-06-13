@@ -68,7 +68,7 @@ describe('GET /api/household/items — soft-delete filter', () => {
   it('excludes soft-deleted items from GET response', async () => {
     if (!hasEnv) return
 
-    const { GET } = await import('@/app/api/household/items/route')
+    const { GET } = await import('@/app/api/v1/household/items/route')
 
     const [active] = await db.insert(personalBudgetItems).values({
       userId,
@@ -106,7 +106,7 @@ describe('GET /api/household/items — soft-delete filter', () => {
   it('summary totals exclude soft-deleted items', async () => {
     if (!hasEnv) return
 
-    const { GET } = await import('@/app/api/household/items/route')
+    const { GET } = await import('@/app/api/v1/household/items/route')
 
     const [active] = await db.insert(personalBudgetItems).values({
       userId,
@@ -143,7 +143,7 @@ describe('PATCH /api/household/items/[id] — soft-delete filter', () => {
   it('returns 404 when patching a soft-deleted item', async () => {
     if (!hasEnv) return
 
-    const { PATCH } = await import('@/app/api/household/items/[id]/route')
+    const { PATCH } = await import('@/app/api/v1/household/items/[id]/route')
 
     const [item] = await db.insert(personalBudgetItems).values({
       userId,
@@ -173,7 +173,7 @@ describe('DELETE /api/household/items/[id] — soft-delete filter', () => {
   it('returns 404 when deleting an already soft-deleted item', async () => {
     if (!hasEnv) return
 
-    const { DELETE } = await import('@/app/api/household/items/[id]/route')
+    const { DELETE } = await import('@/app/api/v1/household/items/[id]/route')
 
     const [item] = await db.insert(personalBudgetItems).values({
       userId,
@@ -201,7 +201,7 @@ describe('Auth isolation', () => {
   it('items from another user do not appear in GET response', async () => {
     if (!hasEnv) return
 
-    const { GET } = await import('@/app/api/household/items/route')
+    const { GET } = await import('@/app/api/v1/household/items/route')
 
     const otherUserId = 'ffffffff-ffff-4fff-bfff-ffffffffffff'
 

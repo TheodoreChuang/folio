@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET, POST } from '@/app/api/entities/route'
-import { PATCH, DELETE } from '@/app/api/entities/[id]/route'
+import { GET, POST } from '@/app/api/v1/entities/route'
+import { PATCH, DELETE } from '@/app/api/v1/entities/[id]/route'
 
 const ENTITY_ID = 'cccc0001-0000-4000-c000-000000000001'
 

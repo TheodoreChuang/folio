@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET, PATCH } from '@/app/api/loans/[id]/route'
+import { GET, PATCH } from '@/app/api/v1/loans/[id]/route'
 
 const VALID_LOAN_ID = 'b2c3d4e5-f6a7-4890-b123-222222222222'
 const PROP_ID       = 'a1b2c3d4-e5f6-4789-a012-111111111111'

@@ -11,7 +11,7 @@ import type { FilterOption } from '@/components/filter-chip'
 import type { Entity, Property } from '@/db/schema'
 import { entityTypeSubLabel } from '@/lib/format'
 import type { ReportTotals } from '@/lib/aggregate'
-import type { PortfolioLVR } from '@/app/api/portfolio/summary/route'
+import type { PortfolioLVR } from '@/app/api/v1/portfolio/summary/route'
 
 // ---------- helpers ----------
 
@@ -114,8 +114,8 @@ export default function DashboardPage() {
       const portfolioQs = entityId ? `?entityId=${entityId}` : ''
 
       const [portfolioRes, ledgerRes] = await Promise.all([
-        fetch(`/api/portfolio/summary${portfolioQs}`, { signal }),
-        fetch(`/api/ledger/summary?from=${from}&to=${to}${entityQs}`, { signal }),
+        fetch(`/api/v1/portfolio/summary${portfolioQs}`, { signal }),
+        fetch(`/api/v1/ledger/summary?from=${from}&to=${to}${entityQs}`, { signal }),
       ])
 
       if (signal?.aborted) return
@@ -139,7 +139,7 @@ export default function DashboardPage() {
   }, [entityFilter, loadDashboard])
 
   useEffect(() => {
-    void fetch('/api/entities')
+    void fetch('/api/v1/entities')
       .then(r => r.ok ? r.json() : null)
       .then((data: { entities?: Entity[] } | null) => {
         if (data?.entities) setEntities(data.entities)
@@ -148,7 +148,7 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    void fetch('/api/properties')
+    void fetch('/api/v1/properties')
       .then(r => r.ok ? r.json() : null)
       .then((data: { properties?: Pick<Property, 'id' | 'entityId'>[] } | null) => {
         if (data?.properties) setProperties(data.properties)
@@ -157,7 +157,7 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    void fetch('/api/plan/context')
+    void fetch('/api/v1/plan/context')
       .then(r => r.ok ? r.json() : null)
       .then((data: { context?: PlanContextSummary } | null) => {
         if (data?.context) setPlanContext(data.context)

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET, POST } from '@/app/api/properties/[id]/tenancies/route'
-import { DELETE } from '@/app/api/properties/[id]/tenancies/[tenancyId]/route'
+import { GET, POST } from '@/app/api/v1/properties/[id]/tenancies/route'
+import { DELETE } from '@/app/api/v1/properties/[id]/tenancies/[tenancyId]/route'
 
 const PROP_ID = 'a1b2c3d4-e5f6-4789-a012-111111111111'
 const TENANCY_ID = 'b2c3d4e5-f6a7-4890-b123-222222222222'

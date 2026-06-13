@@ -20,7 +20,7 @@ export default function OnboardingPage() {
   const [showForm, setShowForm] = useState(true)
 
   useEffect(() => {
-    fetch('/api/properties')
+    fetch('/api/v1/properties')
       .then(r => r.json())
       .then(data => {
         const existing: Property[] = data.properties ?? []
@@ -33,7 +33,7 @@ export default function OnboardingPage() {
 
   async function addProperty() {
     if (!address.trim() || !startDate) return
-    const res = await fetch('/api/properties', {
+    const res = await fetch('/api/v1/properties', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address: address.trim(), nickname: nickname.trim() || null, startDate }),
@@ -106,7 +106,7 @@ export default function OnboardingPage() {
                     size="sm"
                     className="text-foreground-muted hover:text-negative"
                     onClick={async () => {
-                      const res = await fetch(`/api/properties/${p.id}`, { method: 'DELETE' })
+                      const res = await fetch(`/api/v1/properties/${p.id}`, { method: 'DELETE' })
                       if (!res.ok) {
                         toast.error('Failed to remove property')
                         return

@@ -106,7 +106,7 @@ describe('POST /api/upload (integration)', () => {
     fileName: string,
     documentType: string,
   ) {
-    const { POST } = await import('@/app/api/upload/route')
+    const { POST } = await import('@/app/api/v1/upload/route')
     const form = new FormData()
     const file = new File([new Uint8Array(fileBuffer)], fileName, { type: 'application/pdf' })
     form.append('file', file)

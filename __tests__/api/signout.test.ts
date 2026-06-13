@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { POST } from '@/app/api/auth/signout/route'
+import { POST } from '@/app/api/v1/auth/signout/route'
 
 const mocks = vi.hoisted(() => ({
   mockSignOut: vi.fn(),

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET, POST } from '@/app/api/household/items/route'
+import { GET, POST } from '@/app/api/v1/household/items/route'
 
 const USER_ID = 'user-abc-123'
 const ITEM_ID = 'dddd0001-0000-4000-d000-000000000001'

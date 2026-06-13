@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { DELETE } from '@/app/api/documents/[id]/route'
+import { DELETE } from '@/app/api/v1/documents/[id]/route'
 
 const VALID_UUID = 'a1b2c3d4-e5f6-4789-a012-345678901234'
 

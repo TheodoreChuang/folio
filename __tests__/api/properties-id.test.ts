@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET, PATCH, DELETE } from '@/app/api/properties/[id]/route'
+import { GET, PATCH, DELETE } from '@/app/api/v1/properties/[id]/route'
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),

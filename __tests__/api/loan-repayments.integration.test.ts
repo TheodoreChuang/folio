@@ -96,7 +96,7 @@ describe('GET /api/loans/[id]/repayments (integration — soft-delete filter)', 
   })
 
   async function getRepayments(id: string) {
-    const { GET } = await import('@/app/api/loans/[id]/repayments/route')
+    const { GET } = await import('@/app/api/v1/loans/[id]/repayments/route')
     return GET(
       new Request(`http://localhost/api/loans/${id}/repayments`, { method: 'GET' }),
       { params: Promise.resolve({ id }) }
@@ -187,7 +187,7 @@ describe('POST /api/loans/[id]/repayments (integration — insert and retrieve)'
   it('POST inserts a row; subsequent GET returns it with correct field values', async () => {
     if (!hasEnv) return
 
-    const { POST, GET } = await import('@/app/api/loans/[id]/repayments/route')
+    const { POST, GET } = await import('@/app/api/v1/loans/[id]/repayments/route')
     const postRes = await POST(
       new Request(`http://localhost/api/loans/${loanId}/repayments`, {
         method: 'POST',

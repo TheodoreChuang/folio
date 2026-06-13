@@ -344,3 +344,27 @@ Calculations, derivations, and business rules live in backend services — not i
 hooks, or utility files on the frontend. The frontend receives computed values from the API
 and renders them. This keeps backend logic testable under TDD and prevents business rules
 from being scattered across the stack.
+
+---
+
+## 10. API Design — Spec-First Process
+
+The OpenAPI spec at `lib/openapi/spec.ts` is the canonical contract. Implementation must
+conform to the spec, not the other way around.
+
+**For new routes:**
+1. Add the endpoint to `lib/openapi/spec.ts` first — method, path, request body schema,
+   response schemas, and a description suitable for AI/programmatic consumers.
+2. Write the unit test against the spec's stated contract (status codes, response shape).
+3. Implement the route handler to satisfy the test.
+
+**For changes to existing routes:**
+- Update the spec first when changing request shape, response shape, or status codes.
+- PRs that change route behavior without a matching spec update will be rejected in review.
+
+**Key facts:**
+- Spec is served (auth-gated) at `GET /api/v1/openapi.json`.
+- Security scheme: `BearerAuth` (`Authorization: Bearer sk_live_...`). Cookie auth is for
+  the internal browser app and is not documented in the spec.
+- AI tool consumers (Custom GPT, Claude MCP) rely on the spec for discoverability — keep
+  endpoint descriptions accurate and action-oriented.

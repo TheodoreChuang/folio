@@ -95,7 +95,7 @@ describe('GET /api/ledger/summary (integration — S-1 loan date-range filter)',
   })
 
   async function getLedgerSummary(from: string, to: string, propId: string) {
-    const { GET } = await import('@/app/api/ledger/summary/route')
+    const { GET } = await import('@/app/api/v1/ledger/summary/route')
     const params = new URLSearchParams({ from, to, propertyId: propId })
     return GET(new Request(`http://localhost/api/ledger/summary?${params}`, { method: 'GET' }))
   }
@@ -186,7 +186,7 @@ describe('GET /api/ledger/summary (integration — S-2 property date-range filte
   })
 
   async function getLedgerSummaryForUser(from: string, to: string) {
-    const { GET } = await import('@/app/api/ledger/summary/route')
+    const { GET } = await import('@/app/api/v1/ledger/summary/route')
     const params = new URLSearchParams({ from, to })
     return GET(new Request(`http://localhost/api/ledger/summary?${params}`, { method: 'GET' }))
   }

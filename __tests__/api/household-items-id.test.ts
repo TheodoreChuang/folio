@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { PATCH, DELETE } from '@/app/api/household/items/[id]/route'
+import { PATCH, DELETE } from '@/app/api/v1/household/items/[id]/route'
 
 const USER_ID = 'user-abc-123'
 const ITEM_ID = 'dddd0001-0000-4000-d000-000000000001'

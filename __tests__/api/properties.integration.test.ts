@@ -99,7 +99,7 @@ describe('GET /api/properties — entityId filter (integration)', () => {
   })
 
   async function getProperties(params?: Record<string, string>) {
-    const { GET } = await import('@/app/api/properties/route')
+    const { GET } = await import('@/app/api/v1/properties/route')
     const qs = params ? `?${new URLSearchParams(params)}` : ''
     return GET(new Request(`http://localhost/api/properties${qs}`, { method: 'GET' }))
   }

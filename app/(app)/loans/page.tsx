@@ -65,9 +65,9 @@ export default function LoansPage() {
       const anyActive = !!(entityId || lender || loanType)
 
       const [loansRes, entRes, allLoansRes] = await Promise.all([
-        fetch(`/api/loans${qs}`, { signal }),
-        fetch('/api/entities', { signal }),
-        anyActive ? fetch('/api/loans', { signal }) : Promise.resolve(null),
+        fetch(`/api/v1/loans${qs}`, { signal }),
+        fetch('/api/v1/entities', { signal }),
+        anyActive ? fetch('/api/v1/loans', { signal }) : Promise.resolve(null),
       ])
 
       if (signal?.aborted) return

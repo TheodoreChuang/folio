@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET } from '@/app/api/ingestion/staged/route'
-import { PATCH } from '@/app/api/ingestion/staged/[id]/route'
+import { GET } from '@/app/api/v1/ingestion/staged/route'
+import { PATCH } from '@/app/api/v1/ingestion/staged/[id]/route'
 
 const VALID_ID = 'a1b2c3d4-e5f6-4789-a012-345678901234'
 const VALID_DOC_ID = 'b2c3d4e5-f6a7-4890-b123-222222222222'

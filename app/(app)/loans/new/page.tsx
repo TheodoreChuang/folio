@@ -144,11 +144,11 @@ export default function NewLoanPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/properties').then(r => {
+      fetch('/api/v1/properties').then(r => {
         if (r.status === 401) { router.push('/login'); return null }
         return r.json() as Promise<{ properties?: Property[] }>
       }),
-      fetch('/api/entities').then(r => r.json() as Promise<{ entities?: Entity[] }>),
+      fetch('/api/v1/entities').then(r => r.json() as Promise<{ entities?: Entity[] }>),
     ])
       .then(([propsData, entData]) => {
         const props = propsData?.properties ?? []
@@ -168,7 +168,7 @@ export default function NewLoanPage() {
     setSaving(true)
 
     try {
-      const res = await fetch('/api/loans', {
+      const res = await fetch('/api/v1/loans', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -212,7 +212,7 @@ export default function NewLoanPage() {
         const balanceParsed = parseFloat(balanceDollars.replace(/,/g, ''))
         if (!isNaN(balanceParsed)) {
           const balanceCents = Math.round(balanceParsed * 100)
-          const balRes = await fetch(`/api/loans/${loan.id}/balances`, {
+          const balRes = await fetch(`/api/v1/loans/${loan.id}/balances`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ balanceCents, recordedAt: balanceDate }),
