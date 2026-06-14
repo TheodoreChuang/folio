@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { properties, propertyLedger, propertyValuations } from '@/db/schema'
+import { entities, properties, propertyLedger, propertyValuations } from '@/db/schema'
 
 const refs = vi.hoisted(() => ({
   cookieStore: [] as { name: string; value: string }[],
@@ -27,6 +27,7 @@ const hasEnv = !!url && !!anonKey && !!testEmail && !!testPassword && !!process.
 
 describe('GET /api/v1/portfolio/return (integration)', () => {
   let userId: string
+  let entityId: string
   let propId: string
   let valuationId: string
   let ledgerEntryId: string
@@ -56,9 +57,16 @@ describe('GET /api/v1/portfolio/return (integration)', () => {
       refresh_token: session.refresh_token,
     })
 
+    // Isolated entity so entityId filter scopes results to only this test's data
+    const [entity] = await db
+      .insert(entities)
+      .values({ userId, name: `Return Test Entity ${crypto.randomUUID()}`, type: 'trust' })
+      .returning()
+    entityId = entity.id
+
     const [prop] = await db
       .insert(properties)
-      .values({ userId, address: `Return Test ${crypto.randomUUID()}`, startDate: '2020-01-01' })
+      .values({ userId, entityId, address: `Return Test ${crypto.randomUUID()}`, startDate: '2020-01-01' })
       .returning()
     propId = prop.id
 
@@ -82,6 +90,7 @@ describe('GET /api/v1/portfolio/return (integration)', () => {
     if (ledgerEntryId) await db.delete(propertyLedger).where(eq(propertyLedger.id, ledgerEntryId))
     if (valuationId) await db.delete(propertyValuations).where(eq(propertyValuations.id, valuationId))
     if (propId) await db.delete(properties).where(eq(properties.id, propId))
+    if (entityId) await db.delete(entities).where(eq(entities.id, entityId))
   })
 
   async function getReturn(params: Record<string, string>) {
@@ -91,7 +100,7 @@ describe('GET /api/v1/portfolio/return (integration)', () => {
 
   it('returns 200 with non-null metrics when valuation and rent data exist', async () => {
     if (!hasEnv) return
-    const res = await getReturn({ from: '2026-01-01', to: '2026-03-31' })
+    const res = await getReturn({ from: '2026-01-01', to: '2026-03-31', entityId })
     expect(res.status).toBe(200)
     const { return: ret } = await res.json() as {
       return: {
