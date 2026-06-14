@@ -21,7 +21,8 @@ export async function resolveUser(request: Request): Promise<ResolvedUser | null
     const { findApiKeyByHash, touchLastUsed } = await import('@/lib/api-keys')
     const apiKey = await findApiKeyByHash(hash)
     if (!apiKey) return null
-    touchLastUsed(apiKey.id, apiKey.userId).catch(err => logger.error('touchLastUsed failed', { keyId: apiKey.id, err }))
+    const stale = !apiKey.lastUsedAt || Date.now() - apiKey.lastUsedAt.getTime() > 5 * 60 * 1000
+    if (stale) touchLastUsed(apiKey.id, apiKey.userId).catch(err => logger.error('touchLastUsed failed', { keyId: apiKey.id, err }))
     return { id: apiKey.userId, authMethod: 'bearer' }
   }
 

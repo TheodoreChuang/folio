@@ -57,6 +57,20 @@ describe('resolveUser — bearer auth path', () => {
     expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(KEY_ROW.id, KEY_ROW.userId)
   })
 
+  it('skips touchLastUsed when lastUsedAt is within the last 5 minutes', async () => {
+    const recentKey = { ...KEY_ROW, lastUsedAt: new Date(Date.now() - 60_000) }
+    mocks.mockFindApiKeyByHash.mockResolvedValue(recentKey)
+    await resolveUser(bearerRequest('sk_live_validtoken'))
+    expect(mocks.mockTouchLastUsed).not.toHaveBeenCalled()
+  })
+
+  it('calls touchLastUsed when lastUsedAt is older than 5 minutes', async () => {
+    const staleKey = { ...KEY_ROW, lastUsedAt: new Date(Date.now() - 6 * 60_000) }
+    mocks.mockFindApiKeyByHash.mockResolvedValue(staleKey)
+    await resolveUser(bearerRequest('sk_live_validtoken'))
+    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(staleKey.id, staleKey.userId)
+  })
+
   it('returns null when sk_live_ token has no matching key', async () => {
     mocks.mockFindApiKeyByHash.mockResolvedValue(null)
     const result = await resolveUser(bearerRequest('sk_live_unknown'))

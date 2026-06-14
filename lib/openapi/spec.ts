@@ -135,7 +135,7 @@ registry.registerPath({
             startDate: z.string().nullable().optional().openapi({ description: 'Loan start date (YYYY-MM-DD)' }),
             endDate: z.string().nullable().optional().openapi({ description: 'Loan maturity date (YYYY-MM-DD)' }),
             ioEndDate: z.string().nullable().optional().openapi({ description: 'End of interest-only period (YYYY-MM-DD)' }),
-            interestRate: z.number().min(0).max(100).nullable().optional().openapi({ description: 'Interest rate as a percentage (e.g. 5.75)', example: 5.75 }),
+            interestRate: z.number().min(0).max(100).nullable().optional().openapi({ description: 'Interest rate as a percentage (e.g. 5.75). Returned as a string in responses due to numeric precision.', example: 5.75 }),
             rateType: z.enum(['variable', 'fixed']).nullable().optional(),
             loanTermYears: z.number().int().min(1).max(99).nullable().optional(),
             originalAmountCents: z.number().int().min(0).nullable().optional().openapi({ description: 'Original loan amount in cents' }),
