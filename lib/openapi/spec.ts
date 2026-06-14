@@ -9,8 +9,10 @@ import {
   ApiKeyRevokedResponseSchema,
   ApiKeysListResponseSchema,
   EntitiesListResponseSchema,
+  EntityCreatedResponseSchema,
   LedgerFyResponseSchema,
   LedgerSummaryResponseSchema,
+  LoanCreatedResponseSchema,
   LoansListResponseSchema,
   PortfolioReturnResponseSchema,
   PortfolioSummaryResponseSchema,
@@ -115,6 +117,44 @@ registry.registerPath({
   },
 })
 
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/loans',
+  tags: ['Loans'],
+  summary: 'Create a new loan',
+  description: 'Add a new installment loan (mortgage, investment loan) to the portfolio. Optionally link to a property and/or ownership entity.',
+  security: [{ BearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            lender: z.string().min(1).max(200).openapi({ description: 'Lending institution name', example: 'Commonwealth Bank' }),
+            nickname: z.string().max(200).nullable().optional().openapi({ description: 'Optional short label for display' }),
+            accountReference: z.string().max(100).nullable().optional().openapi({ description: 'Loan account number or reference' }),
+            propertyId: z.string().uuid().nullable().optional().openapi({ description: 'UUID of the security property' }),
+            entityId: z.string().uuid().nullable().optional().openapi({ description: 'UUID of the owning entity' }),
+            loanType: z.enum(['interest_only', 'principal_and_interest', 'line_of_credit']).nullable().optional(),
+            startDate: z.string().nullable().optional().openapi({ description: 'Loan start date (YYYY-MM-DD)' }),
+            endDate: z.string().nullable().optional().openapi({ description: 'Loan maturity date (YYYY-MM-DD)' }),
+            ioEndDate: z.string().nullable().optional().openapi({ description: 'End of interest-only period (YYYY-MM-DD)' }),
+            interestRate: z.number().min(0).max(100).nullable().optional().openapi({ description: 'Interest rate as a percentage (e.g. 5.75)', example: 5.75 }),
+            rateType: z.enum(['variable', 'fixed']).nullable().optional(),
+            loanTermYears: z.number().int().min(1).max(99).nullable().optional(),
+            originalAmountCents: z.number().int().min(0).nullable().optional().openapi({ description: 'Original loan amount in cents' }),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    201: { description: 'Loan created', content: { 'application/json': { schema: LoanCreatedResponseSchema } } },
+    400: { description: 'Validation error', content: { 'application/json': { schema: ErrorSchema } } },
+    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
+    404: { description: 'Property or entity not found', content: { 'application/json': { schema: ErrorSchema } } },
+  },
+})
+
 // ── Entities ──────────────────────────────────────────────────────────────────
 
 registry.registerPath({
@@ -126,6 +166,32 @@ registry.registerPath({
   security: [{ BearerAuth: [] }],
   responses: {
     200: { description: 'List of entities', content: { 'application/json': { schema: EntitiesListResponseSchema } } },
+    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
+  },
+})
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/entities',
+  tags: ['Entities'],
+  summary: 'Create a new ownership entity',
+  description: 'Add a new ownership structure (individual, trust, company, etc.) to the portfolio. Entities group properties and loans for reporting.',
+  security: [{ BearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            name: z.string().min(1).max(200).openapi({ description: 'Display name for the entity', example: 'Smith Family Trust' }),
+            type: z.enum(['individual', 'joint', 'trust', 'company', 'superannuation']),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    201: { description: 'Entity created', content: { 'application/json': { schema: EntityCreatedResponseSchema } } },
+    400: { description: 'Validation error', content: { 'application/json': { schema: ErrorSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })

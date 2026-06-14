@@ -6,7 +6,7 @@ import { findEntityById } from '@/lib/entities'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
 import type { LoanType } from '@/db/schema'
-import { LoansListResponseSchema } from '@/lib/openapi/schemas'
+import { LoanCreatedResponseSchema, LoansListResponseSchema } from '@/lib/openapi/schemas'
 
 export async function GET(request: Request) {
   try {
@@ -116,7 +116,10 @@ export async function POST(request: Request) {
       originalAmountCents: originalAmountCents ?? null,
     })
 
-    return NextResponse.json({ loan }, { status: 201 })
+    return NextResponse.json(
+      LoanCreatedResponseSchema.parse({ loan: { ...loan, createdAt: loan.createdAt.toISOString() } }),
+      { status: 201 },
+    )
   } catch (err) {
     captureError(err, { route: 'POST /api/v1/loans' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { listEntities, createEntity } from '@/lib/entities'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
-import { EntitiesListResponseSchema } from '@/lib/openapi/schemas'
+import { EntitiesListResponseSchema, EntityCreatedResponseSchema } from '@/lib/openapi/schemas'
 
 const ENTITY_TYPES = ['individual', 'joint', 'trust', 'company', 'superannuation'] as const
 
@@ -41,7 +41,10 @@ export async function POST(request: Request) {
     const { name, type } = parsed.data
 
     const entity = await createEntity(user.id, name, type)
-    return NextResponse.json({ entity }, { status: 201 })
+    return NextResponse.json(
+      EntityCreatedResponseSchema.parse({ entity: { ...entity, createdAt: entity.createdAt.toISOString() } }),
+      { status: 201 },
+    )
   } catch (err) {
     captureError(err, { route: 'POST /api/v1/entities' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

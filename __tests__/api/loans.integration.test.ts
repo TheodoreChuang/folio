@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { entities, installmentLoans, properties } from '@/db/schema'
+import { entities, installmentLoanBalances, installmentLoans, properties } from '@/db/schema'
 
 const refs = vi.hoisted(() => ({
   cookieStore: [] as { name: string; value: string }[],
@@ -212,5 +212,100 @@ describe('GET /api/loans — filter params (integration)', () => {
     expect(ids).toContain(loanEntityA2)
     expect(ids).not.toContain(loanEntityA)
     expect(ids).not.toContain(loanEntityB)
+  })
+})
+
+describe('GET /api/v1/loans — FlatInstallmentLoan schema (integration)', () => {
+  let userId: string
+  let propId: string
+  let loanWithRateId: string
+  let loanWithBalanceId: string
+
+  beforeAll(async () => {
+    if (!hasEnv) return
+
+    const anon = createClient(url!, anonKey!)
+    const { data: { session }, error } = await anon.auth.signInWithPassword({
+      email: testEmail!,
+      password: testPassword!,
+    })
+    if (error || !session) throw new Error(`Sign-in failed: ${error?.message ?? 'no session'}`)
+    userId = session.user.id
+
+    const serverClient = createServerClient(url!, anonKey!, {
+      cookies: {
+        getAll: () => refs.cookieStore,
+        setAll: (cs) => {
+          refs.cookieStore.length = 0
+          refs.cookieStore.push(...cs)
+        },
+      },
+    })
+    await serverClient.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    })
+
+    const [prop] = await db
+      .insert(properties)
+      .values({ userId, address: `Schema Test Prop ${crypto.randomUUID()}`, startDate: '2020-01-01' })
+      .returning()
+    propId = prop.id
+
+    // Loan with interestRate set — exercises numeric-as-string Drizzle type assumption
+    const [lWithRate] = await db
+      .insert(installmentLoans)
+      .values({ userId, propertyId: propId, lender: `RateBank-${crypto.randomUUID().slice(0, 8)}`, interestRate: '5.75', rateType: 'variable' })
+      .returning()
+    loanWithRateId = lWithRate.id
+
+    // Loan with a balance row — exercises latestBalance.recordedAt date-as-string assumption
+    const [lWithBal] = await db
+      .insert(installmentLoans)
+      .values({ userId, propertyId: propId, lender: `BalBank-${crypto.randomUUID().slice(0, 8)}` })
+      .returning()
+    loanWithBalanceId = lWithBal.id
+
+    await db
+      .insert(installmentLoanBalances)
+      .values({ userId, installmentLoanId: loanWithBalanceId, recordedAt: '2026-01-01', balanceCents: 50_000_000 })
+  })
+
+  afterAll(async () => {
+    if (!hasEnv) return
+    if (loanWithRateId) await db.delete(installmentLoans).where(eq(installmentLoans.id, loanWithRateId))
+    if (loanWithBalanceId) await db.delete(installmentLoans).where(eq(installmentLoans.id, loanWithBalanceId))
+    if (propId) await db.delete(properties).where(eq(properties.id, propId))
+  })
+
+  async function getLoans(params?: Record<string, string>) {
+    const { GET } = await import('@/app/api/v1/loans/route')
+    const qs = params ? `?${new URLSearchParams(params)}` : ''
+    return GET(new Request(`http://localhost/api/loans${qs}`, { method: 'GET' }))
+  }
+
+  it('returns 200 with non-null interestRate: Drizzle numeric comes back as string', async () => {
+    if (!hasEnv) return
+    const res = await getLoans()
+    expect(res.status).toBe(200)
+    const { loans } = await res.json() as { loans: Array<{ id: string; interestRate: unknown }> }
+    const loan = loans.find(l => l.id === loanWithRateId)
+    expect(loan).toBeDefined()
+    expect(typeof loan!.interestRate).toBe('string')
+    expect(loan!.interestRate).toBe('5.75')
+  })
+
+  it('returns 200 with non-null latestBalance: Drizzle date column comes back as string', async () => {
+    if (!hasEnv) return
+    const res = await getLoans()
+    expect(res.status).toBe(200)
+    const { loans } = await res.json() as {
+      loans: Array<{ id: string; latestBalance: { recordedAt: unknown; balanceCents: unknown } | null }>
+    }
+    const loan = loans.find(l => l.id === loanWithBalanceId)
+    expect(loan).toBeDefined()
+    expect(loan!.latestBalance).not.toBeNull()
+    expect(typeof loan!.latestBalance!.recordedAt).toBe('string')
+    expect(loan!.latestBalance!.balanceCents).toBe(50_000_000)
   })
 })

@@ -66,6 +66,10 @@ export const EntitiesListResponseSchema = z.object({
   entities: z.array(EntitySchema),
 })
 
+export const EntityCreatedResponseSchema = z.object({
+  entity: EntitySchema,
+})
+
 // ── Properties ────────────────────────────────────────────────────────────────
 
 export const PropertySchema = z.object({
@@ -125,6 +129,10 @@ export const FlatInstallmentLoanSchema = InstallmentLoanSchema.extend({
 
 export const LoansListResponseSchema = z.object({
   loans: z.array(FlatInstallmentLoanSchema),
+})
+
+export const LoanCreatedResponseSchema = z.object({
+  loan: InstallmentLoanSchema,
 })
 
 // ── Portfolio return ──────────────────────────────────────────────────────────
