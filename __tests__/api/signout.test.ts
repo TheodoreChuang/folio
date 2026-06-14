@@ -53,10 +53,10 @@ describe('POST /api/v1/auth/signout', () => {
     expect(mocks.mockSignOut).not.toHaveBeenCalled()
   })
 
-  it('still returns { success: true } when not authenticated (signout is idempotent)', async () => {
+  it('returns 401 when not authenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
     const res = await POST(makeRequest())
-    expect(res.status).toBe(200)
-    expect(mocks.mockSignOut).toHaveBeenCalledOnce()
+    expect(res.status).toBe(401)
+    expect(mocks.mockSignOut).not.toHaveBeenCalled()
   })
 })

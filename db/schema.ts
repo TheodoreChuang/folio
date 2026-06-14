@@ -353,7 +353,7 @@ export const apiKeys = pgTable('api_keys', {
   revokedAt:  timestamp('revoked_at', { withTimezone: true }),
 }, (t) => [
   index('idx_api_keys_user').on(t.userId),
-  index('idx_api_keys_hash').on(t.keyHash),
+  // idx_api_keys_hash dropped in 0028 — keyHash's .unique() constraint already creates an implicit btree index
 ])
 
 export type ApiKey    = typeof apiKeys.$inferSelect

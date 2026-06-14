@@ -2,7 +2,7 @@ import { randomBytes, createHash } from 'crypto'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
-import { listApiKeys, createApiKey } from '@/lib/api-keys'
+import { listApiKeys, createApiKey, countActiveApiKeys } from '@/lib/api-keys'
 import { captureError } from '@/lib/api-error'
 import { ApiKeysListResponseSchema, ApiKeyCreatedResponseSchema } from '@/lib/openapi/schemas'
 
@@ -49,6 +49,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
     }
     const { name } = parsed.data
+
+    const keyCount = await countActiveApiKeys(user.id)
+    if (keyCount >= 10) {
+      return NextResponse.json({ error: 'Key limit reached (max 10 active keys per user)' }, { status: 400 })
+    }
 
     const rawToken = `sk_live_${randomBytes(24).toString('base64url')}`
     const keyHash = createHash('sha256').update(rawToken).digest('hex')

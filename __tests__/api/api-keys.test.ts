@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockListApiKeys: vi.fn(),
   mockCreateApiKey: vi.fn(),
+  mockCountActiveApiKeys: vi.fn(),
   mockRevokeApiKey: vi.fn(),
   mockFindApiKeyByHash: vi.fn(),
   mockTouchLastUsed: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/api-keys', () => ({
   listApiKeys: mocks.mockListApiKeys,
   createApiKey: mocks.mockCreateApiKey,
+  countActiveApiKeys: mocks.mockCountActiveApiKeys,
   revokeApiKey: mocks.mockRevokeApiKey,
   findApiKeyByHash: mocks.mockFindApiKeyByHash,
   touchLastUsed: mocks.mockTouchLastUsed,
@@ -67,11 +69,19 @@ describe('GET /api/v1/api-keys', () => {
     expect(res.status).toBe(401)
   })
 
+  it('returns 401 when bearer token is unknown', async () => {
+    mocks.mockFindApiKeyByHash.mockResolvedValue(null)
+    const res = await GET(makeRequest('GET', undefined, undefined, 'sk_live_unknown'))
+    expect(res.status).toBe(401)
+    expect(mocks.mockTouchLastUsed).not.toHaveBeenCalled()
+  })
+
   it('returns 403 when authenticated via bearer token', async () => {
     mocks.mockFindApiKeyByHash.mockResolvedValue(keyRow)
     const res = await GET(makeRequest('GET', undefined, undefined, 'sk_live_testtoken123456'))
     expect(res.status).toBe(403)
     expect(mocks.mockListApiKeys).not.toHaveBeenCalled()
+    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(keyRow.id)
   })
 
   it('returns list of keys without keyHash', async () => {
@@ -96,6 +106,7 @@ describe('POST /api/v1/api-keys', () => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: USER_ID } } })
     mocks.mockCreateApiKey.mockResolvedValue(keyRow)
+    mocks.mockCountActiveApiKeys.mockResolvedValue(0)
     mocks.mockTouchLastUsed.mockResolvedValue(undefined)
   })
 
@@ -105,11 +116,27 @@ describe('POST /api/v1/api-keys', () => {
     expect(res.status).toBe(401)
   })
 
+  it('returns 401 when bearer token is unknown', async () => {
+    mocks.mockFindApiKeyByHash.mockResolvedValue(null)
+    const res = await POST(makeRequest('POST', { name: 'new key' }, undefined, 'sk_live_unknown'))
+    expect(res.status).toBe(401)
+    expect(mocks.mockTouchLastUsed).not.toHaveBeenCalled()
+  })
+
   it('returns 403 when authenticated via bearer token', async () => {
     mocks.mockFindApiKeyByHash.mockResolvedValue(keyRow)
     const res = await POST(makeRequest('POST', { name: 'new key' }, undefined, 'sk_live_testtoken123456'))
     expect(res.status).toBe(403)
     expect(mocks.mockCreateApiKey).not.toHaveBeenCalled()
+    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(keyRow.id)
+  })
+
+  it('returns 400 when key limit is reached', async () => {
+    mocks.mockCountActiveApiKeys.mockResolvedValue(10)
+    const res = await POST(makeRequest('POST', { name: 'One too many' }))
+    expect(res.status).toBe(400)
+    const { error } = await res.json()
+    expect(error).toMatch(/limit/i)
   })
 
   it('returns 400 when name is missing', async () => {
@@ -165,6 +192,16 @@ describe('DELETE /api/v1/api-keys/[id]', () => {
     expect(res.status).toBe(401)
   })
 
+  it('returns 401 when bearer token is unknown', async () => {
+    mocks.mockFindApiKeyByHash.mockResolvedValue(null)
+    const res = await DELETE(
+      makeRequest('DELETE', undefined, VALID_KEY_ID, 'sk_live_unknown'),
+      { params: Promise.resolve({ id: VALID_KEY_ID }) },
+    )
+    expect(res.status).toBe(401)
+    expect(mocks.mockTouchLastUsed).not.toHaveBeenCalled()
+  })
+
   it('returns 403 when authenticated via bearer token', async () => {
     mocks.mockFindApiKeyByHash.mockResolvedValue(keyRow)
     const res = await DELETE(
@@ -173,6 +210,7 @@ describe('DELETE /api/v1/api-keys/[id]', () => {
     )
     expect(res.status).toBe(403)
     expect(mocks.mockRevokeApiKey).not.toHaveBeenCalled()
+    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(keyRow.id)
   })
 
   it('returns 400 for invalid UUID', async () => {

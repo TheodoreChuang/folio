@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
+import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -11,16 +12,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { ApiKeyPublicSchema } from '@/lib/openapi/schemas'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-interface ApiKeyRow {
-  id: string
-  name: string
-  keyPrefix: string
-  lastUsedAt: string | null
-  createdAt: string
-}
+type ApiKeyRow = z.infer<typeof ApiKeyPublicSchema>
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 
@@ -222,7 +218,10 @@ export default function ApiKeysPage() {
 
   useEffect(() => {
     fetch('/api/v1/api-keys')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then(({ apiKeys }) => setKeys(apiKeys ?? []))
       .catch(() => toast.error('Failed to load API keys'))
       .finally(() => setLoading(false))

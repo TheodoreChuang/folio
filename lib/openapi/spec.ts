@@ -1,7 +1,6 @@
 import {
   OpenAPIRegistry,
   OpenApiGeneratorV31,
-  extendZodWithOpenApi,
 } from '@asteasolutions/zod-to-openapi'
 import { z } from 'zod'
 import {
@@ -20,8 +19,6 @@ import {
   PropertyCreatedResponseSchema,
   ReportsTrendsResponseSchema,
 } from './schemas'
-
-extendZodWithOpenApi(z)
 
 const registry = new OpenAPIRegistry()
 
@@ -235,6 +232,7 @@ registry.registerPath({
   },
   responses: {
     200: { description: 'Return metrics', content: { 'application/json': { schema: PortfolioReturnResponseSchema } } },
+    400: { description: 'Missing or invalid query parameters' },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })
@@ -258,6 +256,7 @@ registry.registerPath({
   },
   responses: {
     200: { description: 'Cashflow summary with health flags', content: { 'application/json': { schema: LedgerSummaryResponseSchema } } },
+    400: { description: 'Missing or invalid query parameters' },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })
@@ -290,8 +289,8 @@ registry.registerPath({
   method: 'get',
   path: '/api/v1/reports/trends',
   tags: ['Reports'],
-  summary: 'Get 12-month cashflow trend data',
-  description: 'Returns monthly cashflow (income, expenses, net) for the trailing 12 months. Use this to plot or summarise cashflow over time.',
+  summary: 'Get cashflow trend data',
+  description: 'Returns monthly cashflow (income, expenses, net) for the requested date range (up to 24 months). Use this to plot or summarise cashflow over time.',
   security: [{ BearerAuth: [] }],
   request: {
     query: z.object({
@@ -302,6 +301,7 @@ registry.registerPath({
   },
   responses: {
     200: { description: 'Monthly trend data', content: { 'application/json': { schema: ReportsTrendsResponseSchema } } },
+    400: { description: 'Missing or invalid query parameters' },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })
@@ -313,8 +313,8 @@ registry.registerPath({
   path: '/api/v1/api-keys',
   tags: ['API Keys'],
   summary: 'List API keys for the authenticated user',
-  description: 'Returns all active (non-revoked) API keys. The secret key value is never returned after creation.',
-  security: [{ BearerAuth: [] }],
+  description: '**Authentication:** Session required (browser cookie). API keys cannot be used to manage API keys — use Folio Settings to generate keys first.\n\nReturns all active (non-revoked) API keys. The secret key value is never returned after creation.',
+  security: [],
   responses: {
     200: {
       description: 'List of API keys',
@@ -329,8 +329,8 @@ registry.registerPath({
   path: '/api/v1/api-keys',
   tags: ['API Keys'],
   summary: 'Create a new API key',
-  description: 'Generate a new API key. The full key value (sk_live_...) is returned ONCE in this response and cannot be retrieved again. Store it securely.',
-  security: [{ BearerAuth: [] }],
+  description: '**Authentication:** Session required (browser cookie). API keys cannot be used to manage API keys — use Folio Settings to generate keys first.\n\nGenerate a new API key. The full key value (sk_live_...) is returned ONCE in this response and cannot be retrieved again. Store it securely. Maximum 10 active keys per user.',
+  security: [],
   request: {
     body: {
       content: {
@@ -357,11 +357,12 @@ registry.registerPath({
   path: '/api/v1/api-keys/{id}',
   tags: ['API Keys'],
   summary: 'Revoke an API key',
-  description: 'Permanently revoke an API key. Any requests using the revoked key will immediately return 401.',
-  security: [{ BearerAuth: [] }],
+  description: '**Authentication:** Session required (browser cookie). API keys cannot be used to manage API keys — use Folio Settings to revoke keys.\n\nSoft-revokes an API key by setting revokedAt. The key data is retained but any requests using the revoked key will immediately return 401. This action cannot be undone.',
+  security: [],
   request: { params: z.object({ id: UUIDParam }) },
   responses: {
     200: { description: 'Key revoked', content: { 'application/json': { schema: ApiKeyRevokedResponseSchema } } },
+    400: { description: 'Invalid UUID format' },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
     404: { description: 'Key not found', content: { 'application/json': { schema: ErrorSchema } } },
   },

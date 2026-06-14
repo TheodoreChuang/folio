@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, count, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { apiKeys } from '@/db/schema'
 import type { ApiKey } from '@/db/schema'
@@ -41,9 +41,18 @@ export async function revokeApiKey(id: string, userId: string): Promise<boolean>
   return !!row
 }
 
+export async function countActiveApiKeys(userId: string): Promise<number> {
+  const [row] = await db
+    .select({ count: count() })
+    .from(apiKeys)
+    .where(and(eq(apiKeys.userId, userId), isNull(apiKeys.revokedAt)))
+  return row?.count ?? 0
+}
+
 export async function touchLastUsed(id: string): Promise<void> {
   await db
     .update(apiKeys)
     .set({ lastUsedAt: new Date() })
     .where(eq(apiKeys.id, id))
+    .returning({ id: apiKeys.id })
 }

@@ -6,7 +6,8 @@ import { captureError } from '@/lib/api-error'
 export async function POST(request: Request) {
   try {
     const user = await resolveUser(request)
-    if (user?.authMethod === 'bearer') {
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (user.authMethod === 'bearer') {
       return NextResponse.json(
         { error: 'Bearer tokens cannot be invalidated via this endpoint. Revoke the key at DELETE /api/v1/api-keys/{id}.' },
         { status: 400 }

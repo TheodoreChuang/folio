@@ -24,7 +24,13 @@ function documentTypeToFolder(documentType: string): string {
 }
 
 export async function POST(request: Request) {
-  const resolved = await resolveUser(request)
+  let resolved: Awaited<ReturnType<typeof resolveUser>>
+  try {
+    resolved = await resolveUser(request)
+  } catch (err) {
+    captureError(err, { route: 'POST /api/v1/upload', phase: 'auth' })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
   if (!resolved) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

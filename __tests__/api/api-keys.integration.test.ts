@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
-import { eq } from 'drizzle-orm'
+import { createHash, randomBytes } from 'crypto'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { apiKeys } from '@/db/schema'
 
@@ -60,6 +61,71 @@ afterEach(async () => {
     await db.delete(apiKeys).where(eq(apiKeys.id, id))
   }
   createdIds.length = 0
+})
+
+describe('bearer auth — revoked key rejected by resolveUser (integration)', () => {
+  it('returns 401 on resource endpoint when key is revoked', async () => {
+    if (!hasEnv) return
+
+    const { GET: getEntities } = await import('@/app/api/v1/entities/route')
+    const { DELETE } = await import('@/app/api/v1/api-keys/[id]/route')
+
+    const rawToken = `sk_live_${randomBytes(24).toString('base64url')}`
+    const keyHash = createHash('sha256').update(rawToken).digest('hex')
+
+    const [key] = await db.insert(apiKeys).values({
+      userId,
+      name: 'Revoke-me key',
+      keyHash,
+      keyPrefix: rawToken.slice(0, 14),
+    }).returning()
+    createdIds.push(key.id)
+
+    // Token works before revocation
+    const res1 = await getEntities(new Request('http://localhost/api/v1/entities', {
+      headers: { Authorization: `Bearer ${rawToken}` },
+    }))
+    expect(res1.status).toBe(200)
+
+    // Revoke via DELETE handler (cookie auth session is set up in beforeAll)
+    const delRes = await DELETE(
+      new Request(`http://localhost/api/v1/api-keys/${key.id}`, { method: 'DELETE' }),
+      { params: Promise.resolve({ id: key.id }) },
+    )
+    expect(delRes.status).toBe(200)
+
+    // Same token should now return 401
+    const res2 = await getEntities(new Request('http://localhost/api/v1/entities', {
+      headers: { Authorization: `Bearer ${rawToken}` },
+    }))
+    expect(res2.status).toBe(401)
+  })
+})
+
+describe('revokeApiKey — cross-user isolation (integration)', () => {
+  it('cannot revoke a key belonging to a different user', async () => {
+    if (!hasEnv) return
+
+    const { revokeApiKey } = await import('@/lib/api-keys')
+
+    const [key] = await db.insert(apiKeys).values({
+      userId,
+      name: 'Isolation test key',
+      keyHash: `hash-isolation-${crypto.randomUUID()}`,
+      keyPrefix: 'sk_live_is',
+    }).returning()
+    createdIds.push(key.id)
+
+    const WRONG_USER_ID = 'aaaaaaaa-0000-4000-a000-000000000099'
+    const revoked = await revokeApiKey(key.id, WRONG_USER_ID)
+    expect(revoked).toBe(false)
+
+    // Key must still be active in the DB
+    const [row] = await db.select({ revokedAt: apiKeys.revokedAt })
+      .from(apiKeys)
+      .where(and(eq(apiKeys.id, key.id)))
+    expect(row.revokedAt).toBeNull()
+  })
 })
 
 describe('GET /api/v1/api-keys — revokedAt filter (integration)', () => {

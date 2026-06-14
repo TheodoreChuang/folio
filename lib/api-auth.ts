@@ -7,18 +7,21 @@ export interface ResolvedUser {
   authMethod: 'bearer' | 'cookie'
 }
 
-export async function resolveUser(request?: Request): Promise<ResolvedUser | null> {
-  const authHeader = request?.headers.get('Authorization')
+export async function resolveUser(request: Request): Promise<ResolvedUser | null> {
+  const authHeader = request.headers.get('Authorization')
 
-  if (authHeader?.startsWith('Bearer sk_live_')) {
+  if (authHeader) {
+    const lower = authHeader.toLowerCase()
+    if (!lower.startsWith('bearer ')) return null
     const token = authHeader.slice(7)
+    if (!token.startsWith('sk_live_')) return null
     const hash = createHash('sha256').update(token).digest('hex')
     // Dynamic import keeps @/lib/db out of the module graph for cookie-auth paths,
     // which prevents test environments without DATABASE_URL from breaking.
     const { findApiKeyByHash, touchLastUsed } = await import('@/lib/api-keys')
     const apiKey = await findApiKeyByHash(hash)
     if (!apiKey) return null
-    Promise.resolve(touchLastUsed(apiKey.id)).catch(err => logger.error('touchLastUsed failed', { keyId: apiKey.id, err }))
+    touchLastUsed(apiKey.id).catch(err => logger.error('touchLastUsed failed', { keyId: apiKey.id, err }))
     return { id: apiKey.userId, authMethod: 'bearer' }
   }
 
