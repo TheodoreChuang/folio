@@ -244,7 +244,7 @@ registry.registerPath({
   path: '/api/v1/ledger/summary',
   tags: ['Ledger'],
   summary: 'Get cashflow summary for a date range',
-  description: 'Returns aggregated income and expense totals (rent, management fees, repairs, mortgage payments) plus health flags (missing statements, missing mortgage entries) for the specified period. The primary endpoint for cashflow questions.',
+  description: 'Returns aggregated income and expense totals (rent, other income, management fees, repairs, mortgage payments) plus health flags (missing statements, missing mortgage entries) for the specified period. The primary endpoint for cashflow questions.',
   security: [{ BearerAuth: [] }],
   request: {
     query: z.object({

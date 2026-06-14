@@ -180,6 +180,20 @@ describe('PATCH /api/ingestion/staged/[id]', () => {
     expect(json.item.category).toBe('insurance')
   })
 
+  it('accepts other_income category', async () => {
+    const patchedItem = { ...stagingItem, category: 'other_income' as const }
+    mocks.mockPatchStagedItem.mockResolvedValue(patchedItem)
+    const res = await PATCH(makePatchRequest(VALID_ID, { category: 'other_income' }), {
+      params: Promise.resolve({ id: VALID_ID }),
+    })
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.item.category).toBe('other_income')
+    expect(mocks.mockPatchStagedItem).toHaveBeenCalledWith(
+      VALID_ID, 'user-123', { category: 'other_income' }
+    )
+  })
+
   it('patches propertyId (nullable)', async () => {
     const propId = 'd4e5f6a7-b8c9-4012-d345-444444444444'
     const patchedItem = { ...stagingItem, propertyId: propId }

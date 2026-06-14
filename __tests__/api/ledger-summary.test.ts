@@ -158,6 +158,22 @@ describe('GET /api/ledger/summary', () => {
     expect(json.totals.netAfterMortgage).toBe(150000)
   })
 
+  it('includes other_income in totals and per-property breakdown', async () => {
+    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
+    mocks.mockFetchEntries.mockResolvedValueOnce([
+      makeEntry({ category: 'rent',         amountCents: 400000 }),
+      makeEntry({ category: 'other_income', amountCents: 26520  }),
+      makeEntry({ category: 'repairs',      amountCents: 50000  }),
+    ])
+
+    const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.totals.totalOtherIncome).toBe(26520)
+    expect(json.totals.netBeforeMortgage).toBe(376520) // 400000 + 26520 - 50000
+    expect(json.totals.properties[0].otherIncomeCents).toBe(26520)
+  })
+
   it('returns per-property breakdown in totals.properties', async () => {
     mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
     mocks.mockFetchEntries.mockResolvedValueOnce([

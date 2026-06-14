@@ -76,7 +76,7 @@ Rules:
 - Extract every line item — do not summarise or aggregate
 - amountCents: convert dollar amounts to integer cents (e.g. $1,234.56 → 123456). Always positive.
 - category: classify each line item by DIRECTION OF MONEY FLOW first, then by type:
-  - Money received by the owner (credits, income): use 'rent' for rental income, 'other_income' for anything else the owner received (e.g. tenant water usage reimbursements, lease break fees, late payment fees)
+  - Money received by the owner (credits, income): use 'rent' for rental income, 'other_income' for genuine operating income credited to the owner (e.g. tenant water usage reimbursements, lease break fees, late payment fees). Do NOT use 'other_income' for loan advances, bond refunds held in trust, or pass-through disbursements.
   - Money paid out by the owner (debits, expenses): use 'insurance', 'rates', 'repairs', 'property_management', 'utilities', 'strata_fees', or 'other_expense'
   - A line item with the same keyword (e.g. "water") can be either income or expense depending on direction — always check whether it is a payment made or a reimbursement received
   - If the direction of money flow cannot be determined, use 'other_expense' as the default

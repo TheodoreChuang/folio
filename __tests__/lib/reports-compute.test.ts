@@ -186,6 +186,12 @@ describe('computeReport', () => {
     expect(totals.mortgagesProvided).toBe(1)
   })
 
+  it('other_income entry satisfies hasStatement', () => {
+    const entries = [makeEntry({ category: 'other_income', amountCents: 26520 })]
+    const { totals } = computeReport(entries, [prop1])
+    expect(totals.properties[0].hasStatement).toBe(true)
+  })
+
   it('flags properties missing statements', () => {
     const entries = [makeEntry({ category: 'loan_payment' })] // no statement
     const { flags } = computeReport(entries, [prop1])
