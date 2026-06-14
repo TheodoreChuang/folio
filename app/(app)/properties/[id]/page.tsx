@@ -45,13 +45,14 @@ type TrendPoint = {
 
 const MANUAL_CATEGORIES = [
   'rent', 'insurance', 'rates', 'repairs',
-  'property_management', 'utilities', 'strata_fees', 'other_expense',
+  'property_management', 'utilities', 'strata_fees', 'other_expense', 'other_income',
 ] as const
 
 const CATEGORY_LABELS: Record<LedgerCategory, string> = {
   rent: 'Rent', insurance: 'Insurance', rates: 'Rates', repairs: 'Repairs',
   property_management: 'Mgmt fee', utilities: 'Utilities',
-  strata_fees: 'Strata', other_expense: 'Other', loan_payment: 'Loan repayment',
+  strata_fees: 'Strata', other_expense: 'Other expense', loan_payment: 'Loan repayment',
+  other_income: 'Other income',
 }
 
 const VALUATION_SOURCES = [

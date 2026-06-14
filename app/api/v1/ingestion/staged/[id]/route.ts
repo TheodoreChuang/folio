@@ -16,6 +16,7 @@ const LEDGER_CATEGORIES = [
   'strata_fees',
   'other_expense',
   'loan_payment',
+  'other_income',
 ] as const
 
 const patchSchema = z.object({

@@ -18,6 +18,7 @@ const CATEGORIES = [
   'strata_fees',
   'other_expense',
   'loan_payment',
+  'other_income',
 ] as const
 
 export const loanPaymentSchema = z.object({

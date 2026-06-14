@@ -42,7 +42,15 @@ describe('computeTrends', () => {
     const result = computeTrends([row('2026-01', category, 10000)], ['2026-01'])
     expect(result[0].expensesCents).toBe(10000)
     expect(result[0].rentCents).toBe(0)
+    expect(result[0].otherIncomeCents).toBe(0)
     expect(result[0].mortgageCents).toBe(0)
+  })
+
+  it('routes other_income to otherIncomeCents', () => {
+    const result = computeTrends([row('2026-01', 'other_income', 26520)], ['2026-01'])
+    expect(result[0].otherIncomeCents).toBe(26520)
+    expect(result[0].expensesCents).toBe(0)
+    expect(result[0].rentCents).toBe(0)
   })
 
   it('sums multiple expense categories in the same month', () => {
@@ -64,14 +72,15 @@ describe('computeTrends', () => {
     expect(result[0].rentCents).toBe(150000)
   })
 
-  it('derives netCents = rent - expenses - mortgage', () => {
+  it('derives netCents = rent + otherIncome - expenses - mortgage', () => {
     const rows = [
       row('2026-01', 'rent', 400000),
+      row('2026-01', 'other_income', 26520),
       row('2026-01', 'repairs', 90000),
       row('2026-01', 'loan_payment', 210000),
     ]
     const result = computeTrends(rows, ['2026-01'])
-    expect(result[0].netCents).toBe(400000 - 90000 - 210000)
+    expect(result[0].netCents).toBe(400000 + 26520 - 90000 - 210000)
   })
 
   it('hasData is true when any bucket has a value', () => {

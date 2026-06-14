@@ -204,6 +204,13 @@
             "when": 1781400100000,
             "tag": "0028_drop_api_keys_redundant_idx_and_fk",
             "breakpoints": true
+        },
+        {
+            "idx": 29,
+            "version": "7",
+            "when": 1781400200000,
+            "tag": "0029_other_income_category",
+            "breakpoints": true
         }
     ]
 }
