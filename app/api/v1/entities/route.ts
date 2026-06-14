@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { listEntities, createEntity } from '@/lib/entities'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
-import { EntitiesListResponseSchema, EntityCreatedResponseSchema } from '@/lib/openapi/schemas'
+import { EntitiesListResponseSchema, EntityCreatedResponseSchema } from '@/lib/openapi'
 
 const ENTITY_TYPES = ['individual', 'joint', 'trust', 'company', 'superannuation'] as const
 

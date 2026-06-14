@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { ApiKeyPublicSchema } from '@/lib/openapi/schemas'
+import { ApiKeyPublicSchema } from '@/lib/openapi'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

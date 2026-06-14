@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { revokeApiKey } from '@/lib/api-keys'
 import { captureError } from '@/lib/api-error'
-import { ApiKeyRevokedResponseSchema } from '@/lib/openapi/schemas'
+import { ApiKeyRevokedResponseSchema } from '@/lib/openapi'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 

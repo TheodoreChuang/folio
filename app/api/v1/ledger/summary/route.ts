@@ -7,7 +7,7 @@ import {
   listLedgerEntriesInRange,
   computeReport,
 } from '@/lib/aggregate'
-import { LedgerSummaryResponseSchema } from '@/lib/openapi/schemas'
+import { LedgerSummaryResponseSchema } from '@/lib/openapi'
 
 export async function GET(request: Request) {
   try {

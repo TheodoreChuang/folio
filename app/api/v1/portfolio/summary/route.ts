@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
 import { getPortfolioData, computePortfolioLVR } from '@/lib/aggregate'
-import { PortfolioSummaryResponseSchema } from '@/lib/openapi/schemas'
+import { PortfolioSummaryResponseSchema } from '@/lib/openapi'
 
 export type { PortfolioLVR } from '@/lib/aggregate'
 

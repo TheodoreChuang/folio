@@ -6,7 +6,7 @@ import { findEntityById } from '@/lib/entities'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
 import type { LoanType } from '@/db/schema'
-import { LoanCreatedResponseSchema, LoansListResponseSchema } from '@/lib/openapi/schemas'
+import { LoanCreatedResponseSchema, LoansListResponseSchema } from '@/lib/openapi'
 
 export async function GET(request: Request) {
   try {

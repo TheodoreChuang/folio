@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { listApiKeys, createApiKey, countActiveApiKeys, generateApiKey } from '@/lib/api-keys'
 import { captureError } from '@/lib/api-error'
-import { ApiKeysListResponseSchema, ApiKeyCreatedResponseSchema } from '@/lib/openapi/schemas'
+import { ApiKeysListResponseSchema, ApiKeyCreatedResponseSchema } from '@/lib/openapi'
 
 const postSchema = z.object({
   name: z.string({ error: 'name is required' })

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
-import { LedgerFyResponseSchema } from '@/lib/openapi/schemas'
+import { LedgerFyResponseSchema } from '@/lib/openapi'
 
 // GET /api/ledger/fy?year=YYYY-YY
 // Returns { from: 'YYYY-07-01', to: 'YYYY-06-30' } for the given Australian FY.

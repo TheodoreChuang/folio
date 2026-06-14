@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
 import { listTrends, computeTrends } from '@/lib/aggregate'
-import { ReportsTrendsResponseSchema } from '@/lib/openapi/schemas'
+import { ReportsTrendsResponseSchema } from '@/lib/openapi'
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
