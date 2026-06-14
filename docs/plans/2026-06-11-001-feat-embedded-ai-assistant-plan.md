@@ -203,7 +203,7 @@ implementation specification. The implementing agent should treat it as context,
 Browser (authenticated page)
   AssistantDock  ── useChat ──►  POST /api/assistant/chat
    (drawer, sessionStorage,                │
-    starter prompts, stop)                 │ 1. auth.getUser() → userId
+    starter prompts, stop)                 │ 1. resolveUser(request) → { id, authMethod }; reject if authMethod !== 'cookie'
                                            │ 2. Zod validate (msg ≤ 2000 chars)
                                            │ 3. rate-limit pre-flight check (cap?)
                                            │ 4. load investor profile (optional)
@@ -361,10 +361,10 @@ helpers); RLS policy shape from an existing table's migration.
 - Repo: `upsert` keyed by `userId`; `.returning()`. Soft-delete N/A (no `deletedAt`).
 - Thin route: auth guard → Zod parse → service call → wrapped response.
 **Execution note:** Implement test-first (route contract + validation) per backend TDD.
-**Patterns to follow:** `app/api/portfolio/summary/route.ts` (auth + service + wrap);
+**Patterns to follow:** `app/api/v1/portfolio/summary/route.ts` (auth + service + wrap);
 Zod parse pattern from conventions §3; mock pattern from `__tests__/api/entities.test.ts`.
 **Test scenarios:**
-- 401 when `getUser` returns null (GET and PATCH).
+- 401 when `resolveUser` returns null (GET and PATCH).
 - GET returns `{ profile: null }` for a user with no profile set.
 - PATCH 400 when `investmentGoal` > 200 chars; 400 when `strategyNotes` > 500 chars.
 - PATCH with both fields omitted succeeds (R15) and persists an empty profile.
@@ -568,7 +568,7 @@ path works; the grounding/derivation guarantees are verified by the U12 eval har
   without corrupting the counter (consume already gated at first token; acceptable).
 **Execution note:** Start with a failing integration test for the request/response contract
 and the concurrent-cap-boundary path.
-**Patterns to follow:** auth + `captureError` from `app/api/portfolio/summary/route.ts`;
+**Patterns to follow:** auth + `captureError` from `app/api/v1/portfolio/summary/route.ts`; use `resolveUser(request)` + reject `authMethod !== 'cookie'` for the chat endpoint;
 Zod parse from conventions §3.
 **Test scenarios:**
 - 401 when unauthenticated.
