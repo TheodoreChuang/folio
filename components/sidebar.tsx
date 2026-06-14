@@ -58,9 +58,9 @@ function DashboardIcon() {
 function InsightsIcon() {
   return (
     <Icon>
-      <rect x="2" y="10" width="3" height="4"/>
-      <rect x="6.5" y="6" width="3" height="8"/>
-      <rect x="11" y="3" width="3" height="11"/>
+      <rect x="2" y="10" width="3" height="4" />
+      <rect x="6.5" y="6" width="3" height="8" />
+      <rect x="11" y="3" width="3" height="11" />
     </Icon>
   )
 }
@@ -204,11 +204,6 @@ export function Sidebar() {
         Portfolio pulse
       </NavItem>
 
-      <NavItem href="/insights" active={pathname.startsWith('/insights')}>
-        <InsightsIcon />
-        Insights
-      </NavItem>
-
       <NavItem href="/upload" active={pathname.startsWith('/upload')}>
         <UploadIcon />
         Upload
@@ -273,16 +268,20 @@ export function Sidebar() {
         </NavItem>
       </NavSection>
 
-      <div className="mt-3 flex flex-col gap-0.5">
-        <NavItem href="/plan" active={pathname.startsWith('/plan')}>
-          <PlanIcon />
-          Plan
-        </NavItem>
-        <NavItem href="/settings" active={pathname.startsWith('/settings')}>
-          <SettingsIcon />
-          Settings
-        </NavItem>
-      </div>
+      <NavItem href="/insights" active={pathname.startsWith('/insights')}>
+        <InsightsIcon />
+        Insights
+      </NavItem>
+
+      <NavItem href="/plan" active={pathname.startsWith('/plan')}>
+        <PlanIcon />
+        Plan
+      </NavItem>
+
+      <NavItem href="/settings" active={pathname.startsWith('/settings')}>
+        <SettingsIcon />
+        Settings
+      </NavItem>
 
       {/* Footer — avatar + sign out */}
       <div className="mt-auto pt-5 border-t border-rule flex items-center gap-3 px-3 relative" ref={menuRef}>
