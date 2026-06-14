@@ -6,3 +6,4 @@ export {
   revokeApiKey,
   touchLastUsed,
 } from './repositories/api-keys'
+export { generateApiKey } from './services/api-keys'

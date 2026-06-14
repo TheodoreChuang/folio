@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   mockRevokeApiKey: vi.fn(),
   mockFindApiKeyByHash: vi.fn(),
   mockTouchLastUsed: vi.fn(),
+  mockGenerateApiKey: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -25,6 +26,7 @@ vi.mock('@/lib/api-keys', () => ({
   revokeApiKey: mocks.mockRevokeApiKey,
   findApiKeyByHash: mocks.mockFindApiKeyByHash,
   touchLastUsed: mocks.mockTouchLastUsed,
+  generateApiKey: mocks.mockGenerateApiKey,
 }))
 
 const VALID_KEY_ID = 'aaaaaaaa-0000-4000-a000-000000000001'
@@ -81,7 +83,7 @@ describe('GET /api/v1/api-keys', () => {
     const res = await GET(makeRequest('GET', undefined, undefined, 'sk_live_testtoken123456'))
     expect(res.status).toBe(403)
     expect(mocks.mockListApiKeys).not.toHaveBeenCalled()
-    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(keyRow.id)
+    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(keyRow.id, keyRow.userId)
   })
 
   it('returns list of keys without keyHash', async () => {
@@ -108,6 +110,11 @@ describe('POST /api/v1/api-keys', () => {
     mocks.mockCreateApiKey.mockResolvedValue(keyRow)
     mocks.mockCountActiveApiKeys.mockResolvedValue(0)
     mocks.mockTouchLastUsed.mockResolvedValue(undefined)
+    mocks.mockGenerateApiKey.mockReturnValue({
+      rawToken: 'sk_live_testtoken123456',
+      keyHash: 'sha256hashvalue',
+      keyPrefix: 'sk_live_testt',
+    })
   })
 
   it('returns 401 when not authenticated', async () => {
@@ -128,7 +135,7 @@ describe('POST /api/v1/api-keys', () => {
     const res = await POST(makeRequest('POST', { name: 'new key' }, undefined, 'sk_live_testtoken123456'))
     expect(res.status).toBe(403)
     expect(mocks.mockCreateApiKey).not.toHaveBeenCalled()
-    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(keyRow.id)
+    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(keyRow.id, keyRow.userId)
   })
 
   it('returns 400 when key limit is reached', async () => {
@@ -210,7 +217,7 @@ describe('DELETE /api/v1/api-keys/[id]', () => {
     )
     expect(res.status).toBe(403)
     expect(mocks.mockRevokeApiKey).not.toHaveBeenCalled()
-    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(keyRow.id)
+    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(keyRow.id, keyRow.userId)
   })
 
   it('returns 400 for invalid UUID', async () => {

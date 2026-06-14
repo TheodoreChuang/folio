@@ -49,10 +49,10 @@ export async function countActiveApiKeys(userId: string): Promise<number> {
   return row?.count ?? 0
 }
 
-export async function touchLastUsed(id: string): Promise<void> {
+export async function touchLastUsed(id: string, userId: string): Promise<void> {
   await db
     .update(apiKeys)
     .set({ lastUsedAt: new Date() })
-    .where(eq(apiKeys.id, id))
+    .where(and(eq(apiKeys.id, id), eq(apiKeys.userId, userId)))
     .returning({ id: apiKeys.id })
 }

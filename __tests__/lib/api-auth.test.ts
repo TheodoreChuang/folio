@@ -54,7 +54,7 @@ describe('resolveUser — bearer auth path', () => {
     mocks.mockFindApiKeyByHash.mockResolvedValue(KEY_ROW)
     const result = await resolveUser(bearerRequest('sk_live_validtoken'))
     expect(result).toEqual({ id: USER_ID, authMethod: 'bearer' })
-    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(KEY_ROW.id)
+    expect(mocks.mockTouchLastUsed).toHaveBeenCalledWith(KEY_ROW.id, KEY_ROW.userId)
   })
 
   it('returns null when sk_live_ token has no matching key', async () => {
