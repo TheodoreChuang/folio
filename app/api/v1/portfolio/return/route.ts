@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
 import { getReturnData, computeReturn } from '@/lib/aggregate'
+import { PortfolioReturnResponseSchema } from '@/lib/openapi/schemas'
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
     const data = await getReturnData(user.id, from, to, entityIdParam)
     const result = computeReturn({ ...data, periodMonths })
 
-    return NextResponse.json({ return: result })
+    return NextResponse.json(PortfolioReturnResponseSchema.parse({ return: result }))
   } catch (err) {
     captureError(err, { route: 'GET /api/v1/portfolio/return' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

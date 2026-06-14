@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
 import { listTrends, computeTrends } from '@/lib/aggregate'
+import { ReportsTrendsResponseSchema } from '@/lib/openapi/schemas'
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
     }
 
     const rows = await listTrends(user.id, from, to, entityIdParam)
-    return NextResponse.json({ trends: computeTrends(rows, months) })
+    return NextResponse.json(ReportsTrendsResponseSchema.parse({ trends: computeTrends(rows, months) }))
   } catch (err) {
     captureError(err, { route: 'GET /api/v1/reports/trends' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { listProperties, createProperty } from '@/lib/property'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
+import { PropertiesListResponseSchema, PropertyCreatedResponseSchema } from '@/lib/openapi/schemas'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -32,7 +33,9 @@ export async function GET(request: Request) {
     const entityId = entityIdParam ?? null
 
     const rows = await listProperties(user.id, entityId)
-    return NextResponse.json({ properties: rows })
+    return NextResponse.json(PropertiesListResponseSchema.parse({
+      properties: rows.map(p => ({ ...p, createdAt: p.createdAt.toISOString() })),
+    }))
   } catch (err) {
     captureError(err, { route: 'GET /api/v1/properties' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -72,7 +75,10 @@ export async function POST(request: Request) {
       propertyType: propertyType ?? null,
       purchasePriceCents: purchasePriceCents ?? null,
     })
-    return NextResponse.json({ property }, { status: 201 })
+    return NextResponse.json(
+      PropertyCreatedResponseSchema.parse({ property: { ...property, createdAt: property.createdAt.toISOString() } }),
+      { status: 201 }
+    )
   } catch (err) {
     captureError(err, { route: 'POST /api/v1/properties' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

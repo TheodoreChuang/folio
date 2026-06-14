@@ -7,6 +7,7 @@ import {
   listLedgerEntriesInRange,
   computeReport,
 } from '@/lib/aggregate'
+import { LedgerSummaryResponseSchema } from '@/lib/openapi/schemas'
 
 export async function GET(request: Request) {
   try {
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
 
     const { totals, flags } = computeReport(entries, props, loans)
 
-    return NextResponse.json({ totals, flags })
+    return NextResponse.json(LedgerSummaryResponseSchema.parse({ totals, flags }))
   } catch (err) {
     captureError(err, { route: 'GET /api/v1/ledger/summary' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

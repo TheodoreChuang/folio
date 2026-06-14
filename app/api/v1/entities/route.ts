@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { listEntities, createEntity } from '@/lib/entities'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
+import { EntitiesListResponseSchema } from '@/lib/openapi/schemas'
 
 const ENTITY_TYPES = ['individual', 'joint', 'trust', 'company', 'superannuation'] as const
 
@@ -19,7 +20,9 @@ export async function GET(request: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const rows = await listEntities(user.id)
-    return NextResponse.json({ entities: rows })
+    return NextResponse.json(EntitiesListResponseSchema.parse({
+      entities: rows.map(e => ({ ...e, createdAt: e.createdAt.toISOString() })),
+    }))
   } catch (err) {
     captureError(err, { route: 'GET /api/v1/entities' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

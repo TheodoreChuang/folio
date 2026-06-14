@@ -8,8 +8,15 @@ import {
   ApiKeyCreatedResponseSchema,
   ApiKeyRevokedResponseSchema,
   ApiKeysListResponseSchema,
+  EntitiesListResponseSchema,
   LedgerFyResponseSchema,
+  LedgerSummaryResponseSchema,
+  LoansListResponseSchema,
+  PortfolioReturnResponseSchema,
   PortfolioSummaryResponseSchema,
+  PropertiesListResponseSchema,
+  PropertyCreatedResponseSchema,
+  ReportsTrendsResponseSchema,
 } from './schemas'
 
 extendZodWithOpenApi(z)
@@ -49,7 +56,7 @@ registry.registerPath({
   responses: {
     200: {
       description: 'List of properties',
-      content: { 'application/json': { schema: z.object({ properties: z.array(z.unknown()) }) } },
+      content: { 'application/json': { schema: PropertiesListResponseSchema } },
     },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
@@ -80,7 +87,7 @@ registry.registerPath({
     },
   },
   responses: {
-    201: { description: 'Property created', content: { 'application/json': { schema: z.object({ property: z.unknown() }) } } },
+    201: { description: 'Property created', content: { 'application/json': { schema: PropertyCreatedResponseSchema } } },
     400: { description: 'Validation error', content: { 'application/json': { schema: ErrorSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
@@ -103,7 +110,7 @@ registry.registerPath({
     }),
   },
   responses: {
-    200: { description: 'List of loans', content: { 'application/json': { schema: z.object({ loans: z.array(z.unknown()) }) } } },
+    200: { description: 'List of loans', content: { 'application/json': { schema: LoansListResponseSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })
@@ -118,7 +125,7 @@ registry.registerPath({
   description: 'Returns all ownership structures (individual, trust, company, etc.) that own properties and loans. Use this to understand the holding structure of the portfolio.',
   security: [{ BearerAuth: [] }],
   responses: {
-    200: { description: 'List of entities', content: { 'application/json': { schema: z.object({ entities: z.array(z.unknown()) }) } } },
+    200: { description: 'List of entities', content: { 'application/json': { schema: EntitiesListResponseSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })
@@ -161,7 +168,7 @@ registry.registerPath({
     }),
   },
   responses: {
-    200: { description: 'Return metrics', content: { 'application/json': { schema: z.unknown() } } },
+    200: { description: 'Return metrics', content: { 'application/json': { schema: PortfolioReturnResponseSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })
@@ -184,7 +191,7 @@ registry.registerPath({
     }),
   },
   responses: {
-    200: { description: 'Cashflow summary with health flags', content: { 'application/json': { schema: z.unknown() } } },
+    200: { description: 'Cashflow summary with health flags', content: { 'application/json': { schema: LedgerSummaryResponseSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })
@@ -228,7 +235,7 @@ registry.registerPath({
     }),
   },
   responses: {
-    200: { description: 'Monthly trend data', content: { 'application/json': { schema: z.unknown() } } },
+    200: { description: 'Monthly trend data', content: { 'application/json': { schema: ReportsTrendsResponseSchema } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })
