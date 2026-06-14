@@ -155,6 +155,7 @@ const PropertyTotalsSchema = z.object({
   address: z.string(),
   nickname: z.string().nullable(),
   rentCents: z.number().int(),
+  otherIncomeCents: z.number().int(),
   expensesCents: z.number().int(),
   mortgageCents: z.number().int(),
   netCents: z.number().int(),
@@ -165,6 +166,7 @@ const PropertyTotalsSchema = z.object({
 export const LedgerSummaryResponseSchema = z.object({
   totals: z.object({
     totalRent: z.number().int(),
+    totalOtherIncome: z.number().int(),
     totalExpenses: z.number().int(),
     totalMortgage: z.number().int(),
     netBeforeMortgage: z.number().int(),
@@ -192,6 +194,7 @@ export const ReportsTrendsResponseSchema = z.object({
   trends: z.array(z.object({
     month: z.string().openapi({ description: 'Month in YYYY-MM format' }),
     rentCents: z.number().int(),
+    otherIncomeCents: z.number().int(),
     expensesCents: z.number().int(),
     mortgageCents: z.number().int(),
     netCents: z.number().int(),
