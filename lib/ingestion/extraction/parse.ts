@@ -79,6 +79,7 @@ Rules:
   - Money received by the owner (credits, income): use 'rent' for rental income, 'other_income' for anything else the owner received (e.g. tenant water usage reimbursements, lease break fees, late payment fees)
   - Money paid out by the owner (debits, expenses): use 'insurance', 'rates', 'repairs', 'property_management', 'utilities', 'strata_fees', or 'other_expense'
   - A line item with the same keyword (e.g. "water") can be either income or expense depending on direction — always check whether it is a payment made or a reimbursement received
+  - If the direction of money flow cannot be determined, use 'other_expense' as the default
 - confidence: rate 'high' if amount and category are unambiguous, 'medium' if inferred, 'low' if uncertain
 - lineItemDate: use the transaction date shown. If only a period is shown, use the period end date.
 - If a field is missing from the statement, make your best inference and set confidence to 'low'`,

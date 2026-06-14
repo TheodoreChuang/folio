@@ -37,6 +37,7 @@ type LoanWithBalance = InstallmentLoan & {
 type TrendPoint = {
   month: string
   rentCents: number
+  otherIncomeCents: number
   expensesCents: number
   mortgageCents: number
   netCents: number
@@ -77,6 +78,7 @@ const CADENCE_LABELS: Record<StatementCadence, string> = {
 
 const CATEGORY_COLORS: Record<string, string> = {
   rent:                'hsl(152 38% 30%)',
+  other_income:        'hsl(152 38% 45%)',
   insurance:           'hsl(14 58% 42%)',
   rates:               'hsl(14 58% 42%)',
   repairs:             'hsl(14 58% 42%)',
@@ -1385,8 +1387,8 @@ export default function PropertyDetailPage() {
                 })}
               </select>
               {entries.length > 0 && (() => {
-                const inCents  = entries.filter(e => e.category === 'rent').reduce((s, e) => s + e.amountCents, 0)
-                const outCents = entries.filter(e => e.category !== 'rent').reduce((s, e) => s + e.amountCents, 0)
+                const inCents  = entries.filter(e => e.category === 'rent' || e.category === 'other_income').reduce((s, e) => s + e.amountCents, 0)
+                const outCents = entries.filter(e => e.category !== 'rent' && e.category !== 'other_income').reduce((s, e) => s + e.amountCents, 0)
                 const netCents = inCents - outCents
                 return (
                   <span className="text-xs text-foreground-muted inline-flex items-center gap-1.5 flex-wrap">
@@ -1510,7 +1512,7 @@ export default function PropertyDetailPage() {
                       </td>
                       <td className="py-2.5 px-4 text-foreground-muted">{entry.description ?? '—'}</td>
                       <td className="py-2.5 px-4 text-right tabular-nums font-medium">
-                        {entry.category === 'rent'
+                        {(entry.category === 'rent' || entry.category === 'other_income')
                           ? <span className="text-green-700">+{formatCents(entry.amountCents)}</span>
                           : <span>−{formatCents(entry.amountCents)}</span>
                         }
@@ -1564,6 +1566,10 @@ export default function PropertyDetailPage() {
                   Rent
                 </span>
                 <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'hsl(152 38% 45% / 0.55)' }} />
+                  Other income
+                </span>
+                <span className="flex items-center gap-1.5">
                   <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'hsl(14 58% 42% / 0.5)' }} />
                   Expenses
                 </span>
@@ -1583,11 +1589,12 @@ export default function PropertyDetailPage() {
               <ResponsiveContainer width="100%" height={200}>
                 <ComposedChart
                   data={trends.map(t => ({
-                    month: new Date(t.month + '-01').toLocaleDateString('en-AU', { month: 'short' }),
-                    rent:     t.hasData ? t.rentCents / 100 : null,
-                    expenses: t.hasData ? -(t.expensesCents / 100) : null,
-                    mortgage: t.hasData ? -(t.mortgageCents / 100) : null,
-                    net:      t.hasData ? t.netCents / 100 : null,
+                    month:        new Date(t.month + '-01').toLocaleDateString('en-AU', { month: 'short' }),
+                    rent:         t.hasData ? t.rentCents / 100 : null,
+                    otherIncome:  t.hasData ? t.otherIncomeCents / 100 : null,
+                    expenses:     t.hasData ? -(t.expensesCents / 100) : null,
+                    mortgage:     t.hasData ? -(t.mortgageCents / 100) : null,
+                    net:          t.hasData ? t.netCents / 100 : null,
                   }))}
                   margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
                   barCategoryGap="30%"
@@ -1598,12 +1605,13 @@ export default function PropertyDetailPage() {
                   <Tooltip
                     formatter={(v: unknown, name: string) => {
                       const val = typeof v === 'number' ? Math.abs(v) : 0
-                      const labels: Record<string, string> = { rent: 'Rent', expenses: 'Expenses', mortgage: 'Loan', net: 'Net' }
+                      const labels: Record<string, string> = { rent: 'Rent', otherIncome: 'Other income', expenses: 'Expenses', mortgage: 'Loan', net: 'Net' }
                       return [formatCents(val * 100), labels[name] ?? name]
                     }}
                     contentStyle={{ fontSize: 12, borderRadius: 6, border: '1px solid hsl(var(--border))', background: 'hsl(var(--surface))' }}
                   />
-                  <Bar dataKey="rent" stackId="pos" fill="hsl(152 38% 30% / 0.55)" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="rent" stackId="pos" fill="hsl(152 38% 30% / 0.55)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="otherIncome" stackId="pos" fill="hsl(152 38% 45% / 0.55)" radius={[2, 2, 0, 0]} />
                   <Bar dataKey="expenses" stackId="neg" fill="hsl(14 58% 42% / 0.5)" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="mortgage" stackId="neg" fill="hsl(32 6% 38% / 0.45)" radius={[0, 0, 2, 2]} />
                   <Line dataKey="net" type="monotone" stroke="hsl(188 32% 32%)" strokeWidth={1.8} dot={{ r: 2.4, fill: 'hsl(188 32% 32%)', strokeWidth: 0 }} connectNulls={false} />
