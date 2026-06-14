@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { POST } from '@/app/api/extract/route'
+import { POST } from '@/app/api/v1/extract/route'
 
 const docRow = {
   id: 'a1b2c3d4-e5f6-4789-a012-345678901234',
@@ -159,7 +159,7 @@ describe('POST /api/extract', () => {
     expect(mocks.mockFindSourceDocumentById).toHaveBeenCalledWith('user-123', docRow.id)
   })
 
-  it('returns 422 when PDF text is too short (scanned PDF)', async () => {
+  it('returns 400 when PDF text is too short (scanned PDF)', async () => {
     mocks.mockExtractTextFromPdf.mockRejectedValue(
       new Error('PDF appears to be scanned or image-only — no extractable text found')
     )
@@ -170,7 +170,7 @@ describe('POST /api/extract', () => {
         body: JSON.stringify({ sourceDocumentId: docRow.id }),
       })
     )
-    expect(res.status).toBe(422)
+    expect(res.status).toBe(400)
   })
 
   it('returns 500 when classification fails', async () => {

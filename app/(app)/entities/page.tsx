@@ -64,7 +64,7 @@ function AddEntityForm({
     if (!trimmed) return
     setSaving(true)
     try {
-      const res = await fetch('/api/entities', {
+      const res = await fetch('/api/v1/entities', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: trimmed, type }),
@@ -449,8 +449,8 @@ export default function EntitiesPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/entities').then(r => r.json()) as Promise<{ entities?: Entity[] }>,
-      fetch('/api/properties').then(r => r.json()) as Promise<{ properties?: Property[] }>,
+      fetch('/api/v1/entities').then(r => r.json()) as Promise<{ entities?: Entity[] }>,
+      fetch('/api/v1/properties').then(r => r.json()) as Promise<{ properties?: Property[] }>,
     ])
       .then(([eData, pData]) => {
         setEntities(eData.entities ?? [])
@@ -475,7 +475,7 @@ export default function EntitiesPage() {
   }
 
   async function handleRename(id: string, newName: string) {
-    const res = await fetch(`/api/entities/${id}`, {
+    const res = await fetch(`/api/v1/entities/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newName }),
@@ -491,7 +491,7 @@ export default function EntitiesPage() {
   }
 
   async function handleDelete(id: string) {
-    const res = await fetch(`/api/entities/${id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/v1/entities/${id}`, { method: 'DELETE' })
     if (!res.ok) {
       const err = await res.json().catch(() => ({})) as { error?: string }
       if (res.status === 409) {

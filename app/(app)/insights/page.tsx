@@ -99,8 +99,8 @@ export default function InsightsPage() {
         p === 'all-time' ? periodToDateRange('12m') : { from, to }
 
       const [returnRes, trendsRes] = await Promise.all([
-        fetch(`/api/portfolio/return?from=${from}&to=${to}${entityQs}`, { signal }),
-        fetch(`/api/reports/trends?from=${tFrom}&to=${tTo}${entityQs}`, { signal }),
+        fetch(`/api/v1/portfolio/return?from=${from}&to=${to}${entityQs}`, { signal }),
+        fetch(`/api/v1/reports/trends?from=${tFrom}&to=${tTo}${entityQs}`, { signal }),
       ])
 
       if (signal?.aborted) return
@@ -129,7 +129,7 @@ export default function InsightsPage() {
   }, [entityFilter, period, loadData])
 
   useEffect(() => {
-    void fetch('/api/entities')
+    void fetch('/api/v1/entities')
       .then(r => r.ok ? r.json() : null)
       .then((data: { entities?: Entity[] } | null) => {
         if (data?.entities) setEntities(data.entities)
@@ -138,7 +138,7 @@ export default function InsightsPage() {
   }, [])
 
   useEffect(() => {
-    void fetch('/api/properties')
+    void fetch('/api/v1/properties')
       .then(r => r.ok ? r.json() : null)
       .then((data: { properties?: Pick<Property, 'id' | 'entityId'>[] } | null) => {
         if (data?.properties) setProperties(data.properties)

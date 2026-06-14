@@ -4,7 +4,33 @@ import { NextResponse, type NextRequest } from 'next/server'
 const PROTECTED_ROUTES = ['/dashboard', '/upload', '/properties', '/reports', '/onboarding']
 const AUTH_ROUTES = ['/login', '/signup']
 
+// Per-instance in-memory rate limit — not shared across Vercel function instances.
+// For distributed rate limiting, replace with Upstash Redis (@upstash/ratelimit).
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const WINDOW_MS = 60_000
+const MAX_REQUESTS = 120
+
 export async function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname
+
+  if (path.startsWith('/api/v1/')) {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown'
+    const now = Date.now()
+    const entry = rateLimitMap.get(ip)
+
+    if (!entry || now > entry.resetAt) {
+      rateLimitMap.set(ip, { count: 1, resetAt: now + WINDOW_MS })
+    } else {
+      entry.count++
+      if (entry.count > MAX_REQUESTS) {
+        return NextResponse.json(
+          { error: 'Rate limit exceeded. Retry after 60 seconds.' },
+          { status: 429, headers: { 'Retry-After': '60' } },
+        )
+      }
+    }
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -32,7 +58,6 @@ export async function proxy(request: NextRequest) {
   // Refresh session — required, do not remove
   const { data: { user } } = await supabase.auth.getUser()
 
-  const path = request.nextUrl.pathname
   const isProtected = PROTECTED_ROUTES.some(r => path.startsWith(r))
   const isAuthRoute = AUTH_ROUTES.some(r => path.startsWith(r))
 

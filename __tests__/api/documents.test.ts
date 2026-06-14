@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET } from '@/app/api/documents/route'
+import { GET } from '@/app/api/v1/documents/route'
 
 const docRow = {
   id: 'doc-uuid-1111-1111-1111-111111111111',

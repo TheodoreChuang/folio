@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET } from '@/app/api/plan/context/route'
+import { GET } from '@/app/api/v1/plan/context/route'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -120,14 +120,14 @@ describe('GET /api/plan/context', () => {
 
   it('returns 401 when unauthenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     expect(res.status).toBe(401)
     const body = await res.json()
     expect(body).toEqual({ error: 'Unauthorized' })
   })
 
   it('returns context wrapped in { context } shape', async () => {
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body).toHaveProperty('context')
@@ -137,7 +137,7 @@ describe('GET /api/plan/context', () => {
   })
 
   it('passes the authenticated user id to all data-fetching repositories', async () => {
-    await GET()
+    await GET(new Request("http://localhost/api/v1/plan/context"))
     expect(mocks.mockFetchPortfolioData).toHaveBeenCalledWith(USER_ID)
     expect(mocks.mockListBudgetItems).toHaveBeenCalledWith(USER_ID)
     expect(mocks.mockFetchLedgerEntriesInRange).toHaveBeenCalledWith(USER_ID, expect.any(String), expect.any(String))
@@ -150,7 +150,7 @@ describe('GET /api/plan/context', () => {
       ...emptyPortfolio,
       loans: [makeLoan({ rateType: 'fixed' })],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.counts.variableLoans).toBe(0)
   })
@@ -164,7 +164,7 @@ describe('GET /api/plan/context', () => {
         makeLoan({ id: 'loan-c', rateType: 'fixed' }),
       ],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.counts.variableLoans).toBe(2)
   })
@@ -177,7 +177,7 @@ describe('GET /api/plan/context', () => {
         makeLoan({ id: 'loan-b', loanType: 'line_of_credit', rateType: null }),
       ],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.counts.variableLoans).toBe(2)
   })
@@ -193,7 +193,7 @@ describe('GET /api/plan/context', () => {
         makeLoan({ id: 'loan-c', loanType: 'principal_and_interest', ioEndDate: null }),
       ],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.counts.ioLoans).toBe(1)
   })
@@ -207,7 +207,7 @@ describe('GET /api/plan/context', () => {
       balances: [],
       loans: [],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.properties[0].latestValuation).toBeNull()
   })
@@ -219,7 +219,7 @@ describe('GET /api/plan/context', () => {
       balances: [],
       loans: [],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.properties[0].purchasePriceCents).toBe(75000000)
   })
@@ -234,7 +234,7 @@ describe('GET /api/plan/context', () => {
       balances: [],
       loans: [],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.properties[0].latestValuation).toEqual({
       valueCents: 80000000,
@@ -249,7 +249,7 @@ describe('GET /api/plan/context', () => {
       balances: [],
       loans: [makeLoan()],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.loans[0].latestBalance).toBeNull()
   })
@@ -264,7 +264,7 @@ describe('GET /api/plan/context', () => {
       ],
       loans: [makeLoan()],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.loans[0].latestBalance).toEqual({
       balanceCents: 45000000,
@@ -276,7 +276,7 @@ describe('GET /api/plan/context', () => {
 
   it('returns householdSurplusMonthlyCents = null when no budget items', async () => {
     mocks.mockListBudgetItems.mockResolvedValue([])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.householdSurplusMonthlyCents).toBeNull()
   })
@@ -286,7 +286,7 @@ describe('GET /api/plan/context', () => {
       makeBudgetItem({ type: 'income', amountCents: 1000000, frequency: 'monthly' }),
       makeBudgetItem({ id: 'budget-0002', type: 'expense', amountCents: 300000, frequency: 'monthly' }),
     ])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.householdSurplusMonthlyCents).toBe(700000)
   })
@@ -301,7 +301,7 @@ describe('GET /api/plan/context', () => {
       balances: [],
       loans: [],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.portfolioBaseline).toBeNull()
   })
@@ -312,7 +312,7 @@ describe('GET /api/plan/context', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-06-03T12:00:00.000Z'))
     try {
-      const res = await GET()
+      const res = await GET(new Request("http://localhost/api/v1/plan/context"))
       expect(res.status).toBe(200)
       const [[, from, to]] = mocks.mockFetchLedgerEntriesInRange.mock.calls
       expect(from).toBe('2025-06-01') // first day of month 12 months before June 2026
@@ -335,7 +335,7 @@ describe('GET /api/plan/context', () => {
       makeLedgerEntry({ id: 'e2', lineItemDate: '2026-04-10', amountCents: 200000, category: 'rent' }),
       makeLedgerEntry({ id: 'e3', lineItemDate: '2026-05-10', amountCents: 200000, category: 'rent' }),
     ])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.portfolioBaseline).not.toBeNull()
     expect(context.portfolioBaseline.rentMonthlyCents).toBe(200000) // 600000 / 3
@@ -353,7 +353,7 @@ describe('GET /api/plan/context', () => {
       makeLedgerEntry({ id: 'e1', lineItemDate: '2026-01-15', amountCents: 300000, category: 'rent' }),
       makeLedgerEntry({ id: 'e2', lineItemDate: '2026-03-15', amountCents: 300000, category: 'rent' }),
     ])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.portfolioBaseline.rentMonthlyCents).toBe(200000) // 600000 / 3
   })
@@ -376,7 +376,7 @@ describe('GET /api/plan/context', () => {
         }),
       ),
     )
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.portfolioBaseline).not.toBeNull()
     expect(context.portfolioBaseline.rentMonthlyCents).toBe(200000) // 2400000 / 12
@@ -395,7 +395,7 @@ describe('GET /api/plan/context', () => {
       makeLedgerEntry({ id: 'e2', lineItemDate: '2026-04-15', amountCents: 300000, category: 'rates' }),
       makeLedgerEntry({ id: 'e3', lineItemDate: '2026-05-15', amountCents: 150000, category: 'loan_payment' }),
     ])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     // expenses: 600000 / 3 = 200000
     // mortgage: 150000 / 3 = 50000
@@ -415,7 +415,7 @@ describe('GET /api/plan/context', () => {
       balances: [],
       loans: [],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.properties).toHaveLength(1)
     expect(context.properties[0].id).toBe('prop-active')
@@ -432,7 +432,7 @@ describe('GET /api/plan/context', () => {
         makeLoan({ id: 'loan-ended', endDate: '2020-06-01', rateType: 'variable' }),
       ],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.loans).toHaveLength(1)
     expect(context.loans[0].id).toBe('loan-active')
@@ -450,7 +450,7 @@ describe('GET /api/plan/context', () => {
         balances: [],
         loans: [],
       })
-      const res = await GET()
+      const res = await GET(new Request("http://localhost/api/v1/plan/context"))
       const { context } = await res.json()
       expect(context.properties).toHaveLength(1)
       expect(context.counts.properties).toBe(1)
@@ -469,7 +469,7 @@ describe('GET /api/plan/context', () => {
         balances: [],
         loans: [makeLoan({ endDate: '2026-06-03', rateType: 'variable' })],
       })
-      const res = await GET()
+      const res = await GET(new Request("http://localhost/api/v1/plan/context"))
       const { context } = await res.json()
       expect(context.loans).toHaveLength(1)
       expect(context.counts.variableLoans).toBe(1)
@@ -488,7 +488,7 @@ describe('GET /api/plan/context', () => {
       balances: [],
       loans: [],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.properties[0].latestValuation).toEqual({
       valueCents: 80000000,
@@ -506,7 +506,7 @@ describe('GET /api/plan/context', () => {
       ],
       loans: [makeLoan()],
     })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.loans[0].latestBalance).toEqual({
       balanceCents: 45000000,
@@ -522,7 +522,7 @@ describe('GET /api/plan/context', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-06-03T14:30:00.000Z'))
     try {
-      await GET()
+      await GET(new Request("http://localhost/api/v1/plan/context"))
       const [[, from, to]] = mocks.mockFetchLedgerEntriesInRange.mock.calls
       expect(from).toBe('2025-06-01')
       expect(to).toBe('2026-05-31')
@@ -550,7 +550,7 @@ describe('GET /api/plan/context', () => {
       makeLedgerEntry({ id: 'e3', propertyId: 'prop-active', lineItemDate: '2026-03-15', amountCents: 200000, category: 'rent' }),
       makeLedgerEntry({ id: 'e4', propertyId: 'prop-inactive', lineItemDate: '2025-01-15', amountCents: 999999, category: 'rent' }),
     ])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/plan/context"))
     const { context } = await res.json()
     expect(context.portfolioBaseline).not.toBeNull()
     expect(context.portfolioBaseline.rentMonthlyCents).toBe(200000) // 600000 / 3, not / 15

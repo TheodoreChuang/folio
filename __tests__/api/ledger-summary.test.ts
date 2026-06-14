@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET } from '@/app/api/ledger/summary/route'
+import { GET } from '@/app/api/v1/ledger/summary/route'
 
 const PROP_ID  = 'aaaa0001-0000-4000-a000-000000000001'
 const LOAN_ID  = 'bbbb0001-0000-4000-b000-000000000001'

@@ -73,7 +73,7 @@ describe('POST /api/extract (integration)', () => {
     } catch {
       return
     }
-    const { POST: uploadPost } = await import('@/app/api/upload/route')
+    const { POST: uploadPost } = await import('@/app/api/v1/upload/route')
     const form = new FormData()
     const file = new File([new Uint8Array(buffer)], 'extract-fixture.pdf', {
       type: 'application/pdf',
@@ -93,7 +93,7 @@ describe('POST /api/extract (integration)', () => {
     sourceDocumentId: string,
     assignedMonth: string
   ) {
-    const { POST } = await import('@/app/api/extract/route')
+    const { POST } = await import('@/app/api/v1/extract/route')
     return POST(
       new Request('http://localhost/api/extract', {
         method: 'POST',

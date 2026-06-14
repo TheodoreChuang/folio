@@ -25,7 +25,7 @@ setup('create test user and authenticate', async ({ context }) => {
 
   // Seed test data for the authenticated user via the API so loans.spec.ts
   // can find a property and loan account without depending on pnpm seed.
-  const propRes = await context.request.post('/api/properties', {
+  const propRes = await context.request.post('/api/v1/properties', {
     data: {
       address: '123 Smith St, Sydney NSW 2000',
       nickname: 'Smith St',
@@ -34,7 +34,7 @@ setup('create test user and authenticate', async ({ context }) => {
   })
   if (propRes.ok()) {
     const { property } = await propRes.json()
-    await context.request.post(`/api/properties/${property.id}/loans`, {
+    await context.request.post(`/api/v1/properties/${property.id}/loans`, {
       data: {
         lender: 'Westpac',
         nickname: 'Investment loan',

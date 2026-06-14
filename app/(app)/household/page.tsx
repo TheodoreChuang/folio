@@ -420,7 +420,7 @@ export default function HouseholdPage() {
   const [savingAdd, setSavingAdd] = useState(false)
 
   useEffect(() => {
-    fetch('/api/household/items')
+    fetch('/api/v1/household/items')
       .then(async res => {
         if (res.status === 401) { router.push('/login'); return }
         if (!res.ok) throw new Error('Failed to load')
@@ -450,7 +450,7 @@ export default function HouseholdPage() {
   async function handleAdd(name: string, amountCents: number, frequency: BudgetItemFrequency, detail: string) {
     setSavingAdd(true)
     try {
-      const res = await fetch('/api/household/items', {
+      const res = await fetch('/api/v1/household/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: addingType, name, amountCents, frequency, detail: detail || undefined }),
@@ -473,7 +473,7 @@ export default function HouseholdPage() {
   async function handleUpdate(id: string, name: string, amountCents: number, frequency: BudgetItemFrequency, detail: string) {
     setSavingId(id)
     try {
-      const res = await fetch(`/api/household/items/${id}`, {
+      const res = await fetch(`/api/v1/household/items/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, amountCents, frequency, detail: detail || undefined }),
@@ -496,7 +496,7 @@ export default function HouseholdPage() {
   async function handleDelete(id: string) {
     setSavingId(id)
     try {
-      const res = await fetch(`/api/household/items/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/v1/household/items/${id}`, { method: 'DELETE' })
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string }
         toast.error(err.error ?? 'Failed to delete item')

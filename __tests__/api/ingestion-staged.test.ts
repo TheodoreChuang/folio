@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET } from '@/app/api/ingestion/staged/route'
-import { PATCH } from '@/app/api/ingestion/staged/[id]/route'
+import { GET } from '@/app/api/v1/ingestion/staged/route'
+import { PATCH } from '@/app/api/v1/ingestion/staged/[id]/route'
 
 const VALID_ID = 'a1b2c3d4-e5f6-4789-a012-345678901234'
 const VALID_DOC_ID = 'b2c3d4e5-f6a7-4890-b123-222222222222'
@@ -80,13 +80,13 @@ describe('GET /api/ingestion/staged', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/staged"))
     expect(res.status).toBe(401)
     expect(mocks.mockListStagedByUser).not.toHaveBeenCalled()
   })
 
   it('returns sessions grouped by sourceDocumentId', async () => {
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/staged"))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.sessions).toHaveLength(1)
@@ -98,7 +98,7 @@ describe('GET /api/ingestion/staged', () => {
 
   it('returns empty sessions when no staged items', async () => {
     mocks.mockListStagedByUser.mockResolvedValue([])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/staged"))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.sessions).toHaveLength(0)
@@ -107,14 +107,14 @@ describe('GET /api/ingestion/staged', () => {
   it('groups multiple items under same session', async () => {
     const secondItem = { ...stagingItem, id: 'c3d4e5f6-a7b8-4901-c234-333333333333', lineItemIndex: 1 }
     mocks.mockListStagedByUser.mockResolvedValue([stagingItem, secondItem])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/staged"))
     const json = await res.json()
     expect(json.sessions).toHaveLength(1)
     expect(json.sessions[0].items).toHaveLength(2)
   })
 
   it('passes userId to listStagedByUser', async () => {
-    await GET()
+    await GET(new Request("http://localhost/api/v1/ingestion/staged"))
     expect(mocks.mockListStagedByUser).toHaveBeenCalledWith('user-123')
   })
 })

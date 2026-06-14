@@ -185,7 +185,7 @@ export default function PlanPage() {
   const [state, setState] = useState<State>({ status: 'loading' })
 
   useEffect(() => {
-    fetch('/api/plan/context')
+    fetch('/api/v1/plan/context')
       .then(res => {
         if (res.status === 401) { router.push('/login'); return null }
         return res.json()

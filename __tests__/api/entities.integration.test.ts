@@ -78,8 +78,8 @@ describe('entities API — user isolation (integration)', () => {
 
   it('GET: returns own entities, excludes other user entities', async () => {
     if (!hasEnv) return
-    const { GET } = await import('@/app/api/entities/route')
-    const res = await GET()
+    const { GET } = await import('@/app/api/v1/entities/route')
+    const res = await GET(new Request('http://localhost/api/v1/entities'))
     expect(res.status).toBe(200)
     const { entities: rows } = await res.json() as { entities: { id: string }[] }
     const ids = rows.map(r => r.id)
@@ -89,7 +89,7 @@ describe('entities API — user isolation (integration)', () => {
 
   it('PATCH: returns 404 when trying to update another user\'s entity', async () => {
     if (!hasEnv) return
-    const { PATCH } = await import('@/app/api/entities/[id]/route')
+    const { PATCH } = await import('@/app/api/v1/entities/[id]/route')
     const res = await PATCH(
       new Request(`http://localhost/api/entities/${otherEntityId}`, {
         method: 'PATCH',
@@ -106,7 +106,7 @@ describe('entities API — user isolation (integration)', () => {
 
   it('DELETE: returns 404 when trying to delete another user\'s entity', async () => {
     if (!hasEnv) return
-    const { DELETE } = await import('@/app/api/entities/[id]/route')
+    const { DELETE } = await import('@/app/api/v1/entities/[id]/route')
     const res = await DELETE(
       new Request(`http://localhost/api/entities/${otherEntityId}`, { method: 'DELETE' }),
       { params: Promise.resolve({ id: otherEntityId }) }

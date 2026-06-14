@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET, POST } from '@/app/api/loans/[id]/balances/route'
+import { GET, POST } from '@/app/api/v1/loans/[id]/balances/route'
 
 const VALID_LOAN_ID = 'b2c3d4e5-f6a7-4890-b123-222222222222'
 

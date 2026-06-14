@@ -20,8 +20,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const fetchData = useCallback(async () => {
     try {
       const [propsRes, loansRes] = await Promise.all([
-        fetch('/api/properties'),
-        fetch('/api/loans'),
+        fetch('/api/v1/properties'),
+        fetch('/api/v1/loans'),
       ])
       if (propsRes.ok) {
         const data = await propsRes.json() as { properties?: SidebarProperty[] }

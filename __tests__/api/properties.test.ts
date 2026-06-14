@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET, POST } from '@/app/api/properties/route'
+import { GET, POST } from '@/app/api/v1/properties/route'
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),

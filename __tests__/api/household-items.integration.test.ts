@@ -68,7 +68,7 @@ describe('GET /api/household/items — soft-delete filter', () => {
   it('excludes soft-deleted items from GET response', async () => {
     if (!hasEnv) return
 
-    const { GET } = await import('@/app/api/household/items/route')
+    const { GET } = await import('@/app/api/v1/household/items/route')
 
     const [active] = await db.insert(personalBudgetItems).values({
       userId,
@@ -94,7 +94,7 @@ describe('GET /api/household/items — soft-delete filter', () => {
       .set({ deletedAt: new Date() })
       .where(eq(personalBudgetItems.id, deleted.id))
 
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/household/items"))
     expect(res.status).toBe(200)
     const body = await res.json() as { items: { id: string }[], summary: { totalIncomeMonthlyCents: number } }
 
@@ -106,7 +106,7 @@ describe('GET /api/household/items — soft-delete filter', () => {
   it('summary totals exclude soft-deleted items', async () => {
     if (!hasEnv) return
 
-    const { GET } = await import('@/app/api/household/items/route')
+    const { GET } = await import('@/app/api/v1/household/items/route')
 
     const [active] = await db.insert(personalBudgetItems).values({
       userId,
@@ -132,7 +132,7 @@ describe('GET /api/household/items — soft-delete filter', () => {
       .set({ deletedAt: new Date() })
       .where(eq(personalBudgetItems.id, deleted.id))
 
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/household/items"))
     const body = await res.json() as { summary: { totalIncomeMonthlyCents: number } }
 
     expect(body.summary.totalIncomeMonthlyCents).toBe(100000)
@@ -143,7 +143,7 @@ describe('PATCH /api/household/items/[id] — soft-delete filter', () => {
   it('returns 404 when patching a soft-deleted item', async () => {
     if (!hasEnv) return
 
-    const { PATCH } = await import('@/app/api/household/items/[id]/route')
+    const { PATCH } = await import('@/app/api/v1/household/items/[id]/route')
 
     const [item] = await db.insert(personalBudgetItems).values({
       userId,
@@ -173,7 +173,7 @@ describe('DELETE /api/household/items/[id] — soft-delete filter', () => {
   it('returns 404 when deleting an already soft-deleted item', async () => {
     if (!hasEnv) return
 
-    const { DELETE } = await import('@/app/api/household/items/[id]/route')
+    const { DELETE } = await import('@/app/api/v1/household/items/[id]/route')
 
     const [item] = await db.insert(personalBudgetItems).values({
       userId,
@@ -201,7 +201,7 @@ describe('Auth isolation', () => {
   it('items from another user do not appear in GET response', async () => {
     if (!hasEnv) return
 
-    const { GET } = await import('@/app/api/household/items/route')
+    const { GET } = await import('@/app/api/v1/household/items/route')
 
     const otherUserId = 'ffffffff-ffff-4fff-bfff-ffffffffffff'
 
@@ -214,7 +214,7 @@ describe('Auth isolation', () => {
       effectiveFrom: '2024-01-01',
     }).returning()
 
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/household/items"))
     const body = await res.json() as { items: { id: string }[] }
     const ids = body.items.map((i) => i.id)
     expect(ids).not.toContain(otherItem.id)

@@ -150,8 +150,8 @@ export default function LoanDetailPage() {
     setLoading(true)
     try {
       const [loanRes, balRes] = await Promise.all([
-        fetch(`/api/loans/${id}`),
-        fetch(`/api/loans/${id}/balances`),
+        fetch(`/api/v1/loans/${id}`),
+        fetch(`/api/v1/loans/${id}/balances`),
       ])
       if (loanRes.status === 401) { router.push('/login'); return }
       if (loanRes.status === 404) { setNotFound(true); return }
@@ -177,7 +177,7 @@ export default function LoanDetailPage() {
     if (repaymentsFetched || repaymentsLoading) return
     setRepaymentsLoading(true)
     try {
-      const res = await fetch(`/api/loans/${id}/repayments`)
+      const res = await fetch(`/api/v1/loans/${id}/repayments`)
       if (!res.ok) { toast.error('Failed to load repayments'); return }
       const data = await res.json() as { repayments: LoanLedgerWithSource[] }
       setRepayments(data.repayments ?? [])
@@ -190,7 +190,7 @@ export default function LoanDetailPage() {
   }
 
   async function patchLoan(updates: Record<string, unknown>, currentLoan: InstallmentLoanDetail) {
-    const res = await fetch(`/api/loans/${id}`, {
+    const res = await fetch(`/api/v1/loans/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -278,7 +278,7 @@ export default function LoanDetailPage() {
 
     setAddingBalance(true)
     try {
-      const res = await fetch(`/api/loans/${id}/balances`, {
+      const res = await fetch(`/api/v1/loans/${id}/balances`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ balanceCents, recordedAt: addBalanceDate }),
@@ -310,7 +310,7 @@ export default function LoanDetailPage() {
 
     setAddingRepayment(true)
     try {
-      const res = await fetch(`/api/loans/${id}/repayments`, {
+      const res = await fetch(`/api/v1/loans/${id}/repayments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

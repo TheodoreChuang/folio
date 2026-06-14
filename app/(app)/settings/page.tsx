@@ -129,6 +129,23 @@ export default function SettingsPage() {
         </div>
 
         <div>
+          <SectionLabel>Developer</SectionLabel>
+          <div className="grid grid-cols-2 gap-3">
+            <SettingsCard
+              href="/settings/api-keys"
+              title="API keys"
+              description="Create bearer-token keys for programmatic access and AI tools. Keys carry your full permissions — manage them here."
+              icon={
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+                  <circle cx="7" cy="10" r="3.5" />
+                  <path d="M10.2 7.8L16 2M14 4l1.5 1.5" strokeLinecap="round" />
+                </svg>
+              }
+            />
+          </div>
+        </div>
+
+        <div>
           <SectionLabel>Workspace</SectionLabel>
           <div className="grid grid-cols-2 gap-3">
             <SettingsCard

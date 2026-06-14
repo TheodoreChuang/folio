@@ -81,7 +81,7 @@ export default function NewPropertyPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetch('/api/entities')
+    fetch('/api/v1/entities')
       .then(r => {
         if (r.status === 401) { router.push('/login'); return null }
         return r.json() as Promise<{ entities?: Entity[] }>
@@ -115,7 +115,7 @@ export default function NewPropertyPage() {
   async function createPropertyWithDetails(): Promise<string | null> {
     const purchasePriceCents = parseCents(purchasePriceDollars)
 
-    const res = await fetch('/api/properties', {
+    const res = await fetch('/api/v1/properties', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -139,7 +139,7 @@ export default function NewPropertyPage() {
 
     const valueCents = parseCents(valueDollars)
     if (valueCents !== null) {
-      const valuationRes = await fetch(`/api/properties/${property.id}/valuations`, {
+      const valuationRes = await fetch(`/api/v1/properties/${property.id}/valuations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -156,7 +156,7 @@ export default function NewPropertyPage() {
     if (leaseExpanded && leaseStart && weeklyRentDollars.trim()) {
       const weeklyRentCents = parseCents(weeklyRentDollars)
       if (weeklyRentCents !== null) {
-        const tenancyRes = await fetch(`/api/properties/${property.id}/tenancies`, {
+        const tenancyRes = await fetch(`/api/v1/properties/${property.id}/tenancies`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -174,7 +174,7 @@ export default function NewPropertyPage() {
     }
 
     if (leaseExpanded && agencyName.trim()) {
-      const agentRes = await fetch(`/api/properties/${property.id}/management-agents`, {
+      const agentRes = await fetch(`/api/v1/properties/${property.id}/management-agents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

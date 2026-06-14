@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET } from '@/app/api/portfolio/summary/route'
+import { GET } from '@/app/api/v1/portfolio/summary/route'
 
 const PROP_ID  = 'a1b2c3d4-e5f6-4789-a012-111111111111'
 const PROP_ID2 = 'a1b2c3d4-e5f6-4789-a012-111111111112'

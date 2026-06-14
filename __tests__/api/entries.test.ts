@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET, POST } from '@/app/api/properties/[id]/entries/route'
+import { GET, POST } from '@/app/api/v1/properties/[id]/entries/route'
 
 const propRow = {
   id: 'a1b2c3d4-e5f6-4789-a012-111111111111',

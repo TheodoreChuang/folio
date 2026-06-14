@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { DELETE } from '@/app/api/ledger/[id]/route'
+import { DELETE } from '@/app/api/v1/ledger/[id]/route'
 
 const manualEntry = {
   id: 'e1111111-1111-4111-a111-111111111111',

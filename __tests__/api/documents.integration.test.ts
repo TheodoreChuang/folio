@@ -98,7 +98,7 @@ describe('GET /api/documents (integration — M-1 soft-delete filter)', () => {
   })
 
   async function getDocuments(month: string) {
-    const { GET } = await import('@/app/api/documents/route')
+    const { GET } = await import('@/app/api/v1/documents/route')
     return GET(new Request(`http://localhost/api/documents?month=${month}`, { method: 'GET' }))
   }
 

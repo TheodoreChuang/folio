@@ -3,7 +3,8 @@ import { logger } from './logger'
 
 export function captureError(err: unknown, context: Record<string, unknown> = {}): void {
   const message = err instanceof Error ? err.message : String(err)
-  logger.error('unhandled error', { error: message, ...context })
+  const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : undefined
+  logger.error('unhandled error', { error: message, cause, ...context })
   Sentry.captureException(err, { extra: context })
 }
 

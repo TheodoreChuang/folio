@@ -130,7 +130,7 @@ export default function UploadPage() {
   const [mortgageSubmitting, setMortgageSubmitting] = useState(false)
 
   const loadStaged = useCallback(async () => {
-    const res = await fetch('/api/ingestion/staged')
+    const res = await fetch('/api/v1/ingestion/staged')
     if (res.ok) {
       const data = await res.json() as { sessions?: StagedSession[] }
       setStagedSessions(data.sessions ?? [])
@@ -138,7 +138,7 @@ export default function UploadPage() {
   }, [])
 
   const loadLoanSessions = useCallback(async () => {
-    const res = await fetch('/api/ingestion/loan-staged')
+    const res = await fetch('/api/v1/ingestion/loan-staged')
     if (res.ok) {
       const data = await res.json() as { sessions?: LoanStagedSession[] }
       setLoanSessions(data.sessions ?? [])
@@ -167,14 +167,14 @@ export default function UploadPage() {
 
   useEffect(() => {
     if (uploadState === 'review') {
-      fetch('/api/properties')
+      fetch('/api/v1/properties')
         .then(r => r.json())
         .then(async (d: { properties?: Property[] }) => {
           const props = d.properties ?? []
           setProperties(props)
           const loanArrays = await Promise.all(
             props.map(p =>
-              fetch(`/api/properties/${p.id}/loans`)
+              fetch(`/api/v1/properties/${p.id}/loans`)
                 .then(r => r.json())
                 .then((ld: { loans?: Loan[] }) =>
                   (ld.loans ?? []).map(l => ({ ...l, propertyAddress: propertyLabel(p) }))
@@ -190,7 +190,7 @@ export default function UploadPage() {
 
   useEffect(() => {
     if (!mortgagePropertyId) { setMortgageLoans([]); setMortgageLoanId(''); return }
-    fetch(`/api/properties/${mortgagePropertyId}/loans`)
+    fetch(`/api/v1/properties/${mortgagePropertyId}/loans`)
       .then(r => r.json())
       .then((d: { loans?: Loan[] }) => { setMortgageLoans(d.loans ?? []); setMortgageLoanId('') })
       .catch(() => { setMortgageLoans([]) })
@@ -213,7 +213,7 @@ export default function UploadPage() {
     try {
       const results = await Promise.all(
         session.items.map(item =>
-          fetch(`/api/ingestion/staged/${item.id}`, {
+          fetch(`/api/v1/ingestion/staged/${item.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ propertyId, status: 'approved' }),
@@ -235,7 +235,7 @@ export default function UploadPage() {
 
   async function handlePatchItem(itemId: string, patch: { category?: string }) {
     try {
-      await fetch(`/api/ingestion/staged/${itemId}`, {
+      await fetch(`/api/v1/ingestion/staged/${itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
@@ -250,7 +250,7 @@ export default function UploadPage() {
     const cents = value === '' ? null : Math.round(parseFloat(value) * 100)
     if (cents !== null && (isNaN(cents) || cents < 0)) return
     try {
-      await fetch(`/api/ingestion/loan-staged/${itemId}`, {
+      await fetch(`/api/v1/ingestion/loan-staged/${itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(field === 'interest' ? { interestCents: cents } : { principalCents: cents }),
@@ -267,7 +267,7 @@ export default function UploadPage() {
     try {
       const results = await Promise.all(
         session.items.map(item =>
-          fetch(`/api/ingestion/loan-staged/${item.id}`, {
+          fetch(`/api/v1/ingestion/loan-staged/${item.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ installmentLoanId, status: 'approved' }),
@@ -291,7 +291,7 @@ export default function UploadPage() {
     if (matchedSessions.length === 0) return
     setCommitting(true)
     try {
-      const res = await fetch('/api/ingestion/commit', {
+      const res = await fetch('/api/v1/ingestion/commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceDocumentIds: matchedSessions.map(s => s.sourceDocumentId) }),
@@ -317,7 +317,7 @@ export default function UploadPage() {
     if (loanApprovedSessions.length === 0) return
     setLoanCommitting(true)
     try {
-      const res = await fetch('/api/ingestion/loan-commit', {
+      const res = await fetch('/api/v1/ingestion/loan-commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceDocumentIds: loanApprovedSessions.map(s => s.sourceDocumentId) }),
@@ -345,7 +345,7 @@ export default function UploadPage() {
     if (isNaN(amountCents) || amountCents <= 0) { toast.error('Enter a valid amount'); return }
     setMortgageSubmitting(true)
     try {
-      const res = await fetch(`/api/properties/${mortgagePropertyId}/loan-payments`, {
+      const res = await fetch(`/api/v1/properties/${mortgagePropertyId}/loan-payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ loanAccountId: mortgageLoanId, amountCents, lineItemDate: mortgageDate }),
@@ -376,7 +376,7 @@ export default function UploadPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData })
+      const uploadRes = await fetch('/api/v1/upload', { method: 'POST', body: formData })
       if (!uploadRes.ok) {
         const err = await uploadRes.json().catch(() => ({})) as { error?: string }
         updateStatus({ status: 'error', error: err.error ?? 'Upload failed' })
@@ -384,7 +384,7 @@ export default function UploadPage() {
       }
       const { sourceDocumentId } = await uploadRes.json() as { sourceDocumentId: string }
       updateStatus({ status: 'extracting' })
-      const extractRes = await fetch('/api/extract', {
+      const extractRes = await fetch('/api/v1/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceDocumentId }),

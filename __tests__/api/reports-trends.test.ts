@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET } from '@/app/api/reports/trends/route'
+import { GET } from '@/app/api/v1/reports/trends/route'
 
 // Fix "current month" to 2026-03 so range assertions are deterministic
 vi.setSystemTime(new Date('2026-03-15'))

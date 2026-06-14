@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET, POST } from '@/app/api/entities/route'
-import { PATCH, DELETE } from '@/app/api/entities/[id]/route'
+import { GET, POST } from '@/app/api/v1/entities/route'
+import { PATCH, DELETE } from '@/app/api/v1/entities/[id]/route'
 
 const ENTITY_ID = 'cccc0001-0000-4000-c000-000000000001'
 
@@ -58,12 +58,12 @@ describe('GET /api/entities', () => {
 
   it('returns 401 when unauthenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/entities"))
     expect(res.status).toBe(401)
   })
 
   it('returns 200 with entities list', async () => {
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/entities"))
     expect(res.status).toBe(200)
     const { entities } = await res.json()
     expect(entities).toHaveLength(1)

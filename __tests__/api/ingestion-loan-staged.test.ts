@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET } from '@/app/api/ingestion/loan-staged/route'
-import { PATCH } from '@/app/api/ingestion/loan-staged/[id]/route'
+import { GET } from '@/app/api/v1/ingestion/loan-staged/route'
+import { PATCH } from '@/app/api/v1/ingestion/loan-staged/[id]/route'
 
 const VALID_ID = 'a1b2c3d4-e5f6-4789-a012-345678901234'
 const VALID_DOC_ID = 'b2c3d4e5-f6a7-4890-b123-222222222222'
@@ -91,13 +91,13 @@ describe('GET /api/ingestion/loan-staged', () => {
 
   it('returns 401 when not authenticated', async () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(res.status).toBe(401)
     expect(mocks.mockListLoanStagedByUser).not.toHaveBeenCalled()
   })
 
   it('returns sessions grouped by sourceDocumentId', async () => {
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.sessions).toHaveLength(1)
@@ -109,19 +109,19 @@ describe('GET /api/ingestion/loan-staged', () => {
   it('returns empty sessions when no staged items', async () => {
     mocks.mockListLoanStagedByUser.mockResolvedValue([])
     mocks.mockGroupStagedItemsByDocument.mockReturnValue([])
-    const res = await GET()
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.sessions).toHaveLength(0)
   })
 
   it('passes userId to listLoanStagedByUser', async () => {
-    await GET()
+    await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(mocks.mockListLoanStagedByUser).toHaveBeenCalledWith('user-123')
   })
 
   it('passes userId to getDocumentsByUser', async () => {
-    await GET()
+    await GET(new Request("http://localhost/api/v1/ingestion/loan-staged"))
     expect(mocks.mockGetDocumentsByUser).toHaveBeenCalledWith('user-123')
   })
 })
