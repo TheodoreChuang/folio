@@ -1,3 +1,6 @@
+import { config } from 'dotenv'
+config({ path: '.env.local' })
+
 import { runEval, gradeGrounding, gradeToolSelection, gradeSecurity, compareToBaseline } from './harness'
 import { STANDARD_PORTFOLIO, EMPTY_PORTFOLIO } from './fixtures'
 import { GROUNDING_CASES, TOOL_SELECTION_CASES, SECURITY_CASES, NO_DATA_CASES } from './cases/grounding'

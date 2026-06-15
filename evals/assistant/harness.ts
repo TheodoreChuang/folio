@@ -1,8 +1,13 @@
-import { streamText, tool, stepCountIs } from 'ai'
+import { streamText, tool, stepCountIs, createGateway } from 'ai'
 import { z } from 'zod'
 import type { ModelMessage, ToolSet } from 'ai'
 import { buildSystemPrompt } from '@/lib/assistant/prompt'
 import type { SeededPortfolio } from './fixtures'
+
+const gateway = createGateway()
+function getEvalModel() {
+  return gateway(process.env.ASSISTANT_MODEL ?? 'anthropic/claude-haiku-4.5')
+}
 
 export type EvalResult = {
   question: string
@@ -98,13 +103,12 @@ export async function runEval(options: {
 }): Promise<EvalResult> {
   const { question, category, portfolio, profile = null } = options
 
-  const { getModel } = await import('@/lib/ai/provider')
   const system = buildSystemPrompt(profile)
   const tools = buildSeededTools(portfolio)
   const messages: ModelMessage[] = [{ role: 'user', content: question }]
 
   const stream = streamText({
-    model: getModel(),
+    model: getEvalModel(),
     system,
     messages,
     tools,
