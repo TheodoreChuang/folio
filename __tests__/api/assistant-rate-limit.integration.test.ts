@@ -52,7 +52,7 @@ describe('consumeIfAllowed — concurrency boundary (integration)', () => {
   it('at used=24: exactly 1 of N parallel calls admitted; counter never exceeds 26', async () => {
     if (!hasEnv) return
 
-    const { consumeIfAllowed } = await import('@/lib/assistant/services/rate-limit')
+    const { consumeIfAllowed } = await import('@/lib/assistant')
 
     // Pre-seed row at count=24
     await db.insert(assistantUsage).values({
@@ -94,7 +94,7 @@ describe('consumeIfAllowed — UTC day reset (integration)', () => {
   it('yesterday row at count=25 does not affect today — today returns admitted:true, used:1', async () => {
     if (!hasEnv) return
 
-    const { consumeIfAllowed } = await import('@/lib/assistant/services/rate-limit')
+    const { consumeIfAllowed } = await import('@/lib/assistant')
 
     // Insert yesterday's fully-consumed row
     await db.insert(assistantUsage).values({
@@ -118,7 +118,7 @@ describe('consumeIfAllowed — cross-user isolation (integration)', () => {
   it("user B's consumption does not affect user A's count", async () => {
     if (!hasEnv) return
 
-    const { consumeIfAllowed } = await import('@/lib/assistant/services/rate-limit')
+    const { consumeIfAllowed } = await import('@/lib/assistant')
 
     // User A starts fresh today
     const resultA1 = await consumeIfAllowed(userId)

@@ -135,40 +135,40 @@ describe('buildTools', () => {
   describe('Test 2 — buildTools(userId) invokes underlying service with that exact userId', () => {
     it('getPortfolioSummary calls getPortfolioData with closure userId', async () => {
       const tools = buildTools(USER_ID)
-      await tools.getPortfolioSummary.execute({}, { toolCallId: 't1', messages: [], abortSignal: undefined })
+      await tools.getPortfolioSummary.execute!({}, { toolCallId: 't1', messages: [], abortSignal: undefined })
       expect(mocks.getPortfolioData).toHaveBeenCalledWith(USER_ID)
       expect(mocks.getPortfolioData).not.toHaveBeenCalledWith(OTHER_USER_ID)
     })
 
     it('getPropertyDetail calls getPropertyWithStats with closure userId', async () => {
       const tools = buildTools(USER_ID)
-      await tools.getPropertyDetail.execute({ propertyId: PROP_ID }, { toolCallId: 't2', messages: [], abortSignal: undefined })
+      await tools.getPropertyDetail.execute!({ propertyId: PROP_ID }, { toolCallId: 't2', messages: [], abortSignal: undefined })
       expect(mocks.getPropertyWithStats).toHaveBeenCalledWith(USER_ID, PROP_ID)
     })
 
     it('getLoanDetail calls findInstallmentLoanDetail with closure userId', async () => {
       const tools = buildTools(USER_ID)
-      await tools.getLoanDetail.execute({ loanId: LOAN_ID }, { toolCallId: 't3', messages: [], abortSignal: undefined })
+      await tools.getLoanDetail.execute!({ loanId: LOAN_ID }, { toolCallId: 't3', messages: [], abortSignal: undefined })
       expect(mocks.findInstallmentLoanDetail).toHaveBeenCalledWith(USER_ID, LOAN_ID)
     })
 
     it('getCashflowByPeriod calls getCashflowSummary with closure userId', async () => {
       const tools = buildTools(USER_ID)
-      await tools.getCashflowByPeriod.execute({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't4', messages: [], abortSignal: undefined })
+      await tools.getCashflowByPeriod.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't4', messages: [], abortSignal: undefined })
       expect(mocks.getCashflowSummary).toHaveBeenCalledWith(USER_ID, '2026-01-01', '2026-03-31', { propertyId: undefined, entityId: undefined })
     })
 
     it('lookupLedgerEntries calls listLedgerEntriesInRange with closure userId', async () => {
       const tools = buildTools(USER_ID)
-      await tools.lookupLedgerEntries.execute({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't5', messages: [], abortSignal: undefined })
+      await tools.lookupLedgerEntries.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't5', messages: [], abortSignal: undefined })
       expect(mocks.listLedgerEntriesInRange).toHaveBeenCalledWith(USER_ID, '2026-01-01', '2026-03-31', undefined)
     })
 
     it('uses the userId from the specific buildTools call, not a shared global', async () => {
       const toolsA = buildTools(USER_ID)
       const toolsB = buildTools(OTHER_USER_ID)
-      await toolsA.getPortfolioSummary.execute({}, { toolCallId: 'tA', messages: [], abortSignal: undefined })
-      await toolsB.getPortfolioSummary.execute({}, { toolCallId: 'tB', messages: [], abortSignal: undefined })
+      await toolsA.getPortfolioSummary.execute!({}, { toolCallId: 'tA', messages: [], abortSignal: undefined })
+      await toolsB.getPortfolioSummary.execute!({}, { toolCallId: 'tB', messages: [], abortSignal: undefined })
       expect(mocks.getPortfolioData).toHaveBeenNthCalledWith(1, USER_ID)
       expect(mocks.getPortfolioData).toHaveBeenNthCalledWith(2, OTHER_USER_ID)
     })
@@ -177,7 +177,7 @@ describe('buildTools', () => {
   describe('Test 3 — getLoanDetail output never contains accountReference key', () => {
     it('strips accountReference from the output', async () => {
       const tools = buildTools(USER_ID)
-      const result = await tools.getLoanDetail.execute({ loanId: LOAN_ID }, { toolCallId: 't', messages: [], abortSignal: undefined })
+      const result = await tools.getLoanDetail.execute!({ loanId: LOAN_ID }, { toolCallId: 't', messages: [], abortSignal: undefined })
       // Top-level result
       expect(result).not.toHaveProperty('accountReference')
       // Nested loan object (where the data actually lives)
@@ -189,7 +189,7 @@ describe('buildTools', () => {
     it('accountReference key is absent when loan is not found', async () => {
       mocks.findInstallmentLoanDetail.mockResolvedValue(undefined)
       const tools = buildTools(USER_ID)
-      const result = await tools.getLoanDetail.execute({ loanId: 'nonexistent' }, { toolCallId: 't', messages: [], abortSignal: undefined })
+      const result = await tools.getLoanDetail.execute!({ loanId: 'nonexistent' }, { toolCallId: 't', messages: [], abortSignal: undefined })
       expect(result).not.toHaveProperty('accountReference')
     })
   })
@@ -199,7 +199,7 @@ describe('buildTools', () => {
 
     it('getPortfolioSummary returns source and statusLabel', async () => {
       const tools = buildTools(USER_ID)
-      const result = await tools.getPortfolioSummary.execute({}, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.getPortfolioSummary.execute!({}, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(typeof result.source).toBe('string')
       expect((result.source as string).length).toBeGreaterThan(0)
       expect(typeof result.statusLabel).toBe('string')
@@ -209,7 +209,7 @@ describe('buildTools', () => {
 
     it('getPropertyDetail returns source and statusLabel', async () => {
       const tools = buildTools(USER_ID)
-      const result = await tools.getPropertyDetail.execute({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.getPropertyDetail.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(typeof result.source).toBe('string')
       expect((result.source as string).length).toBeGreaterThan(0)
       expect(TOOL_FUNCTION_NAMES).not.toContain(result.statusLabel)
@@ -217,7 +217,7 @@ describe('buildTools', () => {
 
     it('getLoanDetail returns source and statusLabel', async () => {
       const tools = buildTools(USER_ID)
-      const result = await tools.getLoanDetail.execute({ loanId: LOAN_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.getLoanDetail.execute!({ loanId: LOAN_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(typeof result.source).toBe('string')
       expect((result.source as string).length).toBeGreaterThan(0)
       expect(TOOL_FUNCTION_NAMES).not.toContain(result.statusLabel)
@@ -225,7 +225,7 @@ describe('buildTools', () => {
 
     it('getCashflowByPeriod returns source and statusLabel', async () => {
       const tools = buildTools(USER_ID)
-      const result = await tools.getCashflowByPeriod.execute({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.getCashflowByPeriod.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(typeof result.source).toBe('string')
       expect((result.source as string).length).toBeGreaterThan(0)
       expect(TOOL_FUNCTION_NAMES).not.toContain(result.statusLabel)
@@ -233,7 +233,7 @@ describe('buildTools', () => {
 
     it('lookupLedgerEntries returns source and statusLabel', async () => {
       const tools = buildTools(USER_ID)
-      const result = await tools.lookupLedgerEntries.execute({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.lookupLedgerEntries.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(typeof result.source).toBe('string')
       expect((result.source as string).length).toBeGreaterThan(0)
       expect(TOOL_FUNCTION_NAMES).not.toContain(result.statusLabel)
@@ -251,24 +251,24 @@ describe('buildTools', () => {
 
     it('getPortfolioSummary does not throw for empty portfolio', async () => {
       const tools = buildTools(USER_ID)
-      await expect(tools.getPortfolioSummary.execute({}, { toolCallId: 't', messages: [], abortSignal: undefined })).resolves.toBeDefined()
+      await expect(tools.getPortfolioSummary.execute!({}, { toolCallId: 't', messages: [], abortSignal: undefined })).resolves.toBeDefined()
     })
 
     it('getPropertyDetail returns found:false when property does not exist', async () => {
       const tools = buildTools(USER_ID)
-      const result = await tools.getPropertyDetail.execute({ propertyId: 'nonexistent' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.getPropertyDetail.execute!({ propertyId: 'nonexistent' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result.found).toBe(false)
     })
 
     it('getLoanDetail returns found:false when loan does not exist', async () => {
       const tools = buildTools(USER_ID)
-      const result = await tools.getLoanDetail.execute({ loanId: 'nonexistent' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.getLoanDetail.execute!({ loanId: 'nonexistent' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result.found).toBe(false)
     })
 
     it('getCashflowByPeriod returns zero totals without throwing', async () => {
       const tools = buildTools(USER_ID)
-      const result = await tools.getCashflowByPeriod.execute({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.getCashflowByPeriod.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).not.toHaveProperty('error')
       const totals = result.totals as Record<string, number>
       expect(totals.propertyCount).toBe(0)
@@ -276,7 +276,7 @@ describe('buildTools', () => {
 
     it('lookupLedgerEntries returns empty entries without throwing', async () => {
       const tools = buildTools(USER_ID)
-      const result = await tools.lookupLedgerEntries.execute({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.lookupLedgerEntries.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).not.toHaveProperty('error')
       expect(result.count).toBe(0)
     })
@@ -286,7 +286,7 @@ describe('buildTools', () => {
     it('getPortfolioSummary returns error payload when service throws', async () => {
       mocks.getPortfolioData.mockRejectedValue(new Error('DB connection failed'))
       const tools = buildTools(USER_ID)
-      const result = await tools.getPortfolioSummary.execute({}, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.getPortfolioSummary.execute!({}, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toHaveProperty('error')
       expect(result.error).toContain('DB connection failed')
       expect(result).toHaveProperty('source')
@@ -296,7 +296,7 @@ describe('buildTools', () => {
     it('getPropertyDetail returns error payload when service throws', async () => {
       mocks.getPropertyWithStats.mockRejectedValue(new Error('timeout'))
       const tools = buildTools(USER_ID)
-      const result = await tools.getPropertyDetail.execute({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.getPropertyDetail.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toHaveProperty('error')
       expect(result).toHaveProperty('source')
       expect(result).toHaveProperty('statusLabel')
@@ -305,7 +305,7 @@ describe('buildTools', () => {
     it('getLoanDetail returns error payload when service throws', async () => {
       mocks.findInstallmentLoanDetail.mockRejectedValue(new Error('network error'))
       const tools = buildTools(USER_ID)
-      const result = await tools.getLoanDetail.execute({ loanId: LOAN_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.getLoanDetail.execute!({ loanId: LOAN_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toHaveProperty('error')
       expect(result).toHaveProperty('source')
     })
@@ -313,7 +313,7 @@ describe('buildTools', () => {
     it('getCashflowByPeriod returns error payload when service throws', async () => {
       mocks.getCashflowSummary.mockRejectedValue(new Error('query failed'))
       const tools = buildTools(USER_ID)
-      const result = await tools.getCashflowByPeriod.execute({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.getCashflowByPeriod.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toHaveProperty('error')
       expect(result).toHaveProperty('source')
     })
@@ -321,7 +321,7 @@ describe('buildTools', () => {
     it('lookupLedgerEntries returns error payload when service throws', async () => {
       mocks.listLedgerEntriesInRange.mockRejectedValue(new Error('DB error'))
       const tools = buildTools(USER_ID)
-      const result = await tools.lookupLedgerEntries.execute({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const result = await tools.lookupLedgerEntries.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toHaveProperty('error')
       expect(result).toHaveProperty('source')
     })
