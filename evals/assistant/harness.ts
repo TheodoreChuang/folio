@@ -49,7 +49,7 @@ function buildSeededTools(portfolio: SeededPortfolio): ToolSet {
     getCashflowByPeriod: tool({
       description: 'Get cashflow summary for a given date range.',
       inputSchema: z.object({ from: z.string(), to: z.string() }),
-      execute: async ({ from, to }) => ({
+      execute: async ({ from: _from, to: _to }) => ({
         found: true,
         source: 'Cashflow data',
         statusLabel: 'Fetching cashflow data…',
@@ -59,7 +59,7 @@ function buildSeededTools(portfolio: SeededPortfolio): ToolSet {
     lookupLedgerEntries: tool({
       description: 'Look up ledger entries for a given date range and optional category.',
       inputSchema: z.object({ from: z.string(), to: z.string(), category: z.string().optional() }),
-      execute: async ({ from, to, category }) => ({
+      execute: async ({ from: _from, to: _to, category: _category }) => ({
         found: true,
         source: 'Ledger entries',
         statusLabel: 'Searching ledger entries…',
