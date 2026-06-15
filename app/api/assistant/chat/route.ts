@@ -1,17 +1,8 @@
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
+import { convertToModelMessages, safeValidateUIMessages } from 'ai'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
 import { checkAllowance, consumeIfAllowed, DAILY_MESSAGE_CAP, streamChat } from '@/lib/assistant'
-
-const schema = z.object({
-  messages: z.array(
-    z.object({
-      role: z.enum(['user', 'assistant']),
-      content: z.string().max(2000),
-    })
-  ).min(1),
-})
 
 export async function POST(request: Request) {
   try {
@@ -19,12 +10,15 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (user.authMethod !== 'cookie') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const parsed = schema.safeParse(await request.json().catch(() => null))
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+    const body = await request.json().catch(() => null) as { messages?: unknown } | null
+    if (!body || !Array.isArray(body.messages) || body.messages.length === 0) {
+      return NextResponse.json({ error: 'messages array is required' }, { status: 400 })
     }
 
-    const { messages } = parsed.data
+    const validated = await safeValidateUIMessages({ messages: body.messages })
+    if (!validated.success) {
+      return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 })
+    }
 
     const allowance = await checkAllowance(user.id)
     if (!allowance.allowed) {
@@ -42,7 +36,8 @@ export async function POST(request: Request) {
       )
     }
 
-    const result = await streamChat(user.id, messages)
+    const modelMessages = await convertToModelMessages(validated.data, { ignoreIncompleteToolCalls: true })
+    const result = await streamChat(user.id, modelMessages)
     return result.toUIMessageStreamResponse()
   } catch (err) {
     captureError(err, { route: 'POST /api/assistant/chat' })

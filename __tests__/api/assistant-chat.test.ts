@@ -26,7 +26,16 @@ vi.mock('@/lib/assistant', () => ({
 }))
 
 const USER_ID = 'user-abc-123'
-const VALID_MESSAGES = [{ role: 'user' as const, content: 'Hello' }]
+
+// AI SDK v6 UIMessage format
+const VALID_MESSAGES = [
+  {
+    id: 'msg-1',
+    role: 'user' as const,
+    parts: [{ type: 'text' as const, text: 'Hello' }],
+    metadata: undefined,
+  },
+]
 
 function makeRequest(body?: unknown) {
   return new Request('http://localhost/api/assistant/chat', {
@@ -86,9 +95,15 @@ describe('POST /api/assistant/chat', () => {
     expect(body.error).toBeDefined()
   })
 
-  it('returns 400 when a message content exceeds 2000 chars', async () => {
-    const longContent = 'a'.repeat(2001)
-    const res = await POST(makeRequest({ messages: [{ role: 'user', content: longContent }] }))
+  it('returns 400 when messages is not an array', async () => {
+    const res = await POST(makeRequest({ messages: 'not an array' }))
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBeDefined()
+  })
+
+  it('returns 400 when messages have invalid structure', async () => {
+    const res = await POST(makeRequest({ messages: [{ role: 'invalid', content: 'hello' }] }))
     expect(res.status).toBe(400)
     const body = await res.json()
     expect(body.error).toBeDefined()
@@ -115,9 +130,9 @@ describe('POST /api/assistant/chat', () => {
     expect(body.limit).toBe(25)
   })
 
-  it('happy path: calls streamChat with session userId and messages, returns streaming response', async () => {
+  it('happy path: calls streamChat with session userId, returns streaming response', async () => {
     const res = await POST(makeRequest({ messages: VALID_MESSAGES }))
-    expect(mocks.mockStreamChat).toHaveBeenCalledWith(USER_ID, VALID_MESSAGES)
+    expect(mocks.mockStreamChat).toHaveBeenCalledWith(USER_ID, expect.any(Array))
     expect(mocks.mockToUIMessageStreamResponse).toHaveBeenCalled()
     expect(res.headers.get('Content-Type')).toContain('text/event-stream')
   })
@@ -125,11 +140,11 @@ describe('POST /api/assistant/chat', () => {
   it('uses session userId, not any userId supplied in the body', async () => {
     const bodyWithUserId = { messages: VALID_MESSAGES, userId: 'attacker-user-id' }
     await POST(makeRequest(bodyWithUserId))
-    expect(mocks.mockStreamChat).toHaveBeenCalledWith(USER_ID, VALID_MESSAGES)
+    expect(mocks.mockStreamChat).toHaveBeenCalledWith(USER_ID, expect.any(Array))
     expect(mocks.mockStreamChat).not.toHaveBeenCalledWith('attacker-user-id', expect.anything())
   })
 
-  it('returns 500 and calls captureError (without message content) when streamChat throws', async () => {
+  it('returns 500 and calls captureError when streamChat throws', async () => {
     const err = new Error('model timeout')
     mocks.mockStreamChat.mockRejectedValue(err)
     const res = await POST(makeRequest({ messages: VALID_MESSAGES }))
