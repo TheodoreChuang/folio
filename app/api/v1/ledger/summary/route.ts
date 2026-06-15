@@ -12,8 +12,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const from = searchParams.get('from')
     const to = searchParams.get('to')
-    const propertyId = searchParams.get('propertyId') ?? undefined
-    const entityId = searchParams.get('entityId') ?? undefined
+    const propertyId = searchParams.get('propertyId') || undefined
+    const entityId = searchParams.get('entityId') || undefined
 
     if (!from || !to) {
       return NextResponse.json({ error: 'Missing required params: from and to (YYYY-MM-DD)' }, { status: 400 })

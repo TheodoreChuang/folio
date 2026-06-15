@@ -8,7 +8,7 @@ export type EvalResult = {
   question: string
   answer: string
   toolCallsMade: string[]
-  toolResults: Record<string, unknown>
+  toolResults: Record<string, unknown[]>
   category: string
 }
 
@@ -49,7 +49,7 @@ function buildSeededTools(portfolio: SeededPortfolio): ToolSet {
     getCashflowByPeriod: tool({
       description: 'Get cashflow summary for a given date range.',
       inputSchema: z.object({ from: z.string(), to: z.string() }),
-      execute: async () => ({
+      execute: async ({ from, to }) => ({
         found: true,
         source: 'Cashflow data',
         statusLabel: 'Fetching cashflow data…',
@@ -59,7 +59,7 @@ function buildSeededTools(portfolio: SeededPortfolio): ToolSet {
     lookupLedgerEntries: tool({
       description: 'Look up ledger entries for a given date range and optional category.',
       inputSchema: z.object({ from: z.string(), to: z.string(), category: z.string().optional() }),
-      execute: async () => ({
+      execute: async ({ from, to, category }) => ({
         found: true,
         source: 'Ledger entries',
         statusLabel: 'Searching ledger entries…',
@@ -72,16 +72,19 @@ function buildSeededTools(portfolio: SeededPortfolio): ToolSet {
 async function collectStreamResult(stream: ReturnType<typeof streamText>): Promise<{
   text: string
   toolCalls: string[]
-  toolResults: Record<string, unknown>
+  toolResults: Record<string, unknown[]>
 }> {
   const chunks: string[] = []
   const toolCalls: string[] = []
-  const toolResults: Record<string, unknown> = {}
+  const toolResults: Record<string, unknown[]> = {}
 
   for await (const chunk of stream.fullStream) {
     if (chunk.type === 'text-delta') chunks.push(chunk.text)
     if (chunk.type === 'tool-call') toolCalls.push(chunk.toolName)
-    if (chunk.type === 'tool-result') toolResults[chunk.toolName] = chunk.output
+    if (chunk.type === 'tool-result') {
+      if (!toolResults[chunk.toolName]) toolResults[chunk.toolName] = []
+      toolResults[chunk.toolName].push(chunk.output)
+    }
   }
 
   return { text: chunks.join(''), toolCalls, toolResults }

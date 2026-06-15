@@ -20,6 +20,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 })
     }
 
+    const safeMessages = validated.data.filter(m => m.role !== 'system')
+    if (safeMessages.length === 0) {
+      return NextResponse.json({ error: 'messages array is required' }, { status: 400 })
+    }
+
+    const MAX_TEXT_CHARS = 2000
+    for (const msg of safeMessages) {
+      for (const part of msg.parts) {
+        if (part.type === 'text' && part.text.length > MAX_TEXT_CHARS) {
+          return NextResponse.json({ error: `Message exceeds ${MAX_TEXT_CHARS} character limit` }, { status: 400 })
+        }
+      }
+    }
+
     const allowance = await checkAllowance(user.id)
     if (!allowance.allowed) {
       return NextResponse.json(
@@ -36,7 +50,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const modelMessages = await convertToModelMessages(validated.data, { ignoreIncompleteToolCalls: true })
+    const modelMessages = await convertToModelMessages(safeMessages, { ignoreIncompleteToolCalls: true })
     const result = await streamChat(user.id, modelMessages)
     return result.toUIMessageStreamResponse()
   } catch (err) {
