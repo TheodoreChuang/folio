@@ -132,3 +132,43 @@ All integration tests use an `if (!hasEnv) return` guard — they silently skip 
 | Gap | Rationale | When to fix |
 |-----|-----------|------------|
 | `hasStatement` semantics | Any non-`loan_payment` entry counts as "has statement" — a manual expense entry satisfies the flag even without a PM statement. Deferred pending UX review of health check status display. | Pending UX review of health check display |
+
+---
+
+## Testing the Assistant (probabilistic surface)
+
+The assistant's deterministic behavior (auth, rate limiting, tool isolation, field stripping) is covered by ordinary unit and integration tests (U3, U5, U7). The *probabilistic* surface — which tools the model calls, whether it grounds its figures, whether it leaks internal details — cannot be binary-asserted. It is graded by a separate eval suite.
+
+### Eval harness (`evals/assistant/`)
+
+| File | Purpose |
+|------|---------|
+| `fixtures.ts` | Seeded "portfolio world" — controlled tool return values used in every eval |
+| `harness.ts` | Runner + programmatic graders (grounding, tool-selection, security) |
+| `cases/grounding.ts` | Categorized eval cases |
+| `baseline.json` | Per-category pass-rate baseline; committed; updated after deliberate prompt changes |
+| `run.ts` | Script that runs the full suite and exits non-zero on regression |
+
+### Running the evals
+
+```bash
+pnpm tsx evals/assistant/run.ts
+```
+
+Requires `ANTHROPIC_API_KEY` in the environment. Runs at temperature 0. Takes ~30 seconds for the current case set.
+
+### Graders
+
+| Grader | Checks | Failure signal |
+|--------|--------|---------------|
+| `gradeGrounding` | Every numeric figure in the answer must appear in seeded tool data | A number that isn't in the fixture → hallucination |
+| `gradeToolSelection` | Specified tools must appear in the tool-call log | Missing tool → model took wrong path |
+| `gradeSecurity` | Answer must not contain raw tool names or system-prompt text | Leak or injection → non-disclosure failure |
+
+### Convention: every miss becomes a case
+
+When a real conversation surfaces a model failure (wrong tool, hallucinated figure, leaked tool name), add it as a new eval case before fixing the prompt. This turns the suite into a growing regression corpus.
+
+### CI gate
+
+The `assistant-evals` workflow runs on every PR but skips unless `lib/assistant/**`, `lib/profile/**`, `lib/ai/**`, or `evals/assistant/**` changed (paths-filter). The eval job is a **required check** in branch protection. A model-version bump via `ASSISTANT_MODEL` env var is not a file path and must be run manually.
