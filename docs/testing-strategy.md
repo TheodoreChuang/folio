@@ -41,14 +41,9 @@ The tell: mock setup and response assertion are mirrors. The route contributes n
 - Service/repository called with correct arguments → especially `userId` from the auth session (cross-user isolation at the unit level)
 - Service errors propagate correctly → returns 404 when service returns null/empty
 - Response is correctly shaped → status code, wrapper key, error shape
+- Non-trivial transformations produce output that differs from the raw mock return — proves the transformation actually ran
 
 These cases test *route behavior*, not mock pass-through. A happy-path test that only checks data flows through is only useful when it also asserts what arguments the mock was called with.
-
-**How to fix a false positive:**
-
-1. Add the missing error-case tests (401, 400, 404) if absent — these are almost never false positives
-2. For the happy-path test: assert `expect(mockService).toHaveBeenCalledWith(expect.objectContaining({ userId }))` to verify the route is scoping correctly
-3. If the route does a non-trivial transformation (mapping, filtering, computing), test that the output differs from the raw mock return in a way that proves the transformation ran
 
 **False positives are not always wrong, but they are always incomplete.** A route that truly does nothing except call a service and return its result is correctly tested by a thin happy-path test — *if* it also has auth, validation, and argument-assertion tests alongside it. The risk is when the happy-path test is the *only* test, giving false confidence.
 
@@ -56,7 +51,7 @@ These cases test *route behavior*, not mock pass-through. A happy-path test that
 
 ### Route tests that use `@/lib/db` directly must mock it
 
-`lib/db.ts` imports `lib/env.ts`, which calls `requireEnv('DATABASE_URL')` at module load time. If a route handler imports `db` directly and the test does not mock `@/lib/db`, the test will throw `Missing required environment variable: DATABASE_URL` in CI (where `.env.local` is absent).
+`lib/db.ts` calls `requireEnv('DATABASE_URL')` at load time — tests that import it without mocking will throw `Missing required environment variable: DATABASE_URL` in CI.
 
 **Rule:** any test that imports a route which has `import { db } from '@/lib/db'` must include a `vi.mock('@/lib/db', ...)` call. See `__tests__/api/entities.test.ts` for the established mock pattern.
 
@@ -136,4 +131,4 @@ All integration tests use an `if (!hasEnv) return` guard — they silently skip 
 
 | Gap | Rationale | When to fix |
 |-----|-----------|------------|
-| `hasStatement` semantics | Any non-`loan_payment` entry counts as "has statement" — a manual expense entry satisfies the flag even without a PM statement. Deferred pending UX review of health check status display. | V4 UX refresh |
+| `hasStatement` semantics | Any non-`loan_payment` entry counts as "has statement" — a manual expense entry satisfies the flag even without a PM statement. Deferred pending UX review of health check status display. | Pending UX review of health check display |

@@ -2,7 +2,7 @@
 
 @docs/conventions.md
 @docs/testing-strategy.md
-@docs/project.md
+@docs/product-foundation.md
 
 ## Git — non-negotiable before any code change
 
@@ -11,6 +11,14 @@
 ```
 git checkout -b {type}/{short-description}   # do this first, before touching any file
 ```
+
+## Plan Files
+For multi-step features, write a plan to `docs/plans/{feature}.md` before coding.
+Reference it across turns instead of relying on chat history — re-reading a file
+doesn't bloat context the way reconstructing from conversation does. Delete the file
+when the PR merges.
+
+For work that may hit session limits, use `/schedule` to queue a one-time overnight run.
 
 ## Stack
 - **Next.js 16** (App Router, TypeScript, `strict: true`)
@@ -21,38 +29,22 @@ git checkout -b {type}/{short-description}   # do this first, before touching an
 - **pnpm** — always use pnpm, not npm/yarn/bun
 
 ## Commands
-| Task | Command |
-|------|---------|
-| Dev server | `pnpm dev` |
-| Unit tests | `pnpm test` |
-| Watch tests | `pnpm test:watch` |
-| Integration tests | `pnpm test:integration` |
-| Type check | `pnpm tsc --noEmit` |
-| DB codegen | `pnpm db:generate` |
-| DB migrate | `pnpm db:migrate` |
-| Seed | `pnpm seed` |
-| Supabase reset | `pnpm db:reset` |
+See `package.json` for all scripts. Type-check: `pnpm tsc --noEmit`.
 
 ## Key Paths
 ```
-db/schema.ts          — Drizzle table definitions + exported types
-lib/extraction/       — PDF → text → AI extraction pipeline
-docs/solutions/       — documented solutions to past bugs and patterns (searchable by module, tags, problem_type)
+lib/extraction/   — PDF → text → AI extraction pipeline
+docs/solutions/   — documented solutions to past bugs and patterns (searchable by module, tags, problem_type)
 ```
-See `conventions.md §1` for the full folder structure and module layout.
 
-## Testing Conventions
-- Unit tests mock at the boundary (Supabase, DB, AI); no real I/O
-- Integration tests use `pool: 'forks'` and run sequentially (DB safety)
+## Commits
+A pre-commit hook runs lint, tsc, and tests automatically. Monitor the output and fix any failures before proceeding.
 
-## Pre-commit Checklist
-Run all three before every commit — these match what CI checks:
-```
-pnpm lint
-pnpm tsc --noEmit
-pnpm test
-```
-Integration tests (`pnpm test:integration`) require `supabase start`; run them when the change touches DB queries, migrations, or storage.
+## Verification
+A passing diff is not evidence it works. After every change:
+- **Backend**: ensure the pre-commit hook passes
+- **Frontend**: `pnpm dev` → open browser → verify the golden path and key edge cases.
+  Components have no unit test coverage — the browser check is the only gate.
 
 ## Key Patterns
 - **Logging**: use `logger.debug/info/error` from `lib/logger.ts`; set `LOG_LEVEL=debug`
