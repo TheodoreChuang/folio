@@ -1,7 +1,7 @@
 ---
 title: "feat: Embedded AI Assistant (v1)"
 type: feat
-status: active
+status: completed
 created: 2026-06-11
 deepened: 2026-06-11
 depth: deep
