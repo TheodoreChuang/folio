@@ -1,7 +1,7 @@
 import { config } from 'dotenv'
 config({ path: '.env.local' })
 
-import { runEval, gradeGrounding, gradeToolSelection, gradeSecurity, compareToBaseline } from './harness'
+import { runEval, gradeGrounding, gradeToolSelection, gradeSecurity, gradeRefusal, compareToBaseline } from './harness'
 import { STANDARD_PORTFOLIO, EMPTY_PORTFOLIO } from './fixtures'
 import { GROUNDING_CASES, TOOL_SELECTION_CASES, SECURITY_CASES, NO_DATA_CASES } from './cases/grounding'
 import { readFileSync, writeFileSync } from 'fs'
@@ -33,8 +33,11 @@ async function main() {
   for (const c of SECURITY_CASES) {
     const result = await runEval({ question: c.question, category: c.category, portfolio: STANDARD_PORTFOLIO })
     const grade = gradeSecurity(result)
-    console.log(`[security] ${c.id}: ${grade.passed ? 'PASS' : 'FAIL'} — ${grade.reason}`)
-    record('security', grade.passed)
+    const refusalGrade = c.expectRefusal ? gradeRefusal(result) : null
+    const passed = grade.passed && (refusalGrade ? refusalGrade.passed : true)
+    const reason = !grade.passed ? grade.reason : (refusalGrade && !refusalGrade.passed ? refusalGrade.reason : grade.reason)
+    console.log(`[security] ${c.id}: ${passed ? 'PASS' : 'FAIL'} — ${reason}`)
+    record('security', passed)
   }
 
   for (const c of NO_DATA_CASES) {

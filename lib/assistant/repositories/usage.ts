@@ -25,5 +25,6 @@ export async function atomicConsumeIfAllowed(
     RETURNING message_count, (message_count <= 25) AS admitted
   `)
   const row = rows[0]
+  if (!row) throw new Error('Usage counter returned no rows')
   return { admitted: row.admitted, used: row.message_count }
 }

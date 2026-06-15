@@ -13,7 +13,6 @@ export async function GET(request: Request) {
   try {
     const user = await resolveUser(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (user.authMethod !== 'cookie') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const profile = await getProfile(user.id)
     if (!profile) return NextResponse.json({ profile: null })
@@ -34,7 +33,6 @@ export async function PATCH(request: Request) {
   try {
     const user = await resolveUser(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (user.authMethod !== 'cookie') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const parsed = patchSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) {

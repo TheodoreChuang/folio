@@ -12,8 +12,11 @@ export function buildPortfolioTool(userId: string) {
       try {
         const data = await getPortfolioData(userId)
         const lvr = computePortfolioLVR(data.properties, data.valuations, data.balances, data.loans)
+        // Strip accountReference — sensitive field, not for model output (mirrors getLoanDetail)
+        const safeLoans = data.loans.map(({ accountReference: _, ...rest }) => rest)
         return {
           ...data,
+          loans: safeLoans,
           lvr,
           source: 'Portfolio summary',
           statusLabel: 'Reading your portfolio summary…',

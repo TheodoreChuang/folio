@@ -21,7 +21,7 @@ export async function upsertProfile(
     .values({ userId, ...data })
     .onConflictDoUpdate({
       target: investorProfiles.userId,
-      set: data,
+      set: { ...data, updatedAt: new Date() },
     })
     .returning()
   return row

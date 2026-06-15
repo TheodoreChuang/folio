@@ -174,8 +174,8 @@ describe('buildTools', () => {
     })
   })
 
-  describe('Test 3 — getLoanDetail output never contains accountReference key', () => {
-    it('strips accountReference from the output', async () => {
+  describe('Test 3 — accountReference is never present in tool output', () => {
+    it('getLoanDetail strips accountReference from the output', async () => {
       const tools = buildTools(USER_ID)
       const result = await tools.getLoanDetail.execute!({ loanId: LOAN_ID }, { toolCallId: 't', messages: [], abortSignal: undefined })
       // Top-level result
@@ -186,11 +186,24 @@ describe('buildTools', () => {
       }
     })
 
-    it('accountReference key is absent when loan is not found', async () => {
+    it('getLoanDetail accountReference key is absent when loan is not found', async () => {
       mocks.findInstallmentLoanDetail.mockResolvedValue(undefined)
       const tools = buildTools(USER_ID)
       const result = await tools.getLoanDetail.execute!({ loanId: 'nonexistent' }, { toolCallId: 't', messages: [], abortSignal: undefined })
       expect(result).not.toHaveProperty('accountReference')
+    })
+
+    it('getPortfolioSummary strips accountReference from each loan in the portfolio', async () => {
+      mocks.getPortfolioData.mockResolvedValue({
+        ...portfolioData,
+        loans: [{ id: LOAN_ID, userId: USER_ID, propertyId: PROP_ID, lender: 'ANZ', nickname: null, accountReference: 'SECRET-ACCOUNT-0123', startDate: '2020-01-01', endDate: '2050-01-01', entityId: null, loanType: null, ioEndDate: null, interestRate: '5.5', rateType: null, loanTermYears: 30, originalAmountCents: 50000000, createdAt: new Date(), updatedAt: new Date(), deletedAt: null }],
+      })
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPortfolioSummary.execute!({}, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result).not.toHaveProperty('accountReference')
+      const loans = result.loans as Array<Record<string, unknown>>
+      expect(loans).toHaveLength(1)
+      expect(loans[0]).not.toHaveProperty('accountReference')
     })
   })
 
