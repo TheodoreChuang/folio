@@ -161,7 +161,7 @@ export function AssistantMessage({ message, isLast, error, status }: AssistantMe
             )
           }
 
-          if (isToolOrDynamicToolUIPart(part) && part.type === 'dynamic-tool') {
+          if (isToolOrDynamicToolUIPart(part)) {
             return <ToolStatusRow key={i} part={part} />
           }
 

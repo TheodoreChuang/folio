@@ -20,31 +20,29 @@ export function AssistantDock() {
   const hasData = properties.length > 0
 
   const [isOpen, setIsOpen] = useState(false)
-  const [initialMessages, setInitialMessages] = useState<UIMessage[]>([])
   const [mounted, setMounted] = useState(false)
   const [input, setInput] = useState('')
   const [rateLimited, setRateLimited] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
-    try {
-      const saved = sessionStorage.getItem(SK.thread)
-      if (saved) setInitialMessages(JSON.parse(saved) as UIMessage[])
-    } catch { /* ignore */ }
-    try {
-      setIsOpen(sessionStorage.getItem(SK.open) === 'true')
-    } catch { /* ignore */ }
-  }, [])
-
   const { messages, sendMessage, stop, status, error, setMessages } = useChat({
     transport: TRANSPORT,
-    messages: initialMessages,
     onError: (err) => {
       if (err.message?.toLowerCase().includes('limit')) {
         setRateLimited(true)
       }
     },
   })
+
+  useEffect(() => {
+    setMounted(true)
+    try {
+      const saved = sessionStorage.getItem(SK.thread)
+      if (saved) setMessages(JSON.parse(saved) as UIMessage[])
+    } catch { /* ignore */ }
+    try {
+      setIsOpen(sessionStorage.getItem(SK.open) === 'true')
+    } catch { /* ignore */ }
+  }, [setMessages])
 
   useEffect(() => {
     if (messages.length > 0) {
