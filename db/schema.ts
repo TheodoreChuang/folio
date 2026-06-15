@@ -343,6 +343,30 @@ export type NewPersonalBudgetItem = typeof personalBudgetItems.$inferInsert
 export type BudgetItemType        = typeof budgetItemTypeEnum.enumValues[number]
 export type BudgetItemFrequency   = typeof budgetItemFrequencyEnum.enumValues[number]
 
+export const investorProfiles = pgTable('investor_profiles', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  userId:          uuid('user_id').notNull().unique(),
+  investmentGoal:  varchar('investment_goal', { length: 200 }),
+  strategyNotes:   varchar('strategy_notes', { length: 500 }),
+  createdAt:       timestamp('created_at').defaultNow().notNull(),
+  updatedAt:       timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+                     .$onUpdate(() => new Date()),
+}, (t) => [
+  index('idx_investor_profiles_user').on(t.userId),
+])
+
+// edit-in-place counter (KTD-4 §8); not a ledger or snapshot — the messageCount is mutated in place
+export const assistantUsage = pgTable('assistant_usage', {
+  id:           uuid('id').primaryKey().defaultRandom(),
+  userId:       uuid('user_id').notNull(),
+  usageDate:    date('usage_date').notNull(),
+  messageCount: integer('message_count').notNull().default(0),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  unique().on(t.userId, t.usageDate),
+  index('idx_assistant_usage_user').on(t.userId),
+])
+
 export const apiKeys = pgTable('api_keys', {
   id:         uuid('id').primaryKey().defaultRandom(),
   userId:     uuid('user_id').notNull(),
@@ -359,6 +383,12 @@ export const apiKeys = pgTable('api_keys', {
 
 export type ApiKey    = typeof apiKeys.$inferSelect
 export type NewApiKey = typeof apiKeys.$inferInsert
+
+export type InvestorProfile    = typeof investorProfiles.$inferSelect
+export type NewInvestorProfile = typeof investorProfiles.$inferInsert
+
+export type AssistantUsage    = typeof assistantUsage.$inferSelect
+export type NewAssistantUsage = typeof assistantUsage.$inferInsert
 
 // Backward-compatible aliases — used by frontend pages pending the Frontend rebuild phase
 export type LoanBalance = InstallmentLoanBalance
