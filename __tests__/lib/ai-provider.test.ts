@@ -35,7 +35,7 @@ describe('lib/ai/provider — getModel', () => {
     delete process.env.ASSISTANT_MODEL
     const { getModel } = await import('@/lib/ai/provider')
     getModel()
-    expect(mocks.gateway).toHaveBeenCalledWith('anthropic/claude-sonnet-4-6')
+    expect(mocks.gateway).toHaveBeenCalledWith('anthropic/claude-haiku-4.5')
   })
 
   it('uses a custom model id when ASSISTANT_MODEL is configured', async () => {
