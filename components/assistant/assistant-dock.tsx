@@ -38,7 +38,10 @@ export function AssistantDock() {
     setMounted(true)
     try {
       const saved = sessionStorage.getItem(SK.thread)
-      if (saved) setMessages(JSON.parse(saved) as UIMessage[])
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) setMessages(parsed as UIMessage[])
+      }
     } catch { /* ignore */ }
     try {
       setIsOpen(sessionStorage.getItem(SK.open) === 'true')

@@ -376,7 +376,7 @@ const InvestorProfileSchema = registry.register('InvestorProfile', z.object({
 }))
 
 const ProfileResponseSchema = registry.register('ProfileResponse', z.object({
-  profile: InvestorProfileSchema.nullable(),
+  profile: InvestorProfileSchema,
 }))
 
 registry.registerPath({
@@ -384,14 +384,15 @@ registry.registerPath({
   path: '/api/profile',
   tags: ['Profile'],
   summary: 'Get the investor profile',
-  description: 'Returns the authenticated user\'s investor profile (investment goal and strategy notes). Returns `{ profile: null }` when no profile has been set yet.',
+  description: 'Returns the authenticated user\'s investor profile (investment goal and strategy notes). Returns 404 when no profile has been set yet — call `PATCH /api/profile` to create one.',
   security: [{ BearerAuth: [] }],
   responses: {
     200: {
-      description: 'Investor profile (null when not yet set)',
+      description: 'Investor profile',
       content: { 'application/json': { schema: ProfileResponseSchema } },
     },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
+    404: { description: 'No profile set yet', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })
 

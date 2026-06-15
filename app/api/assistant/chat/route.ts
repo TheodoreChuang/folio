@@ -25,6 +25,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'messages array is required' }, { status: 400 })
     }
 
+    const MAX_MESSAGES = 50
+    if (safeMessages.length > MAX_MESSAGES) {
+      return NextResponse.json({ error: `Request exceeds ${MAX_MESSAGES} message limit` }, { status: 400 })
+    }
+
     const MAX_TEXT_CHARS = 2000
     for (const msg of safeMessages) {
       for (const part of msg.parts) {
@@ -34,6 +39,8 @@ export async function POST(request: Request) {
       }
     }
 
+    const modelMessages = await convertToModelMessages(safeMessages, { ignoreIncompleteToolCalls: true })
+
     const admission = await consumeIfAllowed(user.id)
     if (!admission.admitted) {
       return NextResponse.json(
@@ -42,7 +49,6 @@ export async function POST(request: Request) {
       )
     }
 
-    const modelMessages = await convertToModelMessages(safeMessages, { ignoreIncompleteToolCalls: true })
     const result = await streamChat(user.id, modelMessages)
     return result.toUIMessageStreamResponse()
   } catch (err) {

@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const profile = await getProfile(user.id)
-    if (!profile) return NextResponse.json({ profile: null })
+    if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
 
     return NextResponse.json({
       profile: {
