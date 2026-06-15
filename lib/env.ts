@@ -9,4 +9,5 @@ export const env = {
   SUPABASE_URL:             requireEnv('NEXT_PUBLIC_SUPABASE_URL'),
   SUPABASE_PUBLISHABLE_KEY: requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
   LOG_LEVEL:                process.env.LOG_LEVEL ?? 'info',
+  ASSISTANT_MODEL:          process.env.ASSISTANT_MODEL ?? 'anthropic/claude-sonnet-4-6',
 } as const
