@@ -116,6 +116,17 @@ describe('computeReport', () => {
     expect(totals.totalExpenses).toBe(0)
   })
 
+  it('aggregates other_income as income, not as expenses', () => {
+    const entries = [
+      makeEntry({ amountCents: 26520, category: 'other_income' }),
+    ]
+    const { totals } = computeReport(entries, [prop1])
+    expect(totals.totalOtherIncome).toBe(26520)
+    expect(totals.totalExpenses).toBe(0)
+    expect(totals.totalRent).toBe(0)
+    expect(totals.properties[0].otherIncomeCents).toBe(26520)
+  })
+
   it('computes net before and after mortgage correctly', () => {
     const entries = [
       makeEntry({ id: 'r', amountCents: 400000, category: 'rent' }),
@@ -126,6 +137,19 @@ describe('computeReport', () => {
     expect(totals.netBeforeMortgage).toBe(310000) // 400k - 90k
     expect(totals.netAfterMortgage).toBe(100000)  // 310k - 210k
     expect(totals.properties[0].netCents).toBe(100000)
+  })
+
+  it('includes other_income in net calculations', () => {
+    const entries = [
+      makeEntry({ id: 'r', amountCents: 400000, category: 'rent' }),
+      makeEntry({ id: 'i', amountCents: 26520,  category: 'other_income' }),
+      makeEntry({ id: 'e', amountCents: 90000,  category: 'property_management' }),
+      makeEntry({ id: 'm', amountCents: 210000, category: 'loan_payment' }),
+    ]
+    const { totals } = computeReport(entries, [prop1])
+    expect(totals.netBeforeMortgage).toBe(336520) // 400k + 26520 - 90k
+    expect(totals.netAfterMortgage).toBe(126520)  // 336520 - 210k
+    expect(totals.properties[0].netCents).toBe(126520)
   })
 
   it('computes negative net correctly', () => {
@@ -160,6 +184,12 @@ describe('computeReport', () => {
     const { totals } = computeReport(entries, [prop1])
     expect(totals.properties[0].hasMortgage).toBe(true)
     expect(totals.mortgagesProvided).toBe(1)
+  })
+
+  it('other_income entry satisfies hasStatement', () => {
+    const entries = [makeEntry({ category: 'other_income', amountCents: 26520 })]
+    const { totals } = computeReport(entries, [prop1])
+    expect(totals.properties[0].hasStatement).toBe(true)
   })
 
   it('flags properties missing statements', () => {

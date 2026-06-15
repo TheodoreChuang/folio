@@ -46,6 +46,7 @@ export const ledgerCategoryEnum = pgEnum('ledger_category', [
   'strata_fees',
   'other_expense',
   'loan_payment',
+  'other_income',
 ])
 
 export const properties = pgTable('properties', {

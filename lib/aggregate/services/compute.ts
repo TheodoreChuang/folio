@@ -10,7 +10,8 @@ export const CATEGORY_BUCKET = {
   strata_fees:         'expense',
   other_expense:       'expense',
   loan_payment:        'mortgage',
-} satisfies Record<LedgerCategory, 'rent' | 'expense' | 'mortgage'>
+  other_income:        'income',
+} satisfies Record<LedgerCategory, 'rent' | 'expense' | 'mortgage' | 'income'>
 
 // ── return metrics ──────────────────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ export type PropertyTotals = {
   address: string
   nickname: string | null
   rentCents: number
+  otherIncomeCents: number
   expensesCents: number
   mortgageCents: number
   netCents: number
@@ -89,6 +91,7 @@ export type PropertyTotals = {
 
 export type ReportTotals = {
   totalRent: number
+  totalOtherIncome: number
   totalExpenses: number
   totalMortgage: number
   netBeforeMortgage: number
@@ -124,6 +127,10 @@ export function computeReport(
       .filter((e) => e.category === 'rent')
       .reduce((s, e) => s + e.amountCents, 0)
 
+    const otherIncomeCents = propEntries
+      .filter((e) => CATEGORY_BUCKET[e.category] === 'income')
+      .reduce((s, e) => s + e.amountCents, 0)
+
     const expensesCents = propEntries
       .filter((e) => CATEGORY_BUCKET[e.category] === 'expense')
       .reduce((s, e) => s + e.amountCents, 0)
@@ -140,24 +147,27 @@ export function computeReport(
       address: p.address,
       nickname: p.nickname,
       rentCents,
+      otherIncomeCents,
       expensesCents,
       mortgageCents,
-      netCents: rentCents - expensesCents - mortgageCents,
+      netCents: rentCents + otherIncomeCents - expensesCents - mortgageCents,
       hasStatement,
       hasMortgage,
     }
   })
 
   const totalRent = propertyTotals.reduce((s, p) => s + p.rentCents, 0)
+  const totalOtherIncome = propertyTotals.reduce((s, p) => s + p.otherIncomeCents, 0)
   const totalExpenses = propertyTotals.reduce((s, p) => s + p.expensesCents, 0)
   const totalMortgage = propertyTotals.reduce((s, p) => s + p.mortgageCents, 0)
-  const netBeforeMortgage = totalRent - totalExpenses
+  const netBeforeMortgage = totalRent + totalOtherIncome - totalExpenses
   const netAfterMortgage = netBeforeMortgage - totalMortgage
   const statementsReceived = propertyTotals.filter((p) => p.hasStatement).length
   const mortgagesProvided = propertyTotals.filter((p) => p.hasMortgage).length
 
   const totals: ReportTotals = {
     totalRent,
+    totalOtherIncome,
     totalExpenses,
     totalMortgage,
     netBeforeMortgage,

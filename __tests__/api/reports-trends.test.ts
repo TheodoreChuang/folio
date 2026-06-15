@@ -107,7 +107,7 @@ describe('GET /api/reports/trends', () => {
   })
 
   it('returns the computeTrends result wrapped in { trends }', async () => {
-    const fakeTrends = [{ month: '2026-03', rentCents: 0, expensesCents: 0, mortgageCents: 0, netCents: 0, hasData: false }]
+    const fakeTrends = [{ month: '2026-03', rentCents: 0, otherIncomeCents: 0, expensesCents: 0, mortgageCents: 0, netCents: 0, hasData: false }]
     mocks.mockComputeTrends.mockReturnValueOnce(fakeTrends)
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     expect(res.status).toBe(200)

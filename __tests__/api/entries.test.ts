@@ -175,6 +175,20 @@ describe('POST /api/properties/[id]/entries', () => {
     expect(mocks.mockCreateLedgerEntry).not.toHaveBeenCalled()
   })
 
+  it('accepts other_income category', async () => {
+    mocks.mockCreateLedgerEntry.mockResolvedValueOnce({ ...entryRow, category: 'other_income' })
+    const res = await POST(
+      makePostRequest(VALID_PROP_ID, { ...validBody, category: 'other_income' }),
+      { params: Promise.resolve({ id: VALID_PROP_ID }) }
+    )
+    expect(res.status).toBe(201)
+    const json = await res.json()
+    expect(json.entry.category).toBe('other_income')
+    expect(mocks.mockCreateLedgerEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ category: 'other_income', userId: 'user-123' })
+    )
+  })
+
   it('returns 400 for invalid lineItemDate', async () => {
     const res = await POST(
       makePostRequest(VALID_PROP_ID, { ...validBody, lineItemDate: '2026-03' }),

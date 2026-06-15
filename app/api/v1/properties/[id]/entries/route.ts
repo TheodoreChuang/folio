@@ -9,7 +9,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 const MANUAL_CATEGORIES = [
   'rent', 'insurance', 'rates', 'repairs',
-  'property_management', 'utilities', 'strata_fees', 'other_expense',
+  'property_management', 'utilities', 'strata_fees', 'other_expense', 'other_income',
 ] as const
 
 const bodySchema = z.object({
