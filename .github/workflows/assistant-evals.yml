@@ -32,6 +32,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: '9'
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -40,6 +42,7 @@ jobs:
       - name: Run eval harness meta-tests
         run: pnpm test __tests__/lib/assistant-eval-harness.test.ts
       - name: Run eval suite (seeded fixtures, temp=0)
+        if: env.ANTHROPIC_API_KEY != ''
         run: pnpm tsx evals/assistant/run.ts
         env:
           EVAL_WRITE_RESULTS: 'true'

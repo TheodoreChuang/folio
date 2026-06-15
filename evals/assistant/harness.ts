@@ -1,4 +1,4 @@
-import { streamText, tool } from 'ai'
+import { streamText, tool, stepCountIs } from 'ai'
 import { z } from 'zod'
 import type { ModelMessage, ToolSet } from 'ai'
 import { buildSystemPrompt } from '@/lib/assistant/prompt'
@@ -106,7 +106,7 @@ export async function runEval(options: {
     messages,
     tools,
     temperature: 0,
-    maxSteps: 6,
+    stopWhen: stepCountIs(6),
   })
 
   const { text, toolCalls, toolResults } = await collectStreamResult(stream)
