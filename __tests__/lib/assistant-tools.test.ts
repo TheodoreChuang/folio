@@ -161,7 +161,7 @@ describe('buildTools', () => {
     it('lookupLedgerEntries calls listLedgerEntriesInRange with closure userId', async () => {
       const tools = buildTools(USER_ID)
       await tools.lookupLedgerEntries.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't5', messages: [], abortSignal: undefined })
-      expect(mocks.listLedgerEntriesInRange).toHaveBeenCalledWith(USER_ID, '2026-01-01', '2026-03-31', undefined)
+      expect(mocks.listLedgerEntriesInRange).toHaveBeenCalledWith(USER_ID, '2026-01-01', '2026-03-31', undefined, undefined)
     })
 
     it('uses the userId from the specific buildTools call, not a shared global', async () => {

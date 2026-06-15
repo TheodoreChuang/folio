@@ -1,6 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { listLedgerEntriesInRange } from '@/lib/aggregate'
+import type { LedgerCategory } from '@/db/schema'
 
 const inputSchema = z.object({
   from: z.string().describe('Start date in YYYY-MM-DD format.'),
@@ -16,10 +17,7 @@ export function buildLedgerTool(userId: string) {
     execute: async ({ from, to, category, propertyId }) => {
       try {
         const propertyIds = propertyId ? [propertyId] : undefined
-        let entries = await listLedgerEntriesInRange(userId, from, to, propertyIds)
-        if (category) {
-          entries = entries.filter(e => e.category === category)
-        }
+        const entries = await listLedgerEntriesInRange(userId, from, to, propertyIds, category as LedgerCategory | undefined)
         return {
           entries,
           count: entries.length,

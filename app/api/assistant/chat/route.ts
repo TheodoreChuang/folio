@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { convertToModelMessages, safeValidateUIMessages } from 'ai'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
-import { checkAllowance, consumeIfAllowed, DAILY_MESSAGE_CAP, streamChat } from '@/lib/assistant'
+import { consumeIfAllowed, DAILY_MESSAGE_CAP, streamChat } from '@/lib/assistant'
 
 export async function POST(request: Request) {
   try {
@@ -32,14 +32,6 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: `Message exceeds ${MAX_TEXT_CHARS} character limit` }, { status: 400 })
         }
       }
-    }
-
-    const allowance = await checkAllowance(user.id)
-    if (!allowance.allowed) {
-      return NextResponse.json(
-        { error: 'Daily message limit reached', used: allowance.used, limit: DAILY_MESSAGE_CAP },
-        { status: 429 }
-      )
     }
 
     const admission = await consumeIfAllowed(user.id)

@@ -27,9 +27,10 @@ export function AssistantDock() {
   const { messages, sendMessage, stop, status, error, setMessages } = useChat({
     transport: TRANSPORT,
     onError: (err) => {
-      if (err.message?.toLowerCase().includes('limit')) {
-        setRateLimited(true)
-      }
+      try {
+        const body = JSON.parse(err.message) as { error?: string }
+        if (body?.error === 'Daily message limit reached') setRateLimited(true)
+      } catch { /* non-JSON error body */ }
     },
   })
 

@@ -3,7 +3,6 @@ import { POST } from '@/app/api/assistant/chat/route'
 
 const mocks = vi.hoisted(() => ({
   mockResolveUser: vi.fn(),
-  mockCheckAllowance: vi.fn(),
   mockConsumeIfAllowed: vi.fn(),
   mockStreamChat: vi.fn(),
   mockCaptureError: vi.fn(),
@@ -19,7 +18,6 @@ vi.mock('@/lib/api-error', () => ({
 }))
 
 vi.mock('@/lib/assistant', () => ({
-  checkAllowance: mocks.mockCheckAllowance,
   consumeIfAllowed: mocks.mockConsumeIfAllowed,
   DAILY_MESSAGE_CAP: 25,
   streamChat: mocks.mockStreamChat,
@@ -57,7 +55,6 @@ describe('POST /api/assistant/chat', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockResolveUser.mockResolvedValue({ id: USER_ID, authMethod: 'cookie' })
-    mocks.mockCheckAllowance.mockResolvedValue({ allowed: true, used: 5, limit: 25 })
     mocks.mockConsumeIfAllowed.mockResolvedValue({ admitted: true, used: 6 })
     mocks.mockToUIMessageStreamResponse.mockReturnValue(
       new Response('data: done\n\n', { headers: { 'Content-Type': 'text/event-stream' } })
@@ -132,18 +129,7 @@ describe('POST /api/assistant/chat', () => {
     expect(mocks.mockStreamChat).not.toHaveBeenCalled()
   })
 
-  it('returns 429 with used and limit when checkAllowance returns allowed:false', async () => {
-    mocks.mockCheckAllowance.mockResolvedValue({ allowed: false, used: 25, limit: 25 })
-    const res = await POST(makeRequest({ messages: VALID_MESSAGES }))
-    expect(res.status).toBe(429)
-    const body = await res.json()
-    expect(body.error).toBe('Daily message limit reached')
-    expect(body.used).toBe(25)
-    expect(body.limit).toBe(25)
-  })
-
-  it('returns 429 when checkAllowance passes but consumeIfAllowed returns admitted:false (race)', async () => {
-    mocks.mockCheckAllowance.mockResolvedValue({ allowed: true, used: 24, limit: 25 })
+  it('returns 429 with used and limit when consumeIfAllowed returns admitted:false', async () => {
     mocks.mockConsumeIfAllowed.mockResolvedValue({ admitted: false, used: 25 })
     const res = await POST(makeRequest({ messages: VALID_MESSAGES }))
     expect(res.status).toBe(429)
