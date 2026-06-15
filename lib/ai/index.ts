@@ -11,6 +11,8 @@ export interface StreamAssistantReplyOptions<TOOLS extends ToolSet> {
   stopWhen?: StopCondition<TOOLS> | Array<StopCondition<TOOLS>>
 }
 
+const MODEL_FALLBACKS = ['google/gemini-2.5-flash', 'openai/gpt-4.1-mini']
+
 export function streamAssistantReply<TOOLS extends ToolSet>(
   options: StreamAssistantReplyOptions<TOOLS>,
 ) {
@@ -20,5 +22,8 @@ export function streamAssistantReply<TOOLS extends ToolSet>(
     messages: options.messages,
     tools: options.tools,
     stopWhen: options.stopWhen,
+    providerOptions: {
+      gateway: { models: MODEL_FALLBACKS },
+    },
   })
 }
