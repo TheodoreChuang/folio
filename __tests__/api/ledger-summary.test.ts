@@ -2,13 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GET } from '@/app/api/v1/ledger/summary/route'
 
 const PROP_ID  = 'aaaa0001-0000-4000-a000-000000000001'
-const LOAN_ID  = 'bbbb0001-0000-4000-b000-000000000001'
 
 const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockFetchProperties: vi.fn(),
-  mockFetchLoans: vi.fn(),
-  mockFetchEntries: vi.fn(),
+  mockGetCashflow: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -17,19 +14,9 @@ vi.mock('@/lib/supabase/server', () => ({
   ),
 }))
 
-vi.mock('@/lib/aggregate', async () => {
-  // importActual targets the pure service file (no db dependency) to avoid
-  // lib/db → lib/env.ts → DATABASE_URL being evaluated in CI unit test env.
-  const { computeReport } = await vi.importActual<typeof import('@/lib/aggregate/services/compute')>(
-    '@/lib/aggregate/services/compute'
-  )
-  return {
-    listPropertiesActiveInRange: mocks.mockFetchProperties,
-    listLoansActiveInRange: mocks.mockFetchLoans,
-    listLedgerEntriesInRange: mocks.mockFetchEntries,
-    computeReport,
-  }
-})
+vi.mock('@/lib/aggregate', () => ({
+  getCashflowSummary: mocks.mockGetCashflow,
+}))
 
 function makeRequest(params: Record<string, string> = {}) {
   const url = new URL('http://localhost/api/ledger/summary')
@@ -37,59 +24,24 @@ function makeRequest(params: Record<string, string> = {}) {
   return new Request(url.toString(), { method: 'GET' })
 }
 
-function makeEntry(overrides: Record<string, unknown> = {}) {
+function zeroTotals() {
   return {
-    id: 'entry-001',
-    userId: 'user-123',
-    propertyId: PROP_ID,
-    sourceDocumentId: null,
-    installmentLoanId: null,
-    lineItemDate: '2026-03-15',
-    amountCents: 400000,
-    category: 'rent',
-    description: null,
-    userNotes: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    deletedAt: null,
-    ...overrides,
+    totalRent: 0, totalOtherIncome: 0, totalExpenses: 0, totalMortgage: 0,
+    netBeforeMortgage: 0, netAfterMortgage: 0,
+    statementsReceived: 0, mortgagesProvided: 0,
+    propertyCount: 0, properties: [],
   }
 }
 
-function makeProp() {
-  return {
-    id: PROP_ID,
-    userId: 'user-123',
-    address: '123 Smith St, Sydney NSW 2000',
-    nickname: null,
-    startDate: '2020-01-01',
-    endDate: null,
-    entityId: null,
-    createdAt: new Date(),
-  }
-}
-
-function makeLoan() {
-  return {
-    id: LOAN_ID,
-    userId: 'user-123',
-    propertyId: PROP_ID,
-    lender: 'Westpac',
-    nickname: 'Investment loan',
-    startDate: '2020-01-01',
-    endDate: '2050-01-01',
-    entityId: null,
-    createdAt: new Date(),
-  }
+function zeroFlags() {
+  return { missingStatements: [], missingMortgages: [] }
 }
 
 describe('GET /api/ledger/summary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
-    mocks.mockFetchEntries.mockResolvedValue([])
-    mocks.mockFetchProperties.mockResolvedValue([])
-    mocks.mockFetchLoans.mockResolvedValue([])
+    mocks.mockGetCashflow.mockResolvedValue({ totals: zeroTotals(), flags: zeroFlags() })
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -130,7 +82,6 @@ describe('GET /api/ledger/summary', () => {
   })
 
   it('returns zero totals when no entries in range', async () => {
-    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     expect(res.status).toBe(200)
     const json = await res.json()
@@ -141,13 +92,16 @@ describe('GET /api/ledger/summary', () => {
   })
 
   it('returns correct totals for entries in range', async () => {
-    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
-    mocks.mockFetchLoans.mockResolvedValueOnce([makeLoan()])
-    mocks.mockFetchEntries.mockResolvedValueOnce([
-      makeEntry({ category: 'rent',         amountCents: 400000 }),
-      makeEntry({ category: 'repairs',       amountCents: 50000  }),
-      makeEntry({ category: 'loan_payment',  amountCents: 200000, installmentLoanId: LOAN_ID }),
-    ])
+    mocks.mockGetCashflow.mockResolvedValueOnce({
+      totals: {
+        ...zeroTotals(),
+        totalRent: 400000, totalExpenses: 50000, totalMortgage: 200000,
+        netBeforeMortgage: 350000, netAfterMortgage: 150000,
+        propertyCount: 1,
+        properties: [{ propertyId: PROP_ID, address: '123 Smith St', nickname: null, rentCents: 400000, otherIncomeCents: 0, expensesCents: 50000, mortgageCents: 200000, netCents: 150000, hasStatement: true, hasMortgage: true }],
+      },
+      flags: { missingStatements: [], missingMortgages: [] },
+    })
 
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     expect(res.status).toBe(200)
@@ -159,26 +113,34 @@ describe('GET /api/ledger/summary', () => {
   })
 
   it('includes other_income in totals and per-property breakdown', async () => {
-    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
-    mocks.mockFetchEntries.mockResolvedValueOnce([
-      makeEntry({ category: 'rent',         amountCents: 400000 }),
-      makeEntry({ category: 'other_income', amountCents: 26520  }),
-      makeEntry({ category: 'repairs',      amountCents: 50000  }),
-    ])
+    mocks.mockGetCashflow.mockResolvedValueOnce({
+      totals: {
+        ...zeroTotals(),
+        totalRent: 400000, totalOtherIncome: 26520, totalExpenses: 50000,
+        netBeforeMortgage: 376520, netAfterMortgage: 376520,
+        propertyCount: 1,
+        properties: [{ propertyId: PROP_ID, address: '123 Smith St', nickname: null, rentCents: 400000, otherIncomeCents: 26520, expensesCents: 50000, mortgageCents: 0, netCents: 376520, hasStatement: true, hasMortgage: false }],
+      },
+      flags: zeroFlags(),
+    })
 
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.totals.totalOtherIncome).toBe(26520)
-    expect(json.totals.netBeforeMortgage).toBe(376520) // 400000 + 26520 - 50000
+    expect(json.totals.netBeforeMortgage).toBe(376520)
     expect(json.totals.properties[0].otherIncomeCents).toBe(26520)
   })
 
   it('returns per-property breakdown in totals.properties', async () => {
-    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
-    mocks.mockFetchEntries.mockResolvedValueOnce([
-      makeEntry({ category: 'rent', amountCents: 400000 }),
-    ])
+    mocks.mockGetCashflow.mockResolvedValueOnce({
+      totals: {
+        ...zeroTotals(),
+        totalRent: 400000, propertyCount: 1,
+        properties: [{ propertyId: PROP_ID, address: '123 Smith St', nickname: null, rentCents: 400000, otherIncomeCents: 0, expensesCents: 0, mortgageCents: 0, netCents: 400000, hasStatement: true, hasMortgage: false }],
+      },
+      flags: zeroFlags(),
+    })
 
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     const json = await res.json()
@@ -188,8 +150,10 @@ describe('GET /api/ledger/summary', () => {
   })
 
   it('includes flags in response', async () => {
-    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
-    mocks.mockFetchLoans.mockResolvedValueOnce([makeLoan()])
+    mocks.mockGetCashflow.mockResolvedValueOnce({
+      totals: zeroTotals(),
+      flags: { missingStatements: [PROP_ID], missingMortgages: [] },
+    })
 
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
     const json = await res.json()
@@ -197,16 +161,16 @@ describe('GET /api/ledger/summary', () => {
     expect(Array.isArray(json.flags.missingMortgages)).toBe(true)
   })
 
-  it('propertyId param scopes entries and properties to that property', async () => {
-    mocks.mockFetchProperties.mockResolvedValueOnce([makeProp()])
+  it('propertyId param is forwarded to getCashflowSummary', async () => {
+    mocks.mockGetCashflow.mockResolvedValueOnce({
+      totals: { ...zeroTotals(), propertyCount: 1, properties: [{ propertyId: PROP_ID, address: '123 Smith St', nickname: null, rentCents: 0, otherIncomeCents: 0, expensesCents: 0, mortgageCents: 0, netCents: 0, hasStatement: false, hasMortgage: false }] },
+      flags: zeroFlags(),
+    })
 
     const res = await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31', propertyId: PROP_ID }))
     expect(res.status).toBe(200)
-    const json = await res.json()
-    expect(json.totals.propertyCount).toBe(1)
-    // propertyId is passed through to listPropertiesActiveInRange
-    expect(mocks.mockFetchProperties).toHaveBeenCalledWith(
-      'user-123', '2026-03-01', '2026-03-31', PROP_ID, null,
+    expect(mocks.mockGetCashflow).toHaveBeenCalledWith(
+      'user-123', '2026-03-01', '2026-03-31', { propertyId: PROP_ID, entityId: undefined },
     )
   })
 
@@ -216,13 +180,10 @@ describe('GET /api/ledger/summary', () => {
     expect(json.totals.propertyCount).toBe(0)
   })
 
-  it('passes userId to all repository functions', async () => {
+  it('passes userId to getCashflowSummary', async () => {
     await GET(makeRequest({ from: '2026-03-01', to: '2026-03-31' }))
-    expect(mocks.mockFetchProperties).toHaveBeenCalledWith(
-      'user-123', '2026-03-01', '2026-03-31', null, null,
-    )
-    expect(mocks.mockFetchLoans).toHaveBeenCalledWith(
-      'user-123', '2026-03-01', '2026-03-31', null,
+    expect(mocks.mockGetCashflow).toHaveBeenCalledWith(
+      'user-123', '2026-03-01', '2026-03-31', { propertyId: undefined, entityId: undefined },
     )
   })
 })

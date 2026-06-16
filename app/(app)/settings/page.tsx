@@ -73,6 +73,23 @@ export default function SettingsPage() {
 
       <div className="space-y-8">
         <div>
+          <SectionLabel>Profile</SectionLabel>
+          <div className="grid grid-cols-2 gap-3">
+            <SettingsCard
+              href="/settings/profile"
+              title="Investor profile"
+              description="Your investment goals and strategy notes. Used to personalise AI responses and keep your intent on record."
+              icon={
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+                  <circle cx="9" cy="6.5" r="2.5" />
+                  <path d="M3.5 15a5.5 5.5 0 0 1 11 0" />
+                </svg>
+              }
+            />
+          </div>
+        </div>
+
+        <div>
           <SectionLabel>Portfolio configuration</SectionLabel>
           <div className="grid grid-cols-2 gap-3">
             <SettingsCard

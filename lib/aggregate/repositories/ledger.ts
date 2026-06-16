@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { propertyLedger, properties, installmentLoans } from '@/db/schema'
-import type { Property, InstallmentLoan, PropertyLedger } from '@/db/schema'
+import type { Property, InstallmentLoan, PropertyLedger, LedgerCategory } from '@/db/schema'
 
 export async function findLedgerEntryById(
   userId: string,
@@ -70,6 +70,7 @@ export async function listLedgerEntriesInRange(
   from: string,
   to: string,
   propertyIds?: string[],
+  category?: LedgerCategory,
 ): Promise<PropertyLedger[]> {
   if (propertyIds !== undefined && propertyIds.length === 0) return []
   const where = [
@@ -78,6 +79,7 @@ export async function listLedgerEntriesInRange(
     lte(propertyLedger.lineItemDate, to),
     isNull(propertyLedger.deletedAt),
     ...(propertyIds ? [inArray(propertyLedger.propertyId, propertyIds)] : []),
+    ...(category ? [eq(propertyLedger.category, category)] : []),
   ]
   return db.select().from(propertyLedger).where(and(...where))
 }

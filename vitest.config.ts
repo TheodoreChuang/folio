@@ -10,6 +10,6 @@ export default defineConfig({
 
     // Unit tests — fast, no DB, all external calls mocked
     include: ['**/__tests__/**/*.test.ts'],
-    exclude: ['**/__tests__/**/*.integration.test.ts', 'node_modules'],
+    exclude: ['**/__tests__/**/*.integration.test.ts', 'node_modules', '.claude/**'],
   },
 })

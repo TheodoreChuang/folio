@@ -25,3 +25,5 @@ export {
 
 export { fetchPlanContext } from './plan/context'
 export type { PlanContext, PlanContextProperty, PlanContextLoan } from './plan/context'
+
+export { getCashflowSummary } from './services/cashflow'

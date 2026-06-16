@@ -1,0 +1,48 @@
+name: Assistant Evals
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  path-check:
+    name: Check changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.filter.outputs.assistant }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            assistant:
+              - 'lib/assistant/**'
+              - 'lib/profile/**'
+              - 'lib/ai/**'
+              - 'evals/assistant/**'
+
+  evals:
+    name: Run assistant evals
+    needs: path-check
+    if: needs.path-check.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '9'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install
+      - name: Run eval harness meta-tests
+        run: pnpm test __tests__/lib/assistant-eval-harness.test.ts
+      - name: Run eval suite (seeded fixtures, temp=0)
+        if: env.ANTHROPIC_API_KEY != ''
+        run: pnpm tsx evals/assistant/run.ts
+        env:
+          EVAL_WRITE_RESULTS: 'true'

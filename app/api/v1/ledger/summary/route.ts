@@ -1,12 +1,7 @@
 import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
-import {
-  listPropertiesActiveInRange,
-  listLoansActiveInRange,
-  listLedgerEntriesInRange,
-  computeReport,
-} from '@/lib/aggregate'
+import { getCashflowSummary } from '@/lib/aggregate'
 import { LedgerSummaryResponseSchema } from '@/lib/openapi'
 
 export async function GET(request: Request) {
@@ -17,8 +12,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const from = searchParams.get('from')
     const to = searchParams.get('to')
-    const propertyId = searchParams.get('propertyId')
-    const entityId = searchParams.get('entityId')
+    const propertyId = searchParams.get('propertyId') || undefined
+    const entityId = searchParams.get('entityId') || undefined
 
     if (!from || !to) {
       return NextResponse.json({ error: 'Missing required params: from and to (YYYY-MM-DD)' }, { status: 400 })
@@ -33,21 +28,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'from must be on or before to' }, { status: 400 })
     }
 
-    const [props, loans] = await Promise.all([
-      listPropertiesActiveInRange(user.id, from, to, propertyId, entityId),
-      listLoansActiveInRange(user.id, from, to, entityId),
-    ])
-
-    const filteredPropertyIds = props.map(p => p.id)
-    const hasFilter = !!(propertyId || entityId)
-    const entries = await listLedgerEntriesInRange(
-      user.id,
-      from,
-      to,
-      filteredPropertyIds.length > 0 ? filteredPropertyIds : (hasFilter ? [] : undefined),
-    )
-
-    const { totals, flags } = computeReport(entries, props, loans)
+    const { totals, flags } = await getCashflowSummary(user.id, from, to, { propertyId, entityId })
 
     return NextResponse.json(LedgerSummaryResponseSchema.parse({ totals, flags }))
   } catch (err) {

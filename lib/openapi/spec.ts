@@ -368,6 +368,63 @@ registry.registerPath({
   },
 })
 
+// ── Investor Profile ─────────────────────────────────────────────────────────
+
+const InvestorProfileSchema = registry.register('InvestorProfile', z.object({
+  investmentGoal: z.string().max(200).nullable().openapi({ description: 'Investment goal text, up to 200 chars' }),
+  strategyNotes: z.string().max(500).nullable().openapi({ description: 'Strategy notes text, up to 500 chars' }),
+}))
+
+const ProfileResponseSchema = registry.register('ProfileResponse', z.object({
+  profile: InvestorProfileSchema,
+}))
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/profile',
+  tags: ['Profile'],
+  summary: 'Get the investor profile',
+  description: 'Returns the authenticated user\'s investor profile (investment goal and strategy notes). Returns 404 when no profile has been set yet — call `PATCH /api/profile` to create one.',
+  security: [{ BearerAuth: [] }],
+  responses: {
+    200: {
+      description: 'Investor profile',
+      content: { 'application/json': { schema: ProfileResponseSchema } },
+    },
+    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
+    404: { description: 'No profile set yet', content: { 'application/json': { schema: ErrorSchema } } },
+  },
+})
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/profile',
+  tags: ['Profile'],
+  summary: 'Create or update the investor profile',
+  description: 'Upserts the authenticated user\'s investor profile. Both fields are optional — omit any field to leave it unchanged. Character limits: `investmentGoal` ≤ 200, `strategyNotes` ≤ 500.',
+  security: [{ BearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            investmentGoal: z.string().max(200).optional().openapi({ description: 'Investment goal (≤200 chars)' }),
+            strategyNotes: z.string().max(500).optional().openapi({ description: 'Strategy notes (≤500 chars)' }),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Updated profile',
+      content: { 'application/json': { schema: ProfileResponseSchema } },
+    },
+    400: { description: 'Validation error', content: { 'application/json': { schema: ErrorSchema } } },
+    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
+  },
+})
+
 // ── Spec generator ────────────────────────────────────────────────────────────
 
 let cachedSpec: ReturnType<OpenApiGeneratorV31['generateDocument']> | null = null
