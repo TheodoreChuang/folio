@@ -49,11 +49,11 @@ describe('GET /api/profile', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 404 when no profile exists', async () => {
+  it('returns 200 when no profile exists', async () => {
     mocks.mockGetProfile.mockResolvedValue(null)
     const { GET } = await import('@/app/api/profile/route')
     const res = await GET(makeRequest('GET'))
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(200)
     expect(mocks.mockGetProfile).toHaveBeenCalledWith(USER_ID)
   })
 
