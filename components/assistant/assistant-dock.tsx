@@ -14,6 +14,16 @@ const SK = { open: 'folio.agent.open', thread: 'folio.agent.thread' }
 
 const TRANSPORT = new DefaultChatTransport({ api: '/api/assistant/chat' })
 
+const FA_EASE = 'cubic-bezier(0.22, 0.61, 0.36, 1)'
+
+// Sparkle SVG paths shared between FAB and header mark
+const SparkIcon = ({ size }: { size: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+    <path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>
+    <path d="M12 8.5l1.2 2.3 2.3 1.2-2.3 1.2L12 15.5l-1.2-2.3L8.5 12l2.3-1.2z" fill="currentColor" stroke="none"/>
+  </svg>
+)
+
 export function AssistantDock() {
   const pathname = usePathname()
   const { properties } = useSidebar()
@@ -78,20 +88,50 @@ export function AssistantDock() {
     sendMessage({ text: prompt })
   }, [sendMessage])
 
+  useEffect(() => {
+    function onKeyDown(e: globalThis.KeyboardEvent) {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        e.preventDefault()
+        if (!isOpen) open()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, open])
+
   if (!mounted) return null
 
   return (
     <>
       <style>{`
-        @keyframes slideInDock {
-          from { transform: translateX(calc(100% + 12px)); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
+        .fa-fab-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          max-width: 0;
+          margin-left: 0;
+          opacity: 0;
+          overflow: hidden;
+          white-space: nowrap;
+          font-size: 0.9375rem;
+          font-weight: 500;
+          letter-spacing: 0.01em;
+          transition: max-width 240ms ${FA_EASE}, opacity 160ms ease, margin-left 240ms ${FA_EASE};
         }
+        .fa-fab:hover .fa-fab-label,
+        .fa-fab:focus-visible .fa-fab-label {
+          max-width: 160px;
+          margin-left: 8px;
+          opacity: 1;
+        }
+        .fa-fab:hover { transform: translateY(-1px); }
+        .fa-fab:active { transform: translateY(0); }
       `}</style>
 
-      {/* Launcher button */}
+      {/* Floating launcher — icon-only at rest, expands on hover */}
       <button
         type="button"
+        className="fa-fab"
         onClick={open}
         aria-label="Open AI assistant"
         style={{
@@ -100,28 +140,36 @@ export function AssistantDock() {
           bottom: '22px',
           zIndex: 1200,
           height: '48px',
-          paddingInline: '18px',
-          borderRadius: 'var(--radius-pill)',
-          background: 'hsl(var(--accent))',
-          color: 'hsl(var(--accent-foreground))',
+          paddingInline: '14px',
+          borderRadius: '9999px',
+          background: 'var(--color-accent)',
+          color: '#fff',
           border: 'none',
           cursor: 'pointer',
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
-          gap: '8px',
-          fontSize: '0.875rem',
-          fontWeight: 600,
-          fontFamily: 'var(--font-sans)',
-          boxShadow: '0 4px 16px hsl(var(--accent) / 0.3)',
+          boxShadow: '0 1px 2px rgba(30, 23, 18, 0.10), 0 8px 24px rgba(36, 70, 75, 0.22)',
           opacity: isOpen ? 0 : 1,
           pointerEvents: isOpen ? 'none' : 'auto',
-          transition: 'opacity 0.15s',
+          transition: `transform 160ms ${FA_EASE}, opacity 140ms ease`,
         }}
       >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-          <path d="M9 1.5L11.09 6.26L16.5 7.27L12.75 10.93L13.68 16.5L9 13.87L4.32 16.5L5.25 10.93L1.5 7.27L6.91 6.26L9 1.5Z" fill="currentColor" />
-        </svg>
-        Ask Folio
+        <SparkIcon size={19} />
+        <span className="fa-fab-label">
+          Ask Folio
+          <kbd style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            height: '18px',
+            padding: '0 5px',
+            borderRadius: '4px',
+            background: 'rgba(255, 255, 255, 0.16)',
+            fontSize: '10px',
+            fontWeight: 600,
+            letterSpacing: '0.04em',
+            color: 'rgba(255, 255, 255, 0.85)',
+          }}>⌘K</kbd>
+        </span>
       </button>
 
       {/* Drawer */}
@@ -136,13 +184,13 @@ export function AssistantDock() {
           maxWidth: 'calc(100vw - 24px)',
           display: 'flex',
           flexDirection: 'column',
-          background: 'hsl(var(--surface-raised))',
-          border: '1px solid hsl(var(--border))',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-          transform: isOpen ? 'translateX(0)' : 'translateX(calc(100% + 12px))',
+          background: 'var(--popover)',
+          border: '1px solid var(--color-border)',
+          borderRadius: '14px',
+          boxShadow: '0 1px 2px rgba(30, 23, 18, 0.06), 0 18px 50px rgba(30, 23, 18, 0.18)',
+          transform: isOpen ? 'translateX(0)' : 'translateX(calc(100% + 24px))',
           opacity: isOpen ? 1 : 0,
-          transition: 'transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s',
+          transition: `transform 320ms ${FA_EASE}, opacity 220ms ease`,
           pointerEvents: isOpen ? 'auto' : 'none',
           overflow: 'hidden',
         }}
@@ -155,15 +203,27 @@ export function AssistantDock() {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '14px 16px',
-            borderBottom: '1px solid hsl(var(--border))',
+            borderBottom: '1px solid var(--color-rule)',
+            background: 'var(--card)',
             flexShrink: 0,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-              <path d="M9 1.5L11.09 6.26L16.5 7.27L12.75 10.93L13.68 16.5L9 13.87L4.32 16.5L5.25 10.93L1.5 7.27L6.91 6.26L9 1.5Z" fill="hsl(var(--accent))" />
-            </svg>
-            <span style={{ fontWeight: 600, fontSize: '0.9375rem', fontFamily: 'var(--font-display)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+            {/* Mark badge — accent-soft bg, accent-color icon */}
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '26px',
+              height: '26px',
+              borderRadius: '5px',
+              background: 'var(--accent)',
+              color: 'var(--accent-foreground)',
+              flexShrink: 0,
+            }}>
+              <SparkIcon size={15} />
+            </span>
+            <span style={{ fontWeight: 500, fontSize: '1rem', fontFamily: 'var(--font-display)', letterSpacing: '0.005em' }}>
               Ask Folio
             </span>
           </div>
@@ -179,11 +239,11 @@ export function AssistantDock() {
                 justifyContent: 'center',
                 width: '30px',
                 height: '30px',
-                borderRadius: 'var(--radius-xs)',
+                borderRadius: '5px',
                 border: '1px solid transparent',
                 background: 'transparent',
                 cursor: 'pointer',
-                color: 'hsl(var(--foreground) / 0.5)',
+                color: 'var(--muted-foreground)',
               }}
             >
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
@@ -200,11 +260,11 @@ export function AssistantDock() {
                 justifyContent: 'center',
                 width: '30px',
                 height: '30px',
-                borderRadius: 'var(--radius-xs)',
+                borderRadius: '5px',
                 border: '1px solid transparent',
                 background: 'transparent',
                 cursor: 'pointer',
-                color: 'hsl(var(--foreground) / 0.5)',
+                color: 'var(--muted-foreground)',
               }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -222,23 +282,47 @@ export function AssistantDock() {
             style={{
               flex: 1,
               overflowY: 'auto',
-              padding: '16px',
+              padding: '20px 20px 16px',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'flex-end',
             }}
           >
-            <p
-              style={{
+            {/* Greeting */}
+            <div style={{ marginBottom: '20px' }}>
+              <p style={{
+                fontFamily: 'var(--font-display)',
+                fontWeight: 400,
+                fontSize: '1.375rem',
+                lineHeight: 1.3,
+                letterSpacing: '0.005em',
+                color: 'var(--foreground)',
+                margin: '0 0 6px',
+              }}>
+                Your portfolio,{' '}
+                <em style={{ fontStyle: 'italic', color: 'var(--color-accent)' }}>at a glance.</em>
+              </p>
+              <p style={{
                 fontSize: '0.8125rem',
-                color: 'hsl(var(--foreground) / 0.45)',
-                marginBottom: '12px',
-                margin: '0 0 12px',
-              }}
-            >
+                color: 'var(--muted-foreground)',
+                lineHeight: 1.5,
+                margin: 0,
+              }}>
+                Ask about cashflow, valuations, or any detail across your properties.
+              </p>
+            </div>
+
+            {/* Suggestion chips */}
+            <p style={{
+              fontSize: '0.6875rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--muted-foreground)',
+              margin: '0 0 10px',
+            }}>
               Suggestions
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {prompts.map((prompt) => (
                 <button
                   key={prompt}
@@ -246,28 +330,34 @@ export function AssistantDock() {
                   onClick={() => handleStarterPrompt(prompt)}
                   style={{
                     textAlign: 'left',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid hsl(var(--border))',
-                    background: 'hsl(var(--background))',
+                    padding: '10px 12px',
+                    borderRadius: '7px',
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--card)',
                     cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    color: 'hsl(var(--foreground))',
+                    fontSize: '0.8125rem',
+                    color: 'var(--foreground)',
                     lineHeight: 1.4,
-                    transition: 'background 0.1s, border-color 0.1s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    transition: 'border-color 120ms ease, background-color 120ms ease',
                   }}
                   onMouseEnter={e => {
                     const el = e.currentTarget
-                    el.style.background = 'hsl(var(--accent-soft))'
-                    el.style.borderColor = 'hsl(var(--accent) / 0.3)'
+                    el.style.borderColor = 'rgba(55, 101, 108, 0.45)'
+                    el.style.background = 'rgba(229, 239, 240, 0.4)'
                   }}
                   onMouseLeave={e => {
                     const el = e.currentTarget
-                    el.style.background = 'hsl(var(--background))'
-                    el.style.borderColor = 'hsl(var(--border))'
+                    el.style.borderColor = 'var(--color-border)'
+                    el.style.background = 'var(--card)'
                   }}
                 >
-                  {prompt}
+                  <span style={{ flex: 1 }}>{prompt}</span>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" style={{ color: 'var(--color-foreground-faint)', flexShrink: 0 }}>
+                    <path d="M3 6h6M6.5 3.5L9 6l-2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </button>
               ))}
             </div>

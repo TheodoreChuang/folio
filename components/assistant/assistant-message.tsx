@@ -33,12 +33,12 @@ function ToolStatusRow({ part }: { part: ToolUIPart | DynamicToolUIPart }) {
 
   return (
     <div
-      style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', color: 'hsl(var(--foreground) / 0.5)', padding: '4px 0' }}
+      style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', color: 'var(--muted-foreground)', padding: '4px 0' }}
     >
       {isComplete ? (
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <circle cx="7" cy="7" r="7" fill="hsl(var(--accent) / 0.15)" />
-          <path d="M4 7l2 2 4-4" stroke="hsl(var(--accent))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="7" cy="7" r="7" fill="rgba(55, 101, 108, 0.15)" />
+          <path d="M4 7l2 2 4-4" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       ) : (
         <span
@@ -46,8 +46,8 @@ function ToolStatusRow({ part }: { part: ToolUIPart | DynamicToolUIPart }) {
             display: 'inline-block',
             width: '14px',
             height: '14px',
-            border: '2px solid hsl(var(--accent) / 0.3)',
-            borderTopColor: 'hsl(var(--accent))',
+            border: '2px solid rgba(55, 101, 108, 0.3)',
+            borderTopColor: 'var(--color-accent)',
             borderRadius: '50%',
             animation: 'spin 0.8s linear infinite',
           }}
@@ -83,8 +83,8 @@ function CitationChips({ parts }: { parts: UIMessage['parts'] }) {
               lineHeight: 1,
               padding: '2px 6px',
               borderRadius: '10px',
-              background: 'hsl(var(--accent-soft))',
-              color: 'hsl(var(--accent))',
+              background: 'var(--accent)',
+              color: 'var(--accent-foreground)',
               cursor: 'default',
               userSelect: 'none',
             }}
@@ -112,9 +112,10 @@ export function AssistantMessage({ message, isLast, error, status }: AssistantMe
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
         <div
           style={{
-            background: 'hsl(var(--accent))',
-            color: 'hsl(var(--accent-foreground))',
-            borderRadius: '16px',
+            background: 'rgba(229, 239, 240, 0.7)',
+            border: '1px solid rgba(55, 101, 108, 0.16)',
+            color: 'var(--foreground)',
+            borderRadius: '14px 14px 4px 14px',
             padding: '8px 14px',
             maxWidth: '85%',
             fontSize: '0.875rem',
@@ -140,7 +141,7 @@ export function AssistantMessage({ message, isLast, error, status }: AssistantMe
             return (
               <p
                 key={i}
-                style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'hsl(var(--foreground))' }}
+                style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--foreground)' }}
               >
                 {part.text}
                 {isStreaming && i === message.parts.length - 1 && (
@@ -149,7 +150,7 @@ export function AssistantMessage({ message, isLast, error, status }: AssistantMe
                       display: 'inline-block',
                       width: '2px',
                       height: '1em',
-                      background: 'hsl(var(--foreground))',
+                      background: 'var(--color-accent)',
                       marginLeft: '2px',
                       verticalAlign: 'text-bottom',
                       animation: 'blink 1s step-end infinite',
@@ -177,7 +178,7 @@ export function AssistantMessage({ message, isLast, error, status }: AssistantMe
                   width: '6px',
                   height: '6px',
                   borderRadius: '50%',
-                  background: 'hsl(var(--foreground) / 0.3)',
+                  background: 'rgba(34, 31, 28, 0.3)',
                   display: 'inline-block',
                   animation: `bounce 1.2s ease-in-out ${n * 0.2}s infinite`,
                 }}
@@ -195,11 +196,11 @@ export function AssistantMessage({ message, isLast, error, status }: AssistantMe
           style={{
             marginTop: '8px',
             padding: '8px 12px',
-            background: 'hsl(var(--negative) / 0.1)',
-            border: '1px solid hsl(var(--negative) / 0.3)',
+            background: 'rgba(169, 74, 45, 0.1)',
+            border: '1px solid rgba(169, 74, 45, 0.3)',
             borderRadius: '8px',
             fontSize: '0.8125rem',
-            color: 'hsl(var(--negative))',
+            color: 'var(--color-negative)',
           }}
         >
           Something went wrong. Try again.

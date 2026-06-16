@@ -49,16 +49,16 @@ export function AssistantComposer({
       <div
         style={{
           padding: '12px 16px',
-          borderTop: '1px solid hsl(var(--border))',
-          background: 'hsl(var(--surface-sunken))',
-          borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
+          borderTop: '1px solid var(--color-rule)',
+          background: 'var(--secondary)',
+          borderRadius: '0 0 14px 14px',
         }}
       >
         <p
           style={{
             margin: 0,
             fontSize: '0.8125rem',
-            color: 'hsl(var(--foreground) / 0.5)',
+            color: 'var(--muted-foreground)',
             textAlign: 'center',
           }}
         >
@@ -71,10 +71,11 @@ export function AssistantComposer({
   return (
     <div
       style={{
-        borderTop: '1px solid hsl(var(--border))',
+        borderTop: '1px solid var(--color-rule)',
         padding: '12px 16px',
-        background: 'hsl(var(--surface-raised))',
-        borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
+        background: 'var(--card)',
+        borderRadius: '0 0 14px 14px',
+        flexShrink: 0,
       }}
     >
       <div
@@ -82,9 +83,9 @@ export function AssistantComposer({
           display: 'flex',
           flexDirection: 'column',
           gap: '8px',
-          border: '1px solid hsl(var(--border))',
-          borderRadius: 'var(--radius-sm)',
-          background: 'hsl(var(--background))',
+          border: '1px solid var(--color-border)',
+          borderRadius: '10px',
+          background: 'var(--popover)',
           overflow: 'hidden',
         }}
       >
@@ -105,7 +106,7 @@ export function AssistantComposer({
             fontSize: '0.875rem',
             lineHeight: 1.5,
             background: 'transparent',
-            color: 'hsl(var(--foreground))',
+            color: 'var(--foreground)',
             fontFamily: 'var(--font-sans)',
             width: '100%',
             boxSizing: 'border-box',
@@ -123,7 +124,7 @@ export function AssistantComposer({
           <span
             style={{
               fontSize: '0.75rem',
-              color: charOverWarn ? 'hsl(var(--negative))' : 'hsl(var(--foreground) / 0.4)',
+              color: charOverWarn ? 'var(--color-negative)' : 'var(--color-foreground-faint)',
               fontVariantNumeric: 'tabular-nums',
             }}
           >
@@ -141,11 +142,11 @@ export function AssistantComposer({
                 justifyContent: 'center',
                 width: '32px',
                 height: '32px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid hsl(var(--border))',
-                background: 'hsl(var(--surface))',
+                borderRadius: '5px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--card)',
                 cursor: 'pointer',
-                color: 'hsl(var(--foreground))',
+                color: 'var(--foreground)',
                 flexShrink: 0,
               }}
             >
@@ -165,11 +166,11 @@ export function AssistantComposer({
                 justifyContent: 'center',
                 width: '32px',
                 height: '32px',
-                borderRadius: 'var(--radius-sm)',
+                borderRadius: '5px',
                 border: 'none',
-                background: input.trim().length === 0 ? 'hsl(var(--accent) / 0.3)' : 'hsl(var(--accent))',
+                background: input.trim().length === 0 ? 'rgba(55, 101, 108, 0.25)' : 'var(--color-accent)',
                 cursor: input.trim().length === 0 ? 'default' : 'pointer',
-                color: 'hsl(var(--accent-foreground))',
+                color: '#fff',
                 flexShrink: 0,
                 transition: 'background 0.15s',
               }}
