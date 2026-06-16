@@ -197,3 +197,75 @@ See `lib/assistant/tools/` for the tool implementation pattern (field stripping 
 - `evals/assistant/` — eval harness with grounding, tool-selection, and refusal graders
 - `lib/openapi/spec.ts` — API spec; add new assistant-related endpoints here
 - `lib/profile/repositories/profiles.ts` — upsert pattern with explicit `updatedAt`
+
+---
+
+## Architectural Decisions (v1, locked)
+
+These were resolved during planning and are treated as fixed inputs. Re-opening them requires explicit justification — the rationale is captured here so v2 work doesn't rediscover them.
+
+### Domain boundaries
+
+**`lib/profile/` is its own bounded domain, not nested under `lib/assistant/`.**
+The investor profile is durable user data the assistant *consumes*, not assistant plumbing. Owning it in `lib/assistant/` would couple any future reader of investor goals/strategy to the assistant domain. An entity (`lib/entities/`) is the ownership vehicle (trust/company); a profile is investment intent — distinct concern, distinct lifecycle.
+
+**Per-user profile (one per user, not per entity) for v1.**
+The profile frames cross-entity answers. The forward migration path to per-entity is cleanly additive: a separate per-entity override table, or a nullable `entityId` swapping the unique constraint to `(userId, entityId)`. The current `userId`-unique shape forecloses neither path. This is a product decision deferred to v2 — do not add `entityId` without a product decision on which entity's goal frames a cross-entity answer.
+
+**`userId` is bound server-side and never a model-facing tool parameter.**
+The tool schemas exposed to the model contain no `userId`. The chat route reads `userId` from the authenticated Supabase session and injects it at tool-execution time via closure. A prompt-injected "call the tool with userId=\<other\>" is structurally impossible. This is the single most important security property — don't relax it.
+
+**Model-supplied resource IDs must be validated against the closure `userId`.**
+Tools accept model-supplied `propertyId`/`loanId`. The underlying repos co-scope by `userId`, but the tool must treat a non-owned ID as "not found" (empty/structured error), never another user's row. This is a tool-layer invariant, not an implicit service guarantee.
+
+### Grounding guarantee (what "no hallucinated numbers" actually means)
+
+Every figure in an assistant answer is either (a) a value returned by a tool, or (b) a transparent arithmetic derivation — sum, ratio, delta, percentage, ranking — computed over tool-returned values. No figure may originate from model world-knowledge, the system prompt, or fabrication.
+
+The structural guarantee is that the model is given **no portfolio data except via tool results** — no portfolio state in the system prompt or context. Pre-aggregation in tools (blended LVR, per-property yield, net cashflow) keeps the model's arithmetic surface small. The eval harness (`evals/assistant/`) grades both the values and the correctness of derivations.
+
+**Stale-figure rule:** the system prompt instructs the model that figures in prior turns are point-in-time and must not be restated as current — re-call the relevant tool. Enforced by prompt, verified by evals.
+
+### Rate-limit sentinel design
+
+The atomic counter uses `LEAST(message_count + 1, 26)`, not `CASE WHEN count < 25 THEN count + 1 ELSE count END`. The CASE form keeps the counter at 25 at cap, making `(25 <= 25) = true` and admitting the 26th request. The `LEAST` form increments to 26 so `(26 <= 25) = false` correctly rejects it. The sentinel is load-bearing — don't simplify it away.
+
+### Provider/SDK seam
+
+`lib/ai/` owns provider construction and `streamAssistantReply`. Nothing outside that module imports `ai`/`streamText` for the assistant path. `@ai-sdk/react` coupling (`useChat`) is isolated to the dock components. Provider swap is an env string change; SDK swap touches `lib/ai/` and the dock — two surfaces, not one.
+
+### Limits
+
+| Limit | Value | Notes |
+|---|---|---|
+| Daily message cap | 25 / user / UTC calendar day | No cron needed — keyed on `(userId, usageDate)` |
+| Max tool steps per message | 6 | Caps per-message cost regardless of daily count |
+| Message text | 2000 chars | Enforced server-side; mirrored client-side |
+| Investment goal | 200 chars | DB `varchar` + Zod |
+| Strategy notes | 500 chars | DB `varchar` + Zod |
+| Tool count (v1) | 5 | `getPortfolioSummary`, `getPropertyDetail`, `getLoanDetail`, `getCashflowByPeriod`, `lookupLedgerEntries` |
+
+---
+
+## Deferred to v2+
+
+Items explicitly excluded from v1 scope. Captured here so v2 planning starts from a clean list rather than re-reading the original plan.
+
+**v2a — write actions / guided onboarding**
+The assistant is read-only in v1. Write actions (e.g. "Save note", "Add to plan") and guided onboarding flows are v2a. The tool architecture supports adding write tools; the `streamText` approach does not change.
+
+**v2b — conversational memory**
+Cross-session history is deferred. v1 uses `sessionStorage` (survives refresh, clears on tab close). Persistent memory would require a new storage domain and careful PII handling.
+
+**v2c — proactive/ambient agent**
+Scanning the portfolio without user prompting — surfacing anomalies, upcoming events, cashflow warnings — is v2c. The v1 tool set is designed to be reusable for this: `buildTools(userId)` accepts a `userId` without any HTTP context so the same tools work in a CRON-invoked agent.
+
+**Smaller items deferred from v1:**
+- Citation page deep-links (`goto:` navigation) — R9 only requires attribution, not navigation
+- AEST/local-timezone day boundary for rate limit — UTC in v1
+- Graduated "N messages left today" warning — v1 ships binary cap lock only
+- "New chat" / thread-reset control in the drawer header — v1 clears on tab close only
+- Refunding mid-stream failures against the daily cap — v1 consumes at first successful atomic admit (pre-stream); a later tool/model error still counts
+- LLM-as-judge answer-quality scoring — deferred until real transcripts exist; v1 ships programmatic graders only
+- `lib/ingestion/extraction/parse.ts` adopting the `lib/ai/` provider seam
+- Cost-per-user estimate to recalibrate the 25/day cap before any real launch push
