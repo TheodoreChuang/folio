@@ -71,8 +71,9 @@ function CitationChips({ parts }: { parts: UIMessage['parts'] }) {
       {completedTools.map((part, i) => {
         const output = part.output as ToolOutput
         return (
-          <span
+          <a
             key={part.toolCallId}
+            href={output.source}
             title={output.source}
             style={{
               display: 'inline-flex',
@@ -85,12 +86,13 @@ function CitationChips({ parts }: { parts: UIMessage['parts'] }) {
               borderRadius: '10px',
               background: 'var(--accent)',
               color: 'var(--accent-foreground)',
-              cursor: 'default',
+              cursor: 'pointer',
               userSelect: 'none',
+              textDecoration: 'none',
             }}
           >
             [{i + 1}]
-          </span>
+          </a>
         )
       })}
     </div>
