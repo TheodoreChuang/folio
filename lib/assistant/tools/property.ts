@@ -1,6 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { getPropertyWithStats } from '@/lib/property'
+import { logger } from '@/lib/logger'
 
 const inputSchema = z.object({
   propertyId: z.string().describe('The ID of the property to look up.'),
@@ -28,8 +29,9 @@ export function buildPropertyTool(userId: string) {
           statusLabel: 'Looking up property details…',
         }
       } catch (err) {
+        logger.error('getPropertyDetail tool error', { err })
         return {
-          error: err instanceof Error ? err.message : 'Unknown error',
+          error: 'Unable to retrieve data. Please try again.',
           source: 'Property lookup',
           statusLabel: 'Looking up property details…',
         }

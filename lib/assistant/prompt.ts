@@ -3,9 +3,11 @@ export interface ProfileContext {
   strategyNotes?: string | null
 }
 
+const sanitize = (s: string) => s.replace(/[<>]/g, '')
+
 export function buildSystemPrompt(profile: ProfileContext | null): string {
-  const goal = profile?.investmentGoal?.trim() || null
-  const notes = profile?.strategyNotes?.trim() || null
+  const goal = profile?.investmentGoal?.trim() ? sanitize(profile.investmentGoal.trim()) : null
+  const notes = profile?.strategyNotes?.trim() ? sanitize(profile.strategyNotes.trim()) : null
 
   const profileBlock =
     goal || notes

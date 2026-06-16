@@ -1,6 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { findInstallmentLoanDetail } from '@/lib/borrowings'
+import { logger } from '@/lib/logger'
 
 const inputSchema = z.object({
   loanId: z.string().describe('The ID of the loan to look up.'),
@@ -30,8 +31,9 @@ export function buildLoanTool(userId: string) {
           statusLabel: 'Querying your loans…',
         }
       } catch (err) {
+        logger.error('getLoanDetail tool error', { err })
         return {
-          error: err instanceof Error ? err.message : 'Unknown error',
+          error: 'Unable to retrieve data. Please try again.',
           source: 'Loan lookup',
           statusLabel: 'Querying your loans…',
         }

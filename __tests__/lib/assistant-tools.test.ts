@@ -301,7 +301,7 @@ describe('buildTools', () => {
       const tools = buildTools(USER_ID)
       const result = await tools.getPortfolioSummary.execute!({}, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toHaveProperty('error')
-      expect(result.error).toContain('DB connection failed')
+      expect(result.error).toBe('Unable to retrieve data. Please try again.')
       expect(result).toHaveProperty('source')
       expect(result).toHaveProperty('statusLabel')
     })

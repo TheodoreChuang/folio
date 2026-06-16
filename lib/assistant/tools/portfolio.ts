@@ -1,6 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { getPortfolioData, computePortfolioLVR } from '@/lib/aggregate'
+import { logger } from '@/lib/logger'
 
 const inputSchema = z.object({})
 
@@ -22,8 +23,9 @@ export function buildPortfolioTool(userId: string) {
           statusLabel: 'Reading your portfolio summary…',
         }
       } catch (err) {
+        logger.error('getPortfolioSummary tool error', { err })
         return {
-          error: err instanceof Error ? err.message : 'Unknown error',
+          error: 'Unable to retrieve data. Please try again.',
           source: 'Portfolio summary',
           statusLabel: 'Reading your portfolio summary…',
         }

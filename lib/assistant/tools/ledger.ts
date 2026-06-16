@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { listLedgerEntriesInRange } from '@/lib/aggregate'
 import type { LedgerCategory } from '@/db/schema'
+import { logger } from '@/lib/logger'
 
 const inputSchema = z.object({
   from: z.string().describe('Start date in YYYY-MM-DD format.'),
@@ -25,8 +26,9 @@ export function buildLedgerTool(userId: string) {
           statusLabel: 'Searching your ledger…',
         }
       } catch (err) {
+        logger.error('getLedgerEntries tool error', { err })
         return {
-          error: err instanceof Error ? err.message : 'Unknown error',
+          error: 'Unable to retrieve data. Please try again.',
           source: `Ledger entries ${from} to ${to}`,
           statusLabel: 'Searching your ledger…',
         }

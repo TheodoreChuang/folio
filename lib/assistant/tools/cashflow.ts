@@ -1,6 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { getCashflowSummary } from '@/lib/aggregate'
+import { logger } from '@/lib/logger'
 
 const inputSchema = z.object({
   from: z.string().describe('Start date in YYYY-MM-DD format.'),
@@ -22,8 +23,9 @@ export function buildCashflowTool(userId: string) {
           statusLabel: 'Analysing your cashflow…',
         }
       } catch (err) {
+        logger.error('getCashflowSummary tool error', { err })
         return {
-          error: err instanceof Error ? err.message : 'Unknown error',
+          error: 'Unable to retrieve data. Please try again.',
           source: `Cashflow ${from} to ${to}`,
           statusLabel: 'Analysing your cashflow…',
         }
