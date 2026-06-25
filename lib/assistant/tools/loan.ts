@@ -27,13 +27,15 @@ export function buildLoanTool(userId: string) {
           found: true,
           loan: safeFields,
           source: `/loans/${loanId}`,
+          label: loan.lender,
           statusLabel: 'Querying your loans…',
         }
       } catch (err) {
         logger.error('getLoanDetail tool error', { err })
         return {
           error: 'Unable to retrieve data. Please try again.',
-          source: '/loans',
+          source: `/loans/${loanId}`,
+          label: 'Loan',
           statusLabel: 'Querying your loans…',
         }
       }

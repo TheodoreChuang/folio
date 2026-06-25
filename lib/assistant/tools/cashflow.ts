@@ -20,6 +20,7 @@ export function buildCashflowTool(userId: string) {
         return {
           ...result,
           source: '/dashboard',
+          label: 'Cashflow',
           statusLabel: 'Analysing your cashflow…',
         }
       } catch (err) {
@@ -27,6 +28,7 @@ export function buildCashflowTool(userId: string) {
         return {
           error: 'Unable to retrieve data. Please try again.',
           source: '/dashboard',
+          label: 'Cashflow',
           statusLabel: 'Analysing your cashflow…',
         }
       }

@@ -20,6 +20,7 @@ export function buildPortfolioTool(userId: string) {
           loans: safeLoans,
           lvr,
           source: '/dashboard',
+          label: 'Portfolio',
           statusLabel: 'Reading your portfolio summary…',
         }
       } catch (err) {
@@ -27,6 +28,7 @@ export function buildPortfolioTool(userId: string) {
         return {
           error: 'Unable to retrieve data. Please try again.',
           source: '/dashboard',
+          label: 'Portfolio',
           statusLabel: 'Reading your portfolio summary…',
         }
       }

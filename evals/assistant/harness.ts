@@ -24,7 +24,8 @@ function buildSeededTools(portfolio: SeededPortfolio): ToolSet {
       inputSchema: z.object({}),
       execute: async () => ({
         found: true,
-        source: 'Portfolio summary',
+        source: '/dashboard',
+        label: 'Portfolio',
         statusLabel: 'Reading portfolio summary…',
         properties: portfolio.portfolioSummary.properties,
         totalEquityCents: portfolio.portfolioSummary.totalEquityCents,
@@ -38,8 +39,8 @@ function buildSeededTools(portfolio: SeededPortfolio): ToolSet {
       inputSchema: z.object({ propertyId: z.string() }),
       execute: async ({ propertyId }) => {
         const prop = portfolio.properties.find(p => p.id === propertyId)
-        if (!prop) return { found: false, source: 'Property not found', statusLabel: 'Looking up property details…' }
-        return { found: true, source: `Property: ${prop.nickname ?? prop.address}`, statusLabel: 'Looking up property details…', ...prop }
+        if (!prop) return { found: false, statusLabel: 'Looking up property details…' }
+        return { found: true, source: `/properties/${propertyId}`, label: prop.nickname ?? prop.address, statusLabel: 'Looking up property details…', ...prop }
       },
     }),
     getLoanDetail: tool({
@@ -47,8 +48,8 @@ function buildSeededTools(portfolio: SeededPortfolio): ToolSet {
       inputSchema: z.object({ loanId: z.string() }),
       execute: async ({ loanId }) => {
         const loan = portfolio.loans.find(l => l.id === loanId)
-        if (!loan) return { found: false, source: 'Loan not found', statusLabel: 'Querying your loans…' }
-        return { found: true, source: `Loan: ${loan.lender}`, statusLabel: 'Querying your loans…', ...loan }
+        if (!loan) return { found: false, statusLabel: 'Querying your loans…' }
+        return { found: true, source: `/loans/${loanId}`, label: loan.lender, statusLabel: 'Querying your loans…', ...loan }
       },
     }),
     getCashflowByPeriod: tool({
@@ -56,7 +57,8 @@ function buildSeededTools(portfolio: SeededPortfolio): ToolSet {
       inputSchema: z.object({ from: z.string(), to: z.string() }),
       execute: async ({ from: _from, to: _to }) => ({
         found: true,
-        source: 'Cashflow data',
+        source: '/dashboard',
+        label: 'Cashflow',
         statusLabel: 'Fetching cashflow data…',
         ...portfolio.cashflow,
       }),
@@ -66,7 +68,8 @@ function buildSeededTools(portfolio: SeededPortfolio): ToolSet {
       inputSchema: z.object({ from: z.string(), to: z.string(), category: z.string().optional() }),
       execute: async ({ from: _from, to: _to, category: _category }) => ({
         found: true,
-        source: 'Ledger entries',
+        source: '/dashboard',
+        label: 'Ledger',
         statusLabel: 'Searching ledger entries…',
         entries: portfolio.ledgerEntries,
       }),

@@ -24,13 +24,15 @@ export function buildPropertyTool(userId: string) {
           found: true,
           ...result,
           source: `/properties/${propertyId}`,
+          label: result.property.nickname ?? result.property.address,
           statusLabel: 'Looking up property details…',
         }
       } catch (err) {
         logger.error('getPropertyDetail tool error', { err })
         return {
           error: 'Unable to retrieve data. Please try again.',
-          source: '/properties',
+          source: `/properties/${propertyId}`,
+          label: 'Property',
           statusLabel: 'Looking up property details…',
         }
       }

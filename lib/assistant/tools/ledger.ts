@@ -23,6 +23,7 @@ export function buildLedgerTool(userId: string) {
           entries,
           count: entries.length,
           source: '/dashboard',
+          label: 'Ledger',
           statusLabel: 'Searching your ledger…',
         }
       } catch (err) {
@@ -30,6 +31,7 @@ export function buildLedgerTool(userId: string) {
         return {
           error: 'Unable to retrieve data. Please try again.',
           source: '/dashboard',
+          label: 'Ledger',
           statusLabel: 'Searching your ledger…',
         }
       }
