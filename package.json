@@ -20,7 +20,8 @@
     "test:e2e": "playwright test --grep-invert @screenshot",
     "test:e2e:ui": "playwright test --ui",
     "test:screenshots": "playwright test --grep @screenshot",
-    "pr:create": "bash scripts/pr-with-screenshots.sh"
+    "pr:create": "bash scripts/pr-with-screenshots.sh",
+    "eval": "tsx evals/assistant/run.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.207",
