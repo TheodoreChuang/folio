@@ -99,6 +99,15 @@ function CitationChips({ parts }: { parts: UIMessage['parts'] }) {
   )
 }
 
+function resolveErrorMessage(error: Error): string {
+  try {
+    const body = JSON.parse(error.message) as { code?: string }
+    if (body?.code === 'CHAT_CONVERSATION_TOO_LONG') return 'Conversation is too long. Start a new chat.'
+    if (body?.code === 'CHAT_MESSAGE_TOO_LONG') return 'Your message is too long (2,000 character max).'
+  } catch { /* network error or non-JSON body */ }
+  return 'Something went wrong. Try again.'
+}
+
 interface AssistantMessageProps {
   message: UIMessage
   isLast: boolean
@@ -110,25 +119,43 @@ export function AssistantMessage({ message, isLast, error, status }: AssistantMe
   if (message.role === 'user') {
     const textPart = message.parts.find(p => p.type === 'text')
     const text = textPart?.type === 'text' ? textPart.text : ''
+    const showError = isLast && status === 'error' && error
     return (
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-        <div
-          style={{
-            background: 'rgba(229, 239, 240, 0.7)',
-            border: '1px solid rgba(55, 101, 108, 0.16)',
-            color: 'var(--foreground)',
-            borderRadius: '14px 14px 4px 14px',
-            padding: '8px 14px',
-            maxWidth: '85%',
-            fontSize: '0.875rem',
-            lineHeight: 1.5,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}
-        >
-          {text}
+      <>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: showError ? '4px' : '12px' }}>
+          <div
+            style={{
+              background: 'rgba(229, 239, 240, 0.7)',
+              border: '1px solid rgba(55, 101, 108, 0.16)',
+              color: 'var(--foreground)',
+              borderRadius: '14px 14px 4px 14px',
+              padding: '8px 14px',
+              maxWidth: '85%',
+              fontSize: '0.875rem',
+              lineHeight: 1.5,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
+            {text}
+          </div>
         </div>
-      </div>
+        {showError && (
+          <div
+            style={{
+              marginBottom: '12px',
+              padding: '8px 12px',
+              background: 'rgba(169, 74, 45, 0.1)',
+              border: '1px solid rgba(169, 74, 45, 0.3)',
+              borderRadius: '8px',
+              fontSize: '0.8125rem',
+              color: 'var(--color-negative)',
+            }}
+          >
+            {resolveErrorMessage(error)}
+          </div>
+        )}
+      </>
     )
   }
 
@@ -205,7 +232,7 @@ export function AssistantMessage({ message, isLast, error, status }: AssistantMe
             color: 'var(--color-negative)',
           }}
         >
-          Something went wrong. Try again.
+          {resolveErrorMessage(error)}
         </div>
       )}
 
