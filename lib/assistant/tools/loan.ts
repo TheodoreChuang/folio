@@ -17,7 +17,6 @@ export function buildLoanTool(userId: string) {
         if (!loan) {
           return {
             found: false,
-            source: 'Loan lookup',
             statusLabel: 'Querying your loans…',
           }
         }
@@ -27,14 +26,14 @@ export function buildLoanTool(userId: string) {
         return {
           found: true,
           loan: safeFields,
-          source: `Loan: ${loan.lender}`,
+          source: `/loans/${loanId}`,
           statusLabel: 'Querying your loans…',
         }
       } catch (err) {
         logger.error('getLoanDetail tool error', { err })
         return {
           error: 'Unable to retrieve data. Please try again.',
-          source: 'Loan lookup',
+          source: '/loans',
           statusLabel: 'Querying your loans…',
         }
       }

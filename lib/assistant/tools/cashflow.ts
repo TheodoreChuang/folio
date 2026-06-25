@@ -19,14 +19,14 @@ export function buildCashflowTool(userId: string) {
         const result = await getCashflowSummary(userId, from, to, { propertyId, entityId })
         return {
           ...result,
-          source: `Cashflow ${from} to ${to}`,
+          source: '/dashboard',
           statusLabel: 'Analysing your cashflow…',
         }
       } catch (err) {
         logger.error('getCashflowSummary tool error', { err })
         return {
           error: 'Unable to retrieve data. Please try again.',
-          source: `Cashflow ${from} to ${to}`,
+          source: '/dashboard',
           statusLabel: 'Analysing your cashflow…',
         }
       }

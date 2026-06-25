@@ -295,6 +295,38 @@ describe('buildTools', () => {
     })
   })
 
+  describe('Test 7 — source field is a routable URL path, not a display label', () => {
+    it('getPropertyDetail source is /properties/{id} when found', async () => {
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPropertyDetail.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result.source).toBe(`/properties/${PROP_ID}`)
+    })
+
+    it('getLoanDetail source is /loans/{id} when found', async () => {
+      const tools = buildTools(USER_ID)
+      const result = await tools.getLoanDetail.execute!({ loanId: LOAN_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result.source).toBe(`/loans/${LOAN_ID}`)
+    })
+
+    it('getPortfolioSummary source is /dashboard', async () => {
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPortfolioSummary.execute!({}, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result.source).toBe('/dashboard')
+    })
+
+    it('getCashflowByPeriod source is /dashboard', async () => {
+      const tools = buildTools(USER_ID)
+      const result = await tools.getCashflowByPeriod.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result.source).toBe('/dashboard')
+    })
+
+    it('lookupLedgerEntries source is /dashboard', async () => {
+      const tools = buildTools(USER_ID)
+      const result = await tools.lookupLedgerEntries.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result.source).toBe('/dashboard')
+    })
+  })
+
   describe('Test 6 — service throws → structured error payload, not unhandled rejection', () => {
     it('getPortfolioSummary returns error payload when service throws', async () => {
       mocks.getPortfolioData.mockRejectedValue(new Error('DB connection failed'))
