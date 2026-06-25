@@ -22,14 +22,16 @@ export function buildLedgerTool(userId: string) {
         return {
           entries,
           count: entries.length,
-          source: `Ledger entries ${from} to ${to}`,
+          source: '/dashboard',
+          label: 'Ledger',
           statusLabel: 'Searching your ledger…',
         }
       } catch (err) {
         logger.error('getLedgerEntries tool error', { err })
         return {
           error: 'Unable to retrieve data. Please try again.',
-          source: `Ledger entries ${from} to ${to}`,
+          source: '/dashboard',
+          label: 'Ledger',
           statusLabel: 'Searching your ledger…',
         }
       }

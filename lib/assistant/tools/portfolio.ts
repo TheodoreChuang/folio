@@ -19,14 +19,16 @@ export function buildPortfolioTool(userId: string) {
           ...data,
           loans: safeLoans,
           lvr,
-          source: 'Portfolio summary',
+          source: '/dashboard',
+          label: 'Portfolio',
           statusLabel: 'Reading your portfolio summary…',
         }
       } catch (err) {
         logger.error('getPortfolioSummary tool error', { err })
         return {
           error: 'Unable to retrieve data. Please try again.',
-          source: 'Portfolio summary',
+          source: '/dashboard',
+          label: 'Portfolio',
           statusLabel: 'Reading your portfolio summary…',
         }
       }

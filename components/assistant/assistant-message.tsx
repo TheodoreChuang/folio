@@ -14,6 +14,7 @@ const TOOL_LABELS: Record<string, string> = {
 type ToolOutput = {
   statusLabel?: string
   source?: string
+  label?: string
 }
 
 function isToolOutput(value: unknown): value is ToolOutput {
@@ -74,7 +75,7 @@ function CitationChips({ parts }: { parts: UIMessage['parts'] }) {
           <a
             key={part.toolCallId}
             href={output.source}
-            title={output.source}
+            title={output.label ?? output.source}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
