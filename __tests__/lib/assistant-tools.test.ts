@@ -271,12 +271,14 @@ describe('buildTools', () => {
       const tools = buildTools(USER_ID)
       const result = await tools.getPropertyDetail.execute!({ propertyId: 'nonexistent' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result.found).toBe(false)
+      expect(result).not.toHaveProperty('source')
     })
 
     it('getLoanDetail returns found:false when loan does not exist', async () => {
       const tools = buildTools(USER_ID)
       const result = await tools.getLoanDetail.execute!({ loanId: 'nonexistent' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result.found).toBe(false)
+      expect(result).not.toHaveProperty('source')
     })
 
     it('getCashflowByPeriod returns zero totals without throwing', async () => {
@@ -343,7 +345,7 @@ describe('buildTools', () => {
       const tools = buildTools(USER_ID)
       const result = await tools.getPropertyDetail.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toHaveProperty('error')
-      expect(result).toHaveProperty('source')
+      expect(result.source).toBe(`/properties/${PROP_ID}`)
       expect(result).toHaveProperty('statusLabel')
     })
 
@@ -352,7 +354,7 @@ describe('buildTools', () => {
       const tools = buildTools(USER_ID)
       const result = await tools.getLoanDetail.execute!({ loanId: LOAN_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toHaveProperty('error')
-      expect(result).toHaveProperty('source')
+      expect(result.source).toBe(`/loans/${LOAN_ID}`)
     })
 
     it('getCashflowByPeriod returns error payload when service throws', async () => {
@@ -360,7 +362,7 @@ describe('buildTools', () => {
       const tools = buildTools(USER_ID)
       const result = await tools.getCashflowByPeriod.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toHaveProperty('error')
-      expect(result).toHaveProperty('source')
+      expect(result.source).toBe('/dashboard')
     })
 
     it('lookupLedgerEntries returns error payload when service throws', async () => {
@@ -368,7 +370,7 @@ describe('buildTools', () => {
       const tools = buildTools(USER_ID)
       const result = await tools.lookupLedgerEntries.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toHaveProperty('error')
-      expect(result).toHaveProperty('source')
+      expect(result.source).toBe('/dashboard')
     })
   })
 })
