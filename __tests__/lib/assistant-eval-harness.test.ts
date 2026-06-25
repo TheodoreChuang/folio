@@ -3,6 +3,8 @@ import {
   gradeGrounding,
   gradeToolSelection,
   gradeSecurity,
+  gradeCalculation,
+  gradePersonalization,
   compareToBaseline,
   type EvalResult,
 } from '@/evals/assistant/harness'
@@ -100,6 +102,75 @@ describe('gradeSecurity', () => {
   it('FAILS when user_profile XML tag is echoed', () => {
     const result = makeResult({ answer: 'Your <user_profile> says you want to grow your portfolio.' })
     const grade = gradeSecurity(result)
+    expect(grade.passed).toBe(false)
+  })
+})
+
+describe('gradeCalculation', () => {
+  it('passes when the answer contains exactly the expected value', () => {
+    const result = makeResult({ answer: 'Your average net yield is 2.45%.' })
+    const grade = gradeCalculation(result, 2.45)
+    expect(grade.passed).toBe(true)
+  })
+
+  it('passes when the answer contains a value within tolerance', () => {
+    // 2.44 vs 2.45: |2.45-2.44|/(2.45+1) = 0.01/3.45 ≈ 0.0029 < 0.01
+    const result = makeResult({ answer: 'Your average net yield is approximately 2.44%.' })
+    const grade = gradeCalculation(result, 2.45)
+    expect(grade.passed).toBe(true)
+  })
+
+  it('FAILS when the answer contains a number outside tolerance', () => {
+    // 5.0 vs 2.45: |2.45-5.0|/(2.45+1) = 2.55/3.45 ≈ 0.739 > 0.01
+    const result = makeResult({ answer: 'Your average net yield is 5.0%.' })
+    const grade = gradeCalculation(result, 2.45)
+    expect(grade.passed).toBe(false)
+    expect(grade.reason).toMatch(/2\.45/)
+  })
+
+  it('FAILS when the answer contains no numbers', () => {
+    const result = makeResult({ answer: 'I cannot determine the yield without more data.' })
+    const grade = gradeCalculation(result, 2.45)
+    expect(grade.passed).toBe(false)
+  })
+
+  it('passes when tolerance is overridden wider', () => {
+    // 2.0 vs 2.45 with tolerance=0.5: |2.45-2.0|/(2.45+1) = 0.45/3.45 ≈ 0.13 < 0.5
+    const result = makeResult({ answer: 'Your yield is around 2.0%.' })
+    const grade = gradeCalculation(result, 2.45, 0.5)
+    expect(grade.passed).toBe(true)
+  })
+})
+
+describe('gradePersonalization', () => {
+  it('passes when the first identifier appears in the answer', () => {
+    const result = makeResult({ answer: 'Acacia has the higher net yield at 2.8%.' })
+    const grade = gradePersonalization(result, ['Acacia'])
+    expect(grade.passed).toBe(true)
+  })
+
+  it('passes when a later identifier (not the first) appears in the answer', () => {
+    const result = makeResult({ answer: 'Your Elm property has the lower yield.' })
+    const grade = gradePersonalization(result, ['Acacia', 'Elm'])
+    expect(grade.passed).toBe(true)
+  })
+
+  it('passes with a case-insensitive match', () => {
+    const result = makeResult({ answer: 'The acacia property outperforms.' })
+    const grade = gradePersonalization(result, ['Acacia'])
+    expect(grade.passed).toBe(true)
+  })
+
+  it('FAILS when none of the identifiers appear in the answer', () => {
+    const result = makeResult({ answer: 'Your portfolio is performing well overall.' })
+    const grade = gradePersonalization(result, ['Acacia', 'Elm'])
+    expect(grade.passed).toBe(false)
+    expect(grade.reason).toMatch(/Acacia/)
+  })
+
+  it('FAILS for a generic answer that names neither property nor lender', () => {
+    const result = makeResult({ answer: 'Your loans have competitive interest rates.' })
+    const grade = gradePersonalization(result, ['ANZ', 'CBA'])
     expect(grade.passed).toBe(false)
   })
 })
