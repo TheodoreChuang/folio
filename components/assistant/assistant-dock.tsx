@@ -288,6 +288,21 @@ export function AssistantDock() {
               justifyContent: 'flex-end',
             }}
           >
+            {error && !rateLimited && (
+              <div
+                style={{
+                  marginBottom: '16px',
+                  padding: '10px 12px',
+                  background: 'rgba(169, 74, 45, 0.1)',
+                  border: '1px solid rgba(169, 74, 45, 0.3)',
+                  borderRadius: '8px',
+                  fontSize: '0.8125rem',
+                  color: 'var(--color-negative)',
+                }}
+              >
+                Something went wrong. Please try again.
+              </div>
+            )}
             {/* Greeting */}
             <div style={{ marginBottom: '20px' }}>
               <p style={{
