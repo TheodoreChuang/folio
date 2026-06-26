@@ -59,16 +59,18 @@ async function main() {
   }
 
   for (const c of CALCULATION_CASES) {
+    if (c.expectedValue === undefined) continue
     const result = await runEval({ question: c.question, category: c.category, portfolio: STANDARD_PORTFOLIO })
-    const grade = gradeCalculation(result, c.expectedValue!, c.tolerance)
+    const grade = gradeCalculation(result, c.expectedValue, c.tolerance)
     console.log(`[calculation] ${c.id}: ${grade.passed ? 'PASS' : 'FAIL'} — ${grade.reason}`)
     record('calculation', grade.passed)
     await delay()
   }
 
   for (const c of PERSONALIZATION_CASES) {
+    if (!c.expectedIdentifiers) continue
     const result = await runEval({ question: c.question, category: c.category, portfolio: STANDARD_PORTFOLIO })
-    const grade = gradePersonalization(result, c.expectedIdentifiers!)
+    const grade = gradePersonalization(result, c.expectedIdentifiers)
     console.log(`[personalization] ${c.id}: ${grade.passed ? 'PASS' : 'FAIL'} — ${grade.reason}`)
     record('personalization', grade.passed)
     await delay()
