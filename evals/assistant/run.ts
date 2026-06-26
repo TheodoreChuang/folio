@@ -3,7 +3,7 @@ config({ path: '.env.local' })
 
 import { runEval, gradeGrounding, gradeToolSelection, gradeSecurity, gradeRefusal, gradeCalculation, gradePersonalization, compareToBaseline } from './harness'
 import { STANDARD_PORTFOLIO, EMPTY_PORTFOLIO } from './fixtures'
-import { GROUNDING_CASES, TOOL_SELECTION_CASES, SECURITY_CASES, NO_DATA_CASES, CALCULATION_CASES, PERSONALIZATION_CASES } from './cases/grounding'
+import { GROUNDING_CASES, TOOL_SELECTION_CASES, SECURITY_CASES, NO_DATA_CASES, CALCULATION_CASES, PERSONALIZATION_CASES } from './cases'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
@@ -62,20 +62,26 @@ async function main() {
   }
 
   for (const c of CALCULATION_CASES) {
-    if (c.expectedValue === undefined) continue
+    if (c.expectedValue === undefined) throw new Error(`Calculation case ${c.id} is missing expectedValue`)
     const result = await runEval({ question: c.question, category: c.category, portfolio: STANDARD_PORTFOLIO })
     const grade = gradeCalculation(result, c.expectedValue, c.tolerance)
-    console.log(`[calculation] ${c.id}: ${grade.passed ? 'PASS' : 'FAIL'} — ${grade.reason}`)
-    record('calculation', grade.passed)
+    const toolGrade = c.expectedTools ? gradeToolSelection(result, c.expectedTools) : { passed: true, reason: '' }
+    const passed = grade.passed && toolGrade.passed
+    const reason = !grade.passed ? grade.reason : (!toolGrade.passed ? toolGrade.reason : grade.reason)
+    console.log(`[calculation] ${c.id}: ${passed ? 'PASS' : 'FAIL'} — ${reason}`)
+    record('calculation', passed)
     await delay()
   }
 
   for (const c of PERSONALIZATION_CASES) {
-    if (!c.expectedIdentifiers) continue
+    if (!c.expectedIdentifiers?.length) throw new Error(`Personalization case ${c.id} is missing expectedIdentifiers`)
     const result = await runEval({ question: c.question, category: c.category, portfolio: STANDARD_PORTFOLIO })
     const grade = gradePersonalization(result, c.expectedIdentifiers)
-    console.log(`[personalization] ${c.id}: ${grade.passed ? 'PASS' : 'FAIL'} — ${grade.reason}`)
-    record('personalization', grade.passed)
+    const toolGrade = c.expectedTools ? gradeToolSelection(result, c.expectedTools) : { passed: true, reason: '' }
+    const passed = grade.passed && toolGrade.passed
+    const reason = !grade.passed ? grade.reason : (!toolGrade.passed ? toolGrade.reason : grade.reason)
+    console.log(`[personalization] ${c.id}: ${passed ? 'PASS' : 'FAIL'} — ${reason}`)
+    record('personalization', passed)
     await delay()
   }
 

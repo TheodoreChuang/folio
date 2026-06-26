@@ -222,14 +222,14 @@ quality gates in CI.
 
 **Approach:**
 - Add `"eval": "tsx evals/assistant/run.ts"` to the `scripts` block in `package.json`.
-- Run `EVAL_WRITE_RESULTS=true pnpm eval` (requires `ANTHROPIC_API_KEY` in `.env.local`), review `evals/assistant/last-run.json`, then update `baseline.json` with the observed pass rates for `calculation` and `personalization`. Keep existing entries unchanged if scores held.
+- Run `EVAL_WRITE_RESULTS=true pnpm eval` (requires `AI_GATEWAY_API_KEY` in `.env.local`), review `evals/assistant/last-run.json`, then update `baseline.json` with the observed pass rates for `calculation` and `personalization`. Keep existing entries unchanged if scores held.
 - If the first run shows a category below 1.0, investigate before committing — do not paper over a real failure with a low initial baseline.
 
 **Test scenarios:**
 - `pnpm eval` exits 0 when all categories meet baseline.
 - `baseline.json` parses as valid JSON with all 6 category keys.
 
-**Verification:** `pnpm eval` exits 0 in a clean environment with `ANTHROPIC_API_KEY` set.
+**Verification:** `pnpm eval` exits 0 in a clean environment with `AI_GATEWAY_API_KEY` set.
 
 ---
 
@@ -245,7 +245,7 @@ quality gates in CI.
 - `docs/testing-strategy.md`
 
 **Approach:** Extend the existing "Testing the Assistant" section. Add a subsection with:
-- **Local run:** `pnpm eval` (requires `ANTHROPIC_API_KEY` in `.env.local`).
+- **Local run:** `pnpm eval` (requires `AI_GATEWAY_API_KEY` in `.env.local`).
 - **When to run:** before pushing any change to `lib/assistant/`, `lib/ai/`, or `lib/profile/`.
 - **Adding a case:** describe the `EvalCase` fields, the ID convention (`<category>-NNN`), and the failure-first process (real failure → new case → fix).
 - **Updating the baseline:** `EVAL_WRITE_RESULTS=true pnpm eval` writes `evals/assistant/last-run.json`; review scores; manually update `baseline.json`; commit alongside the prompt change.
@@ -263,4 +263,4 @@ quality gates in CI.
 
 - **expectedValue uniqueness**: If a calculation `expectedValue` coincides with a raw fixture field, `gradeGrounding` already covers it and the case adds no signal. Verify at U3 by cross-checking against the `knownValues` set constructed in `gradeGrounding`.
 - **Live model flakiness**: New cases run against the live model (haiku-4.5). The 0.1 noise margin in `compareToBaseline` absorbs single-case variance, but a systematic model change could drop scores. Deterministic unit tests (U2) cover grader logic independently of model output.
-- **`ANTHROPIC_API_KEY` prerequisite**: U5's baseline update step requires the key. CI already has it; local dev must have it in `.env.local`. Document this clearly in U6.
+- **`AI_GATEWAY_API_KEY` prerequisite**: U5's baseline update step requires the key. CI already has it; local dev must have it in `.env.local`. Document this clearly in U6.

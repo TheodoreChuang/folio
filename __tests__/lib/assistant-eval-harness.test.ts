@@ -140,6 +140,13 @@ describe('gradeCalculation', () => {
     const grade = gradeCalculation(result, 2.45, 0.5)
     expect(grade.passed).toBe(true)
   })
+
+  it('FAILS when value is just outside tolerance boundary', () => {
+    // |2.45 - 2.415| / (2.45 + 1) = 0.035 / 3.45 ≈ 0.01014 > 0.01 → must fail
+    const result = makeResult({ answer: 'Your yield is 2.415%.' })
+    const grade = gradeCalculation(result, 2.45)
+    expect(grade.passed).toBe(false)
+  })
 })
 
 describe('gradePersonalization', () => {
@@ -173,6 +180,11 @@ describe('gradePersonalization', () => {
     const grade = gradePersonalization(result, ['ANZ', 'CBA'])
     expect(grade.passed).toBe(false)
   })
+
+  it('FAILS for empty expectedIdentifiers without throwing', () => {
+    const grade = gradePersonalization(makeResult({ answer: 'Acacia has the higher yield.' }), [])
+    expect(grade.passed).toBe(false)
+  })
 })
 
 describe('compareToBaseline', () => {
@@ -197,5 +209,13 @@ describe('compareToBaseline', () => {
     const baseline = { grounding: 1.0, security: 1.0 }
     const result = compareToBaseline(scores, baseline, 0.1)
     expect(result.passed).toBe(true)
+  })
+
+  it('passes when score category is absent from baseline (new category no-op)', () => {
+    const scores = { calculation: 0.67 }
+    const baseline = { grounding: 1.0 }
+    const result = compareToBaseline(scores, baseline)
+    expect(result.passed).toBe(true)
+    expect(result.regressions).toHaveLength(0)
   })
 })

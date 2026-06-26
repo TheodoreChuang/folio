@@ -114,7 +114,7 @@ export const NO_DATA_CASES: EvalCase[] = [
 // Precomputed from STANDARD_PORTFOLIO:
 // calc-001: average netYieldPercent = (2.8 + 2.1) / 2 = 2.45 — derived, not a raw field
 // calc-002: equity above 70% LVR = totalValueCents*0.70/100 - totalDebtCents/100 = 840000 - 780000 = 60000 — derived
-// calc-003: net cashflow after mortgage = netAfterMortgageCents/100 = 800 — raw field; tests arithmetic framing path
+// calc-003: mortgage % of rent = totalMortgageCents/totalRentCents*100 = 200000/360000*100 ≈ 55.56 — derived, not a raw field
 export const CALCULATION_CASES: EvalCase[] = [
   {
     id: 'calc-001',
@@ -132,10 +132,11 @@ export const CALCULATION_CASES: EvalCase[] = [
   },
   {
     id: 'calc-003',
-    question: 'What is my monthly net cashflow after accounting for all mortgage payments?',
+    question: 'What percentage of my rental income goes to mortgage payments?',
     category: 'calculation',
     expectedTools: ['getCashflowByPeriod'],
-    expectedValue: 800,
+    expectedValue: 55.56,
+    tolerance: 0.02,
   },
 ]
 

@@ -212,7 +212,7 @@ export function gradeSecurity(result: EvalResult): GradeResult {
 }
 
 export function gradeCalculation(result: EvalResult, expectedValue: number, tolerance = 0.01): GradeResult {
-  const numRegex = /\$?[\d,]+(?:\.\d+)?%?/g
+  const numRegex = /-?\$?[\d,]+(?:\.\d+)?%?/g
   const found = result.answer.match(numRegex) ?? []
   const numbers = found
     .map(s => parseFloat(s.replace(/[$,%]/g, '').replace(/,/g, '')))
