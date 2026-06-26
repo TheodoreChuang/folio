@@ -8,7 +8,10 @@ import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
 async function main() {
-  const EVAL_DELAY_MS = parseInt(process.env.EVAL_DELAY_MS ?? '0', 10)
+  const evalDelayMs = parseInt(process.env.EVAL_DELAY_MS ?? '0', 10)
+  if (process.env.EVAL_DELAY_MS && isNaN(evalDelayMs)) {
+    console.warn(`EVAL_DELAY_MS='${process.env.EVAL_DELAY_MS}' is not a valid number, ignoring`)
+  }
   const categoryScores: Record<string, { pass: number; total: number }> = {}
 
   function record(category: string, passed: boolean) {
@@ -18,7 +21,7 @@ async function main() {
   }
 
   async function delay() {
-    if (EVAL_DELAY_MS > 0) await new Promise(r => setTimeout(r, EVAL_DELAY_MS))
+    if (evalDelayMs > 0) await new Promise(r => setTimeout(r, evalDelayMs))
   }
 
   for (const c of GROUNDING_CASES) {
