@@ -91,6 +91,13 @@ async function main() {
     console.log(`\nCategory ${cat}: ${(scores[cat] * 100).toFixed(0)}% (${pass}/${total})`)
   }
 
+  if (process.env.EVAL_WRITE_RESULTS === 'true') {
+    writeFileSync(
+      join(__dirname, 'last-run.json'),
+      JSON.stringify({ scores, timestamp: new Date().toISOString() }, null, 2),
+    )
+  }
+
   const baselinePath = join(__dirname, 'baseline.json')
   const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')) as Record<string, number>
   const comparison = compareToBaseline(scores, baseline)
@@ -102,13 +109,6 @@ async function main() {
   }
 
   console.log('\nAll categories at or above baseline.')
-
-  if (process.env.EVAL_WRITE_RESULTS === 'true') {
-    writeFileSync(
-      join(__dirname, 'last-run.json'),
-      JSON.stringify({ scores, timestamp: new Date().toISOString() }, null, 2),
-    )
-  }
 }
 
 main().catch(err => {

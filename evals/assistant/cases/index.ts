@@ -160,7 +160,7 @@ export const PERSONALIZATION_CASES: EvalCase[] = [
     id: 'personal-003',
     question: 'Which lenders do I have mortgages with?',
     category: 'personalization',
-    expectedTools: ['getLoanDetail'],
+    expectedTools: ['getPortfolioSummary'],
     expectedIdentifiers: ['ANZ', 'CBA'],
   },
 ]

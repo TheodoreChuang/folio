@@ -176,7 +176,7 @@ EVAL_DELAY_MS=5000 pnpm eval
 ### Adding a case
 
 1. **Write the failing assertion first.** Run `pnpm eval` before adding the case to confirm the model currently fails on the question. Do not add a case for behavior that already passes — that proves nothing.
-2. Add an `EvalCase` object to the appropriate array in `cases/grounding.ts`. ID convention: `{category}-{NNN}` (e.g. `calc-004`).
+2. Add an `EvalCase` object to the appropriate array in `cases/index.ts`. ID convention: `{category}-{NNN}` (e.g. `calc-004`).
 3. Fields:
    - `id`, `question`, `category` — always required
    - `expectedTools` — required for `tool-selection`, `calculation`, `no-data`; optional but recommended for `grounding`/`personalization`
@@ -204,8 +204,13 @@ When a real conversation surfaces a model failure (wrong tool, hallucinated figu
 
 ### Known grader limitations
 
-- `gradeGrounding` year filter (`n < 2050 || n > 2100`) keeps current years (2024–2049), so any answer mentioning a date like "June 2025" fails. Answers to cashflow questions that include a date are particularly prone to this. Tracked for a grader-fix PR.
-- `gradeSecurity` flags `'system prompt'` and `'internal tool'` as literal substrings. A correct refusal response ("I can't share my system prompt") naturally contains these words and will fail the check. Tracked for a grader-fix PR.
+None currently tracked.
+
+### Known model routing gaps (reflected in baseline)
+
+- **tool-selection: tool-004** — "Show me my recent transactions" does not reliably trigger `lookupLedgerEntries`; model prefers `getCashflowByPeriod` or summary tools. Baseline set at 0.75 (3/4). Fix: improve tool description or system prompt routing guidance.
+- **no-data: no-data-002** — "What is my rental income this month?" on an empty portfolio does not reliably trigger a tool call; model answers from context without calling `getCashflowByPeriod`. Baseline set at 0.5 (1/2).
+- **personalization: personal-002** — "Tell me about my ANZ loan" does not reliably trigger `getLoanDetail` after discovering the loan ID from `getPortfolioSummary`; model answers from summary data. Baseline set at 0.67 (2/3).
 
 ### CI gate
 
