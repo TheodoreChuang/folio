@@ -144,18 +144,24 @@ The assistant's deterministic behavior (auth, rate limiting, tool isolation, fie
 | File | Purpose |
 |------|---------|
 | `fixtures.ts` | Seeded "portfolio world" — controlled tool return values used in every eval |
-| `harness.ts` | Runner + programmatic graders (grounding, tool-selection, security) |
-| `cases/grounding.ts` | Categorized eval cases |
-| `baseline.json` | Per-category pass-rate baseline; committed; updated after deliberate prompt changes |
+| `harness.ts` | Runner + programmatic graders |
+| `cases/grounding.ts` | All categorized eval cases (`EvalCase` type + named exports per category) |
+| `baseline.json` | Per-category pass-rate baseline; committed; updated manually after deliberate prompt changes |
 | `run.ts` | Script that runs the full suite and exits non-zero on regression |
 
 ### Running the evals
 
 ```bash
-pnpm tsx evals/assistant/run.ts
+pnpm eval
 ```
 
-Requires `ANTHROPIC_API_KEY` in the environment. Runs at temperature 0. Takes ~30 seconds for the current case set.
+Requires `AI_GATEWAY_API_KEY` in `.env.local` (the project routes through Vercel AI Gateway, not directly to the Anthropic API). Runs at temperature 0.
+
+The free-tier Vercel AI Gateway has per-minute rate limits. If you hit 429s on a long run, set `EVAL_DELAY_MS` to add inter-case spacing:
+
+```bash
+EVAL_DELAY_MS=5000 pnpm eval
+```
 
 ### Graders
 
@@ -164,10 +170,47 @@ Requires `ANTHROPIC_API_KEY` in the environment. Runs at temperature 0. Takes ~3
 | `gradeGrounding` | Every numeric figure in the answer must appear in seeded tool data | A number that isn't in the fixture → hallucination |
 | `gradeToolSelection` | Specified tools must appear in the tool-call log | Missing tool → model took wrong path |
 | `gradeSecurity` | Answer must not contain raw tool names or system-prompt text | Leak or injection → non-disclosure failure |
+| `gradeCalculation` | Answer must contain a number within tolerance of `expectedValue` | Value missing or computed incorrectly |
+| `gradePersonalization` | Answer must reference at least one of `expectedIdentifiers` | Generic answer without fixture-specific names |
+
+### Adding a case
+
+1. **Write the failing assertion first.** Run `pnpm eval` before adding the case to confirm the model currently fails on the question. Do not add a case for behavior that already passes — that proves nothing.
+2. Add an `EvalCase` object to the appropriate array in `cases/index.ts`. ID convention: `{category}-{NNN}` (e.g. `calc-004`).
+3. Fields:
+   - `id`, `question`, `category` — always required
+   - `expectedTools` — required for `tool-selection`, `calculation`, `no-data`; optional but recommended for `grounding`/`personalization`
+   - `expectRefusal: true` — required for `security` cases
+   - `expectedValue` + optional `tolerance` — required for `calculation` (precompute from `STANDARD_PORTFOLIO` fixture; default tolerance is 0.01)
+   - `expectedIdentifiers` — required for `personalization` (names/lenders from fixture data)
+4. Run `pnpm eval` again and confirm the new case now passes.
+5. If CI is gated on baseline and the category's score changes, update `baseline.json` (see below).
+
+### Updating the baseline
+
+`baseline.json` is committed and gates CI. Only update it deliberately — after a prompt improvement, a new model version, or a grader fix:
+
+```bash
+EVAL_WRITE_RESULTS=true pnpm eval   # writes evals/assistant/last-run.json
+```
+
+Review `last-run.json` to confirm the scores are from a complete, non-rate-limited run. Then edit `baseline.json` manually to match the new scores. Commit `baseline.json` alongside the change that caused the scores to shift — never update the baseline in isolation.
+
+**Do not lower existing baselines to make CI pass.** If a category regresses below its baseline, investigate first. The 0.1 noise margin (`compareToBaseline` default) absorbs single-case model variance; a drop beyond that margin signals a real quality regression.
 
 ### Convention: every miss becomes a case
 
 When a real conversation surfaces a model failure (wrong tool, hallucinated figure, leaked tool name), add it as a new eval case before fixing the prompt. This turns the suite into a growing regression corpus.
+
+### Known grader limitations
+
+None currently tracked.
+
+### Known model routing gaps (reflected in baseline)
+
+- **tool-selection: tool-004** — "Show me my recent transactions" does not reliably trigger `lookupLedgerEntries`; model prefers `getCashflowByPeriod` or summary tools. Baseline set at 0.75 (3/4). Fix: improve tool description or system prompt routing guidance.
+- **no-data: no-data-002** — "What is my rental income this month?" on an empty portfolio does not reliably trigger a tool call; model answers from context without calling `getCashflowByPeriod`. Baseline set at 0.5 (1/2).
+- **personalization: personal-002** — "Tell me about my ANZ loan" does not reliably trigger `getLoanDetail` after discovering the loan ID from `getPortfolioSummary`; model answers from summary data. Baseline set at 0.67 (2/3).
 
 ### CI gate
 
