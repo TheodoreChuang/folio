@@ -11,6 +11,20 @@ import { findSourceDocumentByHash, insertSourceDocument, findOwnedSourceDocument
 const documentTypeSchema = z.enum(['pm_statement', 'loan_statement', 'unknown'])
 const uuidSchema = z.string().uuid()
 
+// Drizzle wraps driver errors in DrizzleQueryError, so the Postgres error code lands on
+// `.cause.code`, not the top level. Check both.
+function getPgErrorCode(err: unknown): string | undefined {
+  if (!err || typeof err !== 'object') return undefined
+  const top = (err as { code?: unknown }).code
+  if (typeof top === 'string') return top
+  const cause = (err as { cause?: unknown }).cause
+  if (cause && typeof cause === 'object') {
+    const causeCode = (cause as { code?: unknown }).code
+    if (typeof causeCode === 'string') return causeCode
+  }
+  return undefined
+}
+
 function documentTypeToFolder(documentType: string): string {
   switch (documentType) {
     case 'pm_statement':
@@ -130,15 +144,18 @@ export async function POST(request: Request) {
     })).error
 
   if (uploadError && getStorageStatusCode(uploadError) === '409') {
-    // The active-hash check already passed, so no active document owns this object —
-    // it is an orphan from a prior void/dismiss whose best-effort delete failed (KTD-3).
-    // Overwrite it rather than 409-ing a legitimate re-upload.
-    logger.debug('storage upload 409 after hash check passed — retrying with upsert')
+    // The active-hash check already passed, so no active document owns this object — it is
+    // an orphan from a prior void/dismiss whose best-effort delete failed (KTD-3). Remove
+    // it and re-insert. (upsert:true would need an UPDATE policy on storage.objects, which
+    // the bucket does not have — only INSERT/SELECT/DELETE — so remove-then-insert is the
+    // path that stays within the user's RLS permissions.)
+    logger.debug('storage upload 409 after hash check passed — removing orphan and retrying')
+    await supabase.storage.from('documents').remove([filePath])
     uploadError = (await supabase.storage
       .from('documents')
       .upload(filePath, buffer, {
         contentType: 'application/pdf',
-        upsert: true,
+        upsert: false,
       })).error
   }
 
@@ -176,11 +193,7 @@ export async function POST(request: Request) {
   } catch (err) {
     await supabase.storage.from('documents').remove([filePath])
 
-    const isUniqueViolation =
-      err &&
-      typeof err === 'object' &&
-      'code' in err &&
-      (err as { code: string }).code === '23505'
+    const isUniqueViolation = getPgErrorCode(err) === '23505'
 
     if (isUniqueViolation) {
       const existingAfterRace = await findSourceDocumentByHash(userId, hash)

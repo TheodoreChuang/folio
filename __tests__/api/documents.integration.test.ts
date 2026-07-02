@@ -10,6 +10,7 @@ import {
   countActiveLinkedTransactions,
   listPreviouslyDeletedForReupload,
 } from '@/lib/ingestion'
+import { deleteLedgerEntry } from '@/lib/aggregate'
 
 const refs = vi.hoisted(() => ({
   cookieStore: [] as { name: string; value: string }[],
@@ -205,9 +206,10 @@ describe('source_documents partial unique hash index (integration — U1/R14)', 
     const [first] = await db.insert(sourceDocuments).values(docValues(hash, false)).returning()
     createdIds.push(first.id)
 
+    // Drizzle wraps driver errors — the Postgres code is on the cause, not the top level.
     await expect(
       db.insert(sourceDocuments).values(docValues(hash, false)).returning()
-    ).rejects.toMatchObject({ code: '23505' })
+    ).rejects.toMatchObject({ cause: { code: '23505' } })
   })
 })
 
@@ -414,5 +416,46 @@ describe('R18 previously-deleted re-upload warning (integration — U8)', () => 
 
     expect(result).toHaveLength(1)
     expect(result[0].description).toBe('Late fee (user removed)')
+  })
+
+  // AE3 lynchpin: voiding must NOT overwrite the provenance of a row the user already
+  // individually deleted — the void query filters isNull(deletedAt) and must skip it, so
+  // the row keeps deletionReason='user_deleted' and still surfaces in the R18 warning.
+  it('void does not overwrite an already user_deleted row; it stays surfaced on re-upload', async () => {
+    if (!hasEnv) return
+    const hash = crypto.randomUUID()
+    const [doc] = await db.insert(sourceDocuments).values({
+      userId,
+      fileName: `ae3-${crypto.randomUUID()}.pdf`,
+      fileHash: hash,
+      documentType: 'pm_statement',
+      filePath: `documents/${userId}/pm_statements/${crypto.randomUUID()}.pdf`,
+      status: 'confirmed',
+    }).returning()
+    createdDocIds.push(doc.id)
+
+    const [t1] = await db.insert(propertyLedger).values({
+      userId, propertyId, sourceDocumentId: doc.id,
+      lineItemDate: '2026-02-10', amountCents: 400000, category: 'rent', description: 'T1 rent',
+    }).returning()
+    const [t2] = await db.insert(propertyLedger).values({
+      userId, propertyId, sourceDocumentId: doc.id,
+      lineItemDate: '2026-02-20', amountCents: 6000, category: 'other_income', description: 'T2 user-removed',
+    }).returning()
+
+    // User individually deletes T2, then voids the whole statement.
+    await deleteLedgerEntry(userId, t2.id)
+    await softDeleteDocumentWithEntries(userId, doc.id)
+
+    const [t2Row] = await db.select().from(propertyLedger).where(eq(propertyLedger.id, t2.id))
+    expect(t2Row.deletionReason).toBe('user_deleted') // NOT overwritten to 'voided'
+    const [t1Row] = await db.select().from(propertyLedger).where(eq(propertyLedger.id, t1.id))
+    expect(t1Row.deletionReason).toBe('voided')
+
+    // Re-upload of the same file surfaces only the user-deleted T2.
+    const current = await insertDoc(hash, 'pending')
+    const warning = await listPreviouslyDeletedForReupload(userId, current)
+    expect(warning).toHaveLength(1)
+    expect(warning[0].description).toBe('T2 user-removed')
   })
 })

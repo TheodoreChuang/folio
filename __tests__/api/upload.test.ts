@@ -207,19 +207,21 @@ describe('POST /api/upload', () => {
     expect(mocks.mockRemove).toHaveBeenCalledWith(['documents/user-123/pm_statements/test.pdf'])
   })
 
-  it('retries storage upload with upsert:true when the first write 409s after the hash check passed', async () => {
+  it('removes the orphan and re-inserts when the first write 409s after the hash check passed', async () => {
     // Orphaned storage object from a prior void whose best-effort delete failed (KTD-3).
+    // The bucket has no UPDATE policy, so the retry removes then re-inserts (upsert:false).
     mocks.mockUpload
       .mockResolvedValueOnce({ error: { statusCode: '409', message: 'exists' } })
       .mockResolvedValueOnce({ error: null })
     const form = formDataWithFile({})
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
     expect(res.status).toBe(201)
+    expect(mocks.mockRemove).toHaveBeenCalledWith(['documents/user-123/pm_statements/test.pdf'])
     expect(mocks.mockUpload).toHaveBeenCalledTimes(2)
     expect(mocks.mockUpload).toHaveBeenLastCalledWith(
       'documents/user-123/pm_statements/test.pdf',
       expect.any(ArrayBuffer),
-      { contentType: 'application/pdf', upsert: true }
+      { contentType: 'application/pdf', upsert: false }
     )
   })
 
