@@ -218,6 +218,13 @@
       "when": 1781494705829,
       "tag": "0030_assistant_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1782993714599,
+      "tag": "0031_pm_upload_hardening",
+      "breakpoints": true
     }
   ]
 }

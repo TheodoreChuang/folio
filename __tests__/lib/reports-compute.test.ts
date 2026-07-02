@@ -33,6 +33,8 @@ function makeEntry(overrides: Partial<PropertyLedger> = {}): PropertyLedger {
     category: 'rent',
     description: null,
     userNotes: null,
+    deletionReason: null,
+    supersededByEntryId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,

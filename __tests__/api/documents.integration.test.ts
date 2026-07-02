@@ -144,3 +144,63 @@ describe('GET /api/documents (integration — M-1 soft-delete filter)', () => {
     }
   })
 })
+
+describe('source_documents partial unique hash index (integration — U1/R14)', () => {
+  let userId: string
+  const createdIds: string[] = []
+
+  beforeAll(async () => {
+    if (!hasEnv) return
+    const anon = createClient(url!, anonKey!)
+    const { data: { session }, error } = await anon.auth.signInWithPassword({
+      email: testEmail!,
+      password: testPassword!,
+    })
+    if (error || !session) throw new Error(`Sign-in failed: ${error?.message ?? 'no session'}`)
+    userId = session.user.id
+  })
+
+  afterAll(async () => {
+    if (!hasEnv) return
+    for (const id of createdIds) {
+      await db.delete(sourceDocuments).where(eq(sourceDocuments.id, id))
+    }
+  })
+
+  function docValues(hash: string, deleted: boolean) {
+    return {
+      userId,
+      fileName: `hash-index-test-${crypto.randomUUID()}.pdf`,
+      fileHash: hash,
+      documentType: 'pm_statement',
+      filePath: `documents/${userId}/pm_statements/${crypto.randomUUID()}.pdf`,
+      deletedAt: deleted ? new Date() : null,
+    }
+  }
+
+  it('allows an active row to share a hash with a soft-deleted row (re-upload after void)', async () => {
+    if (!hasEnv) return
+    const hash = crypto.randomUUID()
+
+    const [deleted] = await db.insert(sourceDocuments).values(docValues(hash, true)).returning()
+    createdIds.push(deleted.id)
+
+    const [active] = await db.insert(sourceDocuments).values(docValues(hash, false)).returning()
+    createdIds.push(active.id)
+
+    expect(active.id).toBeTruthy()
+    expect(active.status).toBe('pending')
+  })
+
+  it('rejects a second active row with the same (userId, fileHash)', async () => {
+    if (!hasEnv) return
+    const hash = crypto.randomUUID()
+
+    const [first] = await db.insert(sourceDocuments).values(docValues(hash, false)).returning()
+    createdIds.push(first.id)
+
+    await expect(
+      db.insert(sourceDocuments).values(docValues(hash, false)).returning()
+    ).rejects.toMatchObject({ code: '23505' })
+  })
+})
