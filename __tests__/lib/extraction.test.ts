@@ -51,12 +51,13 @@ describe('extractionResultSchema', () => {
     expect(res.success).toBe(false)
   })
 
-  it('rejects empty lineItems array', () => {
+  it('accepts an empty lineItems array (R22: zero-transaction statement is valid)', () => {
     const res = extractionResultSchema.safeParse({
       ...validResult,
       lineItems: [],
     })
-    expect(res.success).toBe(false)
+    expect(res.success).toBe(true)
+    if (res.success) expect(res.data.lineItems).toHaveLength(0)
   })
 
   it('accepts valid complete object', () => {
@@ -111,6 +112,18 @@ describe('classificationResultSchema', () => {
 
   it('rejects invalid documentType', () => {
     expect(classificationResultSchema.safeParse({ documentType: 'bank_statement', confidence: 'high' }).success).toBe(false)
+  })
+
+  it('defaults statementScope to periodic when omitted', () => {
+    const res = classificationResultSchema.safeParse({ documentType: 'pm_statement', confidence: 'high' })
+    expect(res.success).toBe(true)
+    if (res.success) expect(res.data.statementScope).toBe('periodic')
+  })
+
+  it('accepts an explicit annual_summary statementScope', () => {
+    const res = classificationResultSchema.safeParse({ documentType: 'pm_statement', statementScope: 'annual_summary', confidence: 'high' })
+    expect(res.success).toBe(true)
+    if (res.success) expect(res.data.statementScope).toBe('annual_summary')
   })
 })
 

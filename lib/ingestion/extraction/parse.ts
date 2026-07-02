@@ -27,12 +27,18 @@ export async function classifyDocument(
     model: gateway('anthropic/claude-haiku-4-5'),
     schema: classificationResultSchema,
     system: `You are classifying Australian financial documents.
-Classify the document as one of:
+Classify documentType as one of:
 - "pm_statement": an Australian property management statement (rent, expenses, PM fees)
 - "loan_statement": a mortgage or home loan statement showing loan payments and interest
 - "unknown": neither of the above, or insufficient text to determine
 
-Return "unknown" when confidence is insufficient — do not guess.`,
+Return "unknown" when confidence is insufficient — do not guess.
+
+Also determine statementScope (independent of documentType):
+- "periodic": a statement covering a single period such as a month or quarter — the normal case
+- "annual_summary": an end-of-financial-year (EOFY) or annual summary that aggregates a full year (or many periods) of transactions into one document
+
+Default to "periodic" unless the document clearly presents itself as an annual or financial-year summary.`,
     prompt: `Classify this document:\n\n${pdfText}`,
     abortSignal: signal,
   })
@@ -73,15 +79,17 @@ export async function extractStatementData(
     schema: extractionResultSchema,
     system: `You are extracting structured financial data from Australian property management statements.
 Rules:
-- Extract every line item — do not summarise or aggregate
+- Extract every line item — do not summarise, aggregate, drop, or skip any transaction. Every money movement on the statement must produce a line item.
 - amountCents: convert dollar amounts to integer cents (e.g. $1,234.56 → 123456). Always positive.
 - category: classify each line item by DIRECTION OF MONEY FLOW first, then by type:
   - Money received by the owner (credits, income): use 'rent' for rental income, 'other_income' for genuine operating income credited to the owner (e.g. tenant water usage reimbursements, lease break fees, late payment fees). Do NOT use 'other_income' for loan advances, bond refunds held in trust, or pass-through disbursements.
   - Money paid out by the owner (debits, expenses): use 'insurance', 'rates', 'repairs', 'property_management', 'utilities', 'strata_fees', or 'other_expense'
   - A line item with the same keyword (e.g. "water") can be either income or expense depending on direction — always check whether it is a payment made or a reimbursement received
+  - CATCH-ALL: never drop a line because its type is unrecognised. If it does not fit a specific category, fall back by direction — 'other_income' for money received by the owner, 'other_expense' for money paid out. Set confidence to 'low' for these.
   - If the direction of money flow cannot be determined, use 'other_expense' as the default
 - confidence: rate 'high' if amount and category are unambiguous, 'medium' if inferred, 'low' if uncertain
 - lineItemDate: use the transaction date shown. If only a period is shown, use the period end date.
+- If the statement has no transactions in the period, return an empty lineItems array — this is valid.
 - If a field is missing from the statement, make your best inference and set confidence to 'low'`,
     prompt: `Extract all line items from this statement:\n\n${pdfText}`,
     abortSignal: signal,

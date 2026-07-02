@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GET } from '@/app/api/v1/ingestion/staged/route'
-import { PATCH } from '@/app/api/v1/ingestion/staged/[id]/route'
+import { PATCH, DELETE } from '@/app/api/v1/ingestion/staged/[id]/route'
 
 const VALID_ID = 'a1b2c3d4-e5f6-4789-a012-345678901234'
 const VALID_DOC_ID = 'b2c3d4e5-f6a7-4890-b123-222222222222'
@@ -42,6 +42,10 @@ const mocks = vi.hoisted(() => ({
   mockListStagedByUser: vi.fn(),
   mockGetDocumentsByUser: vi.fn(),
   mockPatchStagedItem: vi.fn(),
+  mockDeleteStagedItem: vi.fn(),
+  mockCountStagedByDocument: vi.fn(),
+  mockDismissPendingDocument: vi.fn(),
+  mockListPreviouslyDeletedForReupload: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -54,7 +58,15 @@ vi.mock('@/lib/ingestion', () => ({
   listStagedByUser: (...args: unknown[]) => mocks.mockListStagedByUser(...args),
   getDocumentsByUser: (...args: unknown[]) => mocks.mockGetDocumentsByUser(...args),
   patchStagedItem: (...args: unknown[]) => mocks.mockPatchStagedItem(...args),
+  deleteStagedItem: (...args: unknown[]) => mocks.mockDeleteStagedItem(...args),
+  countStagedByDocument: (...args: unknown[]) => mocks.mockCountStagedByDocument(...args),
+  dismissPendingDocument: (...args: unknown[]) => mocks.mockDismissPendingDocument(...args),
+  listPreviouslyDeletedForReupload: (...args: unknown[]) => mocks.mockListPreviouslyDeletedForReupload(...args),
 }))
+
+function makeDeleteRequest(id: string) {
+  return new Request(`http://localhost/api/ingestion/staged/${id}`, { method: 'DELETE' })
+}
 
 function _makeGetRequest() {
   return new Request('http://localhost/api/ingestion/staged', { method: 'GET' })
@@ -76,6 +88,7 @@ describe('GET /api/ingestion/staged', () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
     mocks.mockListStagedByUser.mockResolvedValue([stagingItem])
     mocks.mockGetDocumentsByUser.mockResolvedValue([sourceDoc])
+    mocks.mockListPreviouslyDeletedForReupload.mockResolvedValue([])
   })
 
   it('returns 401 when not authenticated', async () => {
@@ -116,6 +129,21 @@ describe('GET /api/ingestion/staged', () => {
   it('passes userId to listStagedByUser', async () => {
     await GET(new Request("http://localhost/api/v1/ingestion/staged"))
     expect(mocks.mockListStagedByUser).toHaveBeenCalledWith('user-123')
+  })
+
+  it('attaches the R18 previouslyDeleted warning list to each session', async () => {
+    const warning = [{ lineItemDate: '2026-03-15', amountCents: 5000, description: 'Water usage' }]
+    mocks.mockListPreviouslyDeletedForReupload.mockResolvedValue(warning)
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/staged"))
+    const json = await res.json()
+    expect(json.sessions[0].previouslyDeleted).toEqual(warning)
+    expect(mocks.mockListPreviouslyDeletedForReupload).toHaveBeenCalledWith('user-123', sourceDoc)
+  })
+
+  it('defaults previouslyDeleted to an empty list when there are no prior deletions', async () => {
+    const res = await GET(new Request("http://localhost/api/v1/ingestion/staged"))
+    const json = await res.json()
+    expect(json.sessions[0].previouslyDeleted).toEqual([])
   })
 })
 
@@ -211,5 +239,78 @@ describe('PATCH /api/ingestion/staged/[id]', () => {
       params: Promise.resolve({ id: VALID_ID }),
     })
     expect(res.status).toBe(200)
+  })
+
+  it('patches amountCents and lineItemDate (R21)', async () => {
+    mocks.mockPatchStagedItem.mockResolvedValue({ ...stagingItem, amountCents: 275050, lineItemDate: '2026-04-01' })
+    const res = await PATCH(makePatchRequest(VALID_ID, { amountCents: 275050, lineItemDate: '2026-04-01' }), {
+      params: Promise.resolve({ id: VALID_ID }),
+    })
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.item.amountCents).toBe(275050)
+    expect(mocks.mockPatchStagedItem).toHaveBeenCalledWith(VALID_ID, 'user-123', { amountCents: 275050, lineItemDate: '2026-04-01' })
+  })
+
+  it('returns 400 for a non-positive amountCents', async () => {
+    const res = await PATCH(makePatchRequest(VALID_ID, { amountCents: 0 }), { params: Promise.resolve({ id: VALID_ID }) })
+    expect(res.status).toBe(400)
+    expect(mocks.mockPatchStagedItem).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for a malformed lineItemDate', async () => {
+    const res = await PATCH(makePatchRequest(VALID_ID, { lineItemDate: '2026/04/01' }), { params: Promise.resolve({ id: VALID_ID }) })
+    expect(res.status).toBe(400)
+    expect(mocks.mockPatchStagedItem).not.toHaveBeenCalled()
+  })
+})
+
+// ── DELETE /api/ingestion/staged/[id] ────────────────────────────────────────
+
+describe('DELETE /api/ingestion/staged/[id]', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
+    mocks.mockDeleteStagedItem.mockResolvedValue(stagingItem)
+    mocks.mockCountStagedByDocument.mockResolvedValue(2)
+    mocks.mockDismissPendingDocument.mockResolvedValue(undefined)
+  })
+
+  it('returns 401 when not authenticated', async () => {
+    mocks.mockGetUser.mockResolvedValue({ data: { user: null } })
+    const res = await DELETE(makeDeleteRequest(VALID_ID), { params: Promise.resolve({ id: VALID_ID }) })
+    expect(res.status).toBe(401)
+    expect(mocks.mockDeleteStagedItem).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for an invalid UUID', async () => {
+    const res = await DELETE(makeDeleteRequest('nope'), { params: Promise.resolve({ id: 'nope' }) })
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 404 when the staged item is not found or not owned', async () => {
+    mocks.mockDeleteStagedItem.mockResolvedValue(null)
+    const res = await DELETE(makeDeleteRequest(VALID_ID), { params: Promise.resolve({ id: VALID_ID }) })
+    expect(res.status).toBe(404)
+    expect(mocks.mockDismissPendingDocument).not.toHaveBeenCalled()
+  })
+
+  it('removes an item without dismissing when others remain', async () => {
+    mocks.mockCountStagedByDocument.mockResolvedValue(1)
+    const res = await DELETE(makeDeleteRequest(VALID_ID), { params: Promise.resolve({ id: VALID_ID }) })
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.dismissed).toBe(false)
+    expect(mocks.mockDeleteStagedItem).toHaveBeenCalledWith(VALID_ID, 'user-123')
+    expect(mocks.mockDismissPendingDocument).not.toHaveBeenCalled()
+  })
+
+  it('auto-dismisses the document when the last item is removed (R7 → U5)', async () => {
+    mocks.mockCountStagedByDocument.mockResolvedValue(0)
+    const res = await DELETE(makeDeleteRequest(VALID_ID), { params: Promise.resolve({ id: VALID_ID }) })
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.dismissed).toBe(true)
+    expect(mocks.mockDismissPendingDocument).toHaveBeenCalledWith('user-123', VALID_DOC_ID)
   })
 })

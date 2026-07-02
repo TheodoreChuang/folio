@@ -145,7 +145,7 @@ describe('POST /api/upload (integration)', () => {
     expect(inserted!.filePath).toBe(json.filePath)
   })
 
-  it('second upload of same file returns isDuplicate: true, no new DB row', async () => {
+  it('second upload of the same active file returns 409 identifying the existing upload', async () => {
     if (!hasEnv || !uniqueBuffer || !uploadedDocId) return
     const res = await uploadRequest(
       uniqueBuffer,
@@ -153,12 +153,31 @@ describe('POST /api/upload (integration)', () => {
       'pm_statement',
     )
     const json = await res.json()
-    if (res.status !== 200) {
-      console.error('Upload failed:', res.status, json)
-    }
-    expect(res.status, JSON.stringify(json)).toBe(200)
-    expect(json.isDuplicate).toBe(true)
-    expect(json.sourceDocumentId).toBe(uploadedDocId)
+    expect(res.status, JSON.stringify(json)).toBe(409)
+    expect(json.existingUploadId).toBe(uploadedDocId)
+  })
+
+  it('re-upload after voiding the prior upload succeeds with a new pending row (R14)', async () => {
+    if (!hasEnv || !uniqueBuffer || !uploadedDocId) return
+    // Simulate a void: soft-delete the prior row (the partial unique index excludes it).
+    await db.update(sourceDocuments)
+      .set({ deletedAt: new Date(), status: 'voided' })
+      .where(eq(sourceDocuments.id, uploadedDocId))
+
+    const res = await uploadRequest(uniqueBuffer, uniqueFileName, 'pm_statement')
+    const json = await res.json()
+    expect(res.status, JSON.stringify(json)).toBe(201)
+    expect(json.isDuplicate).toBe(false)
+    expect(json.sourceDocumentId).not.toBe(uploadedDocId)
+
+    // The re-upload's storage write reused the deterministic path via the upsert retry.
+    const [reuploaded] = await db.select().from(sourceDocuments)
+      .where(eq(sourceDocuments.id, json.sourceDocumentId))
+    expect(reuploaded.status).toBe('pending')
+
+    // Clean up the new row + object (afterAll only tracks the first upload).
+    uploadedFilePath = json.filePath
+    await db.delete(sourceDocuments).where(eq(sourceDocuments.id, json.sourceDocumentId))
   })
 
   it('uploaded file is accessible in Storage under correct path', async () => {

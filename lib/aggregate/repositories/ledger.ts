@@ -19,16 +19,72 @@ export async function findLedgerEntryById(
   return entry
 }
 
+// R10: a user-initiated single delete. deletionReason='user_deleted' is what the R18
+// re-upload warning keys on — only these rows are surfaced as previously-deleted.
 export async function deleteLedgerEntry(
   userId: string,
   id: string,
 ): Promise<PropertyLedger> {
   const [updated] = await db
     .update(propertyLedger)
-    .set({ deletedAt: new Date() })
+    .set({ deletedAt: new Date(), deletionReason: 'user_deleted' })
     .where(and(eq(propertyLedger.id, id), eq(propertyLedger.userId, userId)))
     .returning()
   return updated
+}
+
+export type LedgerCorrection = Partial<{
+  category: LedgerCategory
+  amountCents: number
+  lineItemDate: string
+  description: string | null
+}>
+
+// R9/R11: correct a confirmed transaction without mutating a ledger row in place. The
+// original is soft-deleted (reason='superseded') and a new row is inserted carrying the
+// edited values plus supersededByEntryId back to the original. Returns null if the entry
+// is not found or not owned by the caller.
+export async function correctLedgerEntry(
+  userId: string,
+  id: string,
+  patch: LedgerCorrection,
+): Promise<PropertyLedger | null> {
+  let created: PropertyLedger | null = null
+  await db.transaction(async (tx) => {
+    const [original] = await tx
+      .select()
+      .from(propertyLedger)
+      .where(and(
+        eq(propertyLedger.id, id),
+        eq(propertyLedger.userId, userId),
+        isNull(propertyLedger.deletedAt),
+      ))
+      .limit(1)
+    if (!original) return
+
+    await tx
+      .update(propertyLedger)
+      .set({ deletedAt: new Date(), deletionReason: 'superseded' })
+      .where(and(eq(propertyLedger.id, id), eq(propertyLedger.userId, userId)))
+
+    const [inserted] = await tx
+      .insert(propertyLedger)
+      .values({
+        userId: original.userId,
+        propertyId: original.propertyId,
+        sourceDocumentId: original.sourceDocumentId,
+        installmentLoanId: original.installmentLoanId,
+        lineItemDate: patch.lineItemDate ?? original.lineItemDate,
+        amountCents: patch.amountCents ?? original.amountCents,
+        category: patch.category ?? original.category,
+        description: patch.description !== undefined ? patch.description : original.description,
+        userNotes: original.userNotes,
+        supersededByEntryId: original.id,
+      })
+      .returning()
+    created = inserted
+  })
+  return created
 }
 
 export async function listPropertiesActiveInRange(

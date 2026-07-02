@@ -6,9 +6,10 @@ import { resolveUser } from '@/lib/api-auth'
 import { logger } from '@/lib/logger'
 import { captureError, getStorageStatusCode } from '@/lib/api-error'
 import { MAX_UPLOAD_BYTES } from '@/lib/constants'
-import { findSourceDocumentByHash, insertSourceDocument } from '@/lib/ingestion'
+import { findSourceDocumentByHash, insertSourceDocument, findOwnedSourceDocumentAnyStatus } from '@/lib/ingestion'
 
 const documentTypeSchema = z.enum(['pm_statement', 'loan_statement', 'unknown'])
+const uuidSchema = z.string().uuid()
 
 function documentTypeToFolder(documentType: string): string {
   switch (documentType) {
@@ -90,6 +91,21 @@ export async function POST(request: Request) {
   }
   const documentTypeStr = documentTypeParsed.data
 
+  // Optional Replace (R23) anchor — the confirmed upload this new file supersedes.
+  const rawReplaces = formData.get('replacesSourceDocumentId')
+  let replacesSourceDocumentId: string | null = null
+  if (typeof rawReplaces === 'string' && rawReplaces.trim() !== '') {
+    const parsedReplaces = uuidSchema.safeParse(rawReplaces.trim())
+    if (!parsedReplaces.success) {
+      return NextResponse.json({ error: 'Invalid replacesSourceDocumentId' }, { status: 400 })
+    }
+    const target = await findOwnedSourceDocumentAnyStatus(userId, parsedReplaces.data)
+    if (!target) {
+      return NextResponse.json({ error: 'Replace target not found' }, { status: 404 })
+    }
+    replacesSourceDocumentId = parsedReplaces.data
+  }
+
   const buffer = await file.arrayBuffer()
   const hash = createHash('sha256')
     .update(Buffer.from(buffer))
@@ -98,32 +114,35 @@ export async function POST(request: Request) {
   const existing = await findSourceDocumentByHash(userId, hash)
   if (existing) {
     return NextResponse.json({
-      sourceDocumentId: existing.id,
-      filePath: existing.filePath,
-      isDuplicate: true,
-    })
+      error: 'This file has already been uploaded.',
+      existingUploadId: existing.id,
+    }, { status: 409 })
   }
 
   const folder = documentTypeToFolder(documentTypeStr)
   const filePath = `documents/${userId}/${folder}/${file.name}`
 
-  const { error: uploadError } = await supabase.storage
+  let uploadError = (await supabase.storage
     .from('documents')
     .upload(filePath, buffer, {
       contentType: 'application/pdf',
       upsert: false,
-    })
+    })).error
+
+  if (uploadError && getStorageStatusCode(uploadError) === '409') {
+    // The active-hash check already passed, so no active document owns this object —
+    // it is an orphan from a prior void/dismiss whose best-effort delete failed (KTD-3).
+    // Overwrite it rather than 409-ing a legitimate re-upload.
+    logger.debug('storage upload 409 after hash check passed — retrying with upsert')
+    uploadError = (await supabase.storage
+      .from('documents')
+      .upload(filePath, buffer, {
+        contentType: 'application/pdf',
+        upsert: true,
+      })).error
+  }
 
   if (uploadError) {
-    const statusCode = getStorageStatusCode(uploadError)
-    logger.debug('storage upload failed', { statusCode })
-    if (statusCode === '409') {
-      return NextResponse.json(
-        { error: 'File already uploaded' },
-        { status: 409 }
-      )
-    }
-
     captureError(uploadError, { route: 'POST /api/v1/upload', phase: 'storage' })
     return NextResponse.json(
       { error: 'Storage upload failed', detail: uploadError.message ?? String(uploadError) },
@@ -138,6 +157,7 @@ export async function POST(request: Request) {
       fileHash: hash,
       documentType: documentTypeStr,
       filePath,
+      replacesSourceDocumentId,
     })
 
     if (!doc) {
@@ -166,10 +186,9 @@ export async function POST(request: Request) {
       const existingAfterRace = await findSourceDocumentByHash(userId, hash)
       if (existingAfterRace) {
         return NextResponse.json({
-          sourceDocumentId: existingAfterRace.id,
-          filePath: existingAfterRace.filePath,
-          isDuplicate: true,
-        })
+          error: 'This file has already been uploaded.',
+          existingUploadId: existingAfterRace.id,
+        }, { status: 409 })
       }
     }
 

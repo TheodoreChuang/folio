@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockFindSourceDocumentByHash: vi.fn(),
   mockInsertSourceDocument: vi.fn(),
+  mockFindOwnedSourceDocumentAnyStatus: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -26,6 +27,7 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/ingestion', () => ({
   findSourceDocumentByHash: (...args: unknown[]) => mocks.mockFindSourceDocumentByHash(...args),
   insertSourceDocument: (...args: unknown[]) => mocks.mockInsertSourceDocument(...args),
+  findOwnedSourceDocumentAnyStatus: (...args: unknown[]) => mocks.mockFindOwnedSourceDocumentAnyStatus(...args),
 }))
 
 function formDataWithFile(opts: {
@@ -34,6 +36,7 @@ function formDataWithFile(opts: {
   mimeType?: string
   size?: number
   documentType?: string | null
+  replacesSourceDocumentId?: string
 }) {
   const {
     fileContent = new Blob(['fake pdf content']),
@@ -41,6 +44,7 @@ function formDataWithFile(opts: {
     mimeType = 'application/pdf',
     size = fileContent.size,
     documentType = 'pm_statement',
+    replacesSourceDocumentId,
   } = opts
   const file = new File([fileContent], fileName, { type: mimeType })
   if (size !== undefined && file.size !== size) {
@@ -50,6 +54,9 @@ function formDataWithFile(opts: {
   form.append('file', file)
   if (documentType !== null) {
     form.append('documentType', documentType)
+  }
+  if (replacesSourceDocumentId !== undefined) {
+    form.append('replacesSourceDocumentId', replacesSourceDocumentId)
   }
   return form
 }
@@ -67,6 +74,7 @@ describe('POST /api/upload', () => {
     })
     mocks.mockUpload.mockResolvedValue({ error: null })
     mocks.mockRemove.mockResolvedValue({ error: null })
+    mocks.mockFindOwnedSourceDocumentAnyStatus.mockResolvedValue(null)
   })
 
   it('rejects unauthenticated requests (401)', async () => {
@@ -127,17 +135,16 @@ describe('POST /api/upload', () => {
     )
   })
 
-  it('returns isDuplicate: true when hash already exists', async () => {
+  it('returns 409 with existingUploadId when an active hash already exists', async () => {
     mocks.mockFindSourceDocumentByHash.mockResolvedValue(
       { id: 'existing-id', filePath: 'documents/user-123/pm_statements/existing.pdf' }
     )
     const form = formDataWithFile({})
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(409)
     const json = await res.json()
-    expect(json.isDuplicate).toBe(true)
-    expect(json.sourceDocumentId).toBe('existing-id')
-    expect(json.filePath).toBe('documents/user-123/pm_statements/existing.pdf')
+    expect(json.existingUploadId).toBe('existing-id')
+    expect(json.error).toBeTruthy()
     expect(mocks.mockUpload).not.toHaveBeenCalled()
   })
 
@@ -182,7 +189,7 @@ describe('POST /api/upload', () => {
     expect(mocks.mockRemove).toHaveBeenCalledWith(['documents/user-123/pm_statements/cleanup-test.pdf'])
   })
 
-  it('returns duplicate response on unique constraint (race)', async () => {
+  it('returns 409 with existingUploadId on unique constraint (race)', async () => {
     mocks.mockFindSourceDocumentByHash
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({
@@ -194,10 +201,54 @@ describe('POST /api/upload', () => {
     )
     const form = formDataWithFile({})
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(409)
     const json = await res.json()
-    expect(json.isDuplicate).toBe(true)
-    expect(json.sourceDocumentId).toBe('existing-id')
+    expect(json.existingUploadId).toBe('existing-id')
     expect(mocks.mockRemove).toHaveBeenCalledWith(['documents/user-123/pm_statements/test.pdf'])
+  })
+
+  it('retries storage upload with upsert:true when the first write 409s after the hash check passed', async () => {
+    // Orphaned storage object from a prior void whose best-effort delete failed (KTD-3).
+    mocks.mockUpload
+      .mockResolvedValueOnce({ error: { statusCode: '409', message: 'exists' } })
+      .mockResolvedValueOnce({ error: null })
+    const form = formDataWithFile({})
+    const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
+    expect(res.status).toBe(201)
+    expect(mocks.mockUpload).toHaveBeenCalledTimes(2)
+    expect(mocks.mockUpload).toHaveBeenLastCalledWith(
+      'documents/user-123/pm_statements/test.pdf',
+      expect.any(ArrayBuffer),
+      { contentType: 'application/pdf', upsert: true }
+    )
+  })
+
+  it('persists replacesSourceDocumentId when it references a caller-owned upload', async () => {
+    const replacesId = '11111111-1111-4111-8111-111111111111'
+    mocks.mockFindOwnedSourceDocumentAnyStatus.mockResolvedValue({ id: replacesId, userId: 'user-123' })
+    const form = formDataWithFile({ replacesSourceDocumentId: replacesId })
+    const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
+    expect(res.status).toBe(201)
+    expect(mocks.mockFindOwnedSourceDocumentAnyStatus).toHaveBeenCalledWith('user-123', replacesId)
+    expect(mocks.mockInsertSourceDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ replacesSourceDocumentId: replacesId })
+    )
+  })
+
+  it('returns 404 when replacesSourceDocumentId is not owned by the caller (cross-user isolation)', async () => {
+    const replacesId = '22222222-2222-4222-8222-222222222222'
+    mocks.mockFindOwnedSourceDocumentAnyStatus.mockResolvedValue(null)
+    const form = formDataWithFile({ replacesSourceDocumentId: replacesId })
+    const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
+    expect(res.status).toBe(404)
+    expect(mocks.mockUpload).not.toHaveBeenCalled()
+    expect(mocks.mockInsertSourceDocument).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when replacesSourceDocumentId is not a valid UUID', async () => {
+    const form = formDataWithFile({ replacesSourceDocumentId: 'not-a-uuid' })
+    const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
+    expect(res.status).toBe(400)
+    expect(mocks.mockUpload).not.toHaveBeenCalled()
   })
 })
