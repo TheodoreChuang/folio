@@ -200,6 +200,41 @@ describe('POST /api/upload (integration)', () => {
     expect(data!.size).toBe(uniqueBuffer.length)
   })
 
+  it('two different-content files sharing a name get distinct paths — the first is not overwritten (blocker regression)', async () => {
+    if (!hasEnv) return
+    // Pre-fix, storage paths were keyed by filename: uploading a second, different-content
+    // file with the same name collided on path, and the 409-retry branch deleted the first
+    // file's object and overwrote it. Hash-keyed paths make the two uploads independent.
+    const sharedName = `collision-${crypto.randomUUID()}.pdf`
+    const bufferA = Buffer.concat([Buffer.from('content-A'), Buffer.from(crypto.randomUUID())])
+    const bufferB = Buffer.concat([Buffer.from('content-B-longer'), Buffer.from(crypto.randomUUID())])
+
+    const resA = await uploadRequest(bufferA, sharedName, 'pm_statement')
+    const jsonA = await resA.json()
+    expect(resA.status, JSON.stringify(jsonA)).toBe(201)
+    const resB = await uploadRequest(bufferB, sharedName, 'pm_statement')
+    const jsonB = await resB.json()
+    expect(resB.status, JSON.stringify(jsonB)).toBe(201)
+
+    const serverClient = createServerClient(url!, anonKey!, {
+      cookies: { getAll: () => refs.cookieStore, setAll: () => {} },
+    })
+    try {
+      // Distinct content → distinct hash-keyed paths → no collision, no overwrite.
+      expect(jsonB.sourceDocumentId).not.toBe(jsonA.sourceDocumentId)
+      expect(jsonB.filePath).not.toBe(jsonA.filePath)
+
+      // File A's stored object must still hold content A (pre-fix, B's upload destroyed it).
+      const { data, error } = await serverClient.storage.from('documents').download(jsonA.filePath)
+      expect(error).toBeNull()
+      expect(data!.size).toBe(bufferA.length)
+    } finally {
+      await serverClient.storage.from('documents').remove([jsonA.filePath, jsonB.filePath])
+      await db.delete(sourceDocuments).where(eq(sourceDocuments.id, jsonA.sourceDocumentId))
+      await db.delete(sourceDocuments).where(eq(sourceDocuments.id, jsonB.sourceDocumentId))
+    }
+  })
+
   it('RLS: user B cannot see user A\'s source_documents row', async () => {
     if (!hasEnv) return
     const userBEmail = process.env.TEST_USER_B_EMAIL
