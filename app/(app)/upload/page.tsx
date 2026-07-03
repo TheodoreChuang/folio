@@ -12,7 +12,7 @@ type UploadState = 'idle' | 'review'
 type FileUploadStatus = {
   id: string
   name: string
-  status: 'uploading' | 'extracting' | 'staged' | 'error'
+  status: 'uploading' | 'extracting' | 'staged' | 'empty' | 'error'
   error?: string
 }
 
@@ -30,10 +30,17 @@ type StagedItem = {
   status: string
 }
 
+type PreviouslyDeletedEntry = {
+  lineItemDate: string
+  amountCents: number
+  description: string | null
+}
+
 type StagedSession = {
   sourceDocumentId: string
   documentFileName: string
   items: StagedItem[]
+  previouslyDeleted?: PreviouslyDeletedEntry[]
 }
 
 type LoanStagedItem = {
@@ -79,12 +86,18 @@ const CATEGORY_OPTIONS = [
   { value: 'utilities', label: 'Utilities' },
   { value: 'strata_fees', label: 'Strata fees' },
   { value: 'other_expense', label: 'Other expense' },
+  { value: 'other_income', label: 'Other income' },
   { value: 'loan_payment', label: 'Loan payment' },
 ]
 
 const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
   CATEGORY_OPTIONS.map(o => [o.value, o.label])
 )
+
+// Mirrors CATEGORY_BUCKET in lib/aggregate/services/compute.ts — income categories add,
+// everything else subtracts. Catch-all rows the user should eyeball before confirming.
+const INCOME_CATEGORIES = new Set(['rent', 'other_income'])
+const CATCH_ALL_CATEGORIES = new Set(['other_expense', 'other_income'])
 
 function propertyLabel(p: Property): string {
   return p.nickname ? `${p.address} — ${p.nickname}` : p.address
@@ -97,8 +110,119 @@ function loanLabel(l: LoanWithContext): string {
 
 function sessionNetCents(items: StagedItem[]): number {
   return items.reduce((sum, item) => (
-    item.category === 'rent' ? sum + item.amountCents : sum - item.amountCents
+    INCOME_CATEGORIES.has(item.category) ? sum + item.amountCents : sum - item.amountCents
   ), 0)
+}
+
+const DATE_INPUT_REGEX = /^\d{4}-\d{2}-\d{2}$/
+
+// A fully-editable review row (R21): date, description, amount, and category are all
+// changeable before confirming. Text/number fields commit on blur (mirrors the loan
+// interest/principal edit pattern); the category select commits immediately. Catch-all
+// rows (other_expense/other_income) are visually flagged for a second look (R6).
+function EditableReviewRow({ item, onPatch, onRemove }: {
+  item: StagedItem
+  onPatch: (patch: { category?: string; amountCents?: number; lineItemDate?: string; description?: string }) => void
+  onRemove: () => void
+}) {
+  const [date, setDate] = useState(item.lineItemDate)
+  const [description, setDescription] = useState(item.description)
+  const [amount, setAmount] = useState((item.amountCents / 100).toFixed(2))
+  const isCatchAll = CATCH_ALL_CATEGORIES.has(item.category)
+
+  useEffect(() => {
+    setDate(item.lineItemDate)
+    setDescription(item.description)
+    setAmount((item.amountCents / 100).toFixed(2))
+  }, [item.lineItemDate, item.description, item.amountCents])
+
+  function commitAmount() {
+    const cents = Math.round(parseFloat(amount) * 100)
+    if (isNaN(cents) || cents <= 0) { setAmount((item.amountCents / 100).toFixed(2)); return }
+    if (cents !== item.amountCents) onPatch({ amountCents: cents })
+  }
+  function commitDate() {
+    if (!DATE_INPUT_REGEX.test(date)) { setDate(item.lineItemDate); return }
+    if (date !== item.lineItemDate) onPatch({ lineItemDate: date })
+  }
+  function commitDescription() {
+    const trimmed = description.trim()
+    if (!trimmed) { setDescription(item.description); return }
+    if (trimmed !== item.description) onPatch({ description: trimmed })
+  }
+
+  return (
+    <div className={cn('px-4 py-2.5 flex items-center gap-2', isCatchAll && 'bg-warning-soft/40')}>
+      <input
+        type="date"
+        value={date}
+        onChange={e => setDate(e.target.value)}
+        onBlur={commitDate}
+        className="text-xs border border-border rounded px-1.5 py-1 bg-surface text-foreground-muted w-32 flex-shrink-0"
+      />
+      <input
+        value={description}
+        onChange={e => setDescription(e.target.value)}
+        onBlur={commitDescription}
+        className="text-sm border border-border rounded px-2 py-1 bg-surface text-foreground flex-1 min-w-0"
+      />
+      {isCatchAll && (
+        <span className="text-warning text-sm flex-shrink-0" title="Catch-all category — double-check this one" aria-label="needs review">⚠</span>
+      )}
+      <select
+        value={item.category}
+        onChange={e => onPatch({ category: e.target.value })}
+        className="text-xs border border-border rounded px-2 py-1 bg-surface text-foreground-muted flex-shrink-0"
+      >
+        {CATEGORY_OPTIONS.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+      <input
+        inputMode="decimal"
+        value={amount}
+        onChange={e => setAmount(e.target.value)}
+        onBlur={commitAmount}
+        className="text-xs text-right border border-border rounded px-2 py-1 bg-surface text-foreground w-24 flex-shrink-0"
+      />
+      <button
+        onClick={onRemove}
+        title="Remove from import"
+        className="text-xs text-foreground-muted hover:text-red-600 flex-shrink-0"
+      >
+        Remove
+      </button>
+    </div>
+  )
+}
+
+// Session-level review warnings: R20 annual-summary notice and the R18 previously-deleted
+// list (transactions the user removed from an earlier version of this statement).
+function SessionWarnings({ session, isAnnual }: { session: StagedSession; isAnnual: boolean }) {
+  const previouslyDeleted = session.previouslyDeleted ?? []
+  if (!isAnnual && previouslyDeleted.length === 0) return null
+  return (
+    <>
+      {isAnnual && (
+        <div className="px-4 py-2 bg-warning-soft border-b border-warning/25 text-xs text-foreground">
+          ⚠ This looks like an annual or EOFY summary — monthly statements are preferred. Review carefully before confirming.
+        </div>
+      )}
+      {previouslyDeleted.length > 0 && (
+        <div className="px-4 py-2.5 bg-warning-soft border-b border-warning/25">
+          <p className="text-xs font-medium text-foreground mb-1">
+            You previously deleted {previouslyDeleted.length} transaction{previouslyDeleted.length !== 1 ? 's' : ''} from an earlier version of this statement:
+          </p>
+          <ul className="text-xs text-foreground-muted space-y-0.5">
+            {previouslyDeleted.map((d, i) => (
+              <li key={i}>{d.lineItemDate} · {d.description ?? '—'} · {formatCents(d.amountCents)}</li>
+            ))}
+          </ul>
+          <p className="text-xs text-foreground-muted mt-1">Remove any that reappeared if you did not mean to re-import them.</p>
+        </div>
+      )}
+    </>
+  )
 }
 
 export default function UploadPage() {
@@ -118,6 +242,7 @@ export default function UploadPage() {
   const [savingLoanSessions, setSavingLoanSessions] = useState<Set<string>>(new Set())
   const [loanItemEdits, setLoanItemEdits] = useState<Record<string, { interest: string; principal: string }>>({})
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
+  const [annualWarningDocIds, setAnnualWarningDocIds] = useState<Set<string>>(new Set())
   const [committing, setCommitting] = useState(false)
   const [loanCommitting, setLoanCommitting] = useState(false)
 
@@ -233,16 +358,44 @@ export default function UploadPage() {
     }
   }
 
-  async function handlePatchItem(itemId: string, patch: { category?: string }) {
+  async function handlePatchItem(
+    itemId: string,
+    patch: { category?: string; amountCents?: number; lineItemDate?: string; description?: string },
+  ) {
     try {
-      await fetch(`/api/v1/ingestion/staged/${itemId}`, {
+      const res = await fetch(`/api/v1/ingestion/staged/${itemId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        toast.error(err.error ?? 'Failed to update item')
+      }
+      // Always resync server state — success or failure — so the UI never diverges
+      // (bulk-patch partial-failure learning).
       await loadStaged()
     } catch {
       toast.error('Failed to update item')
+      await loadStaged()
+    }
+  }
+
+  // R7 "remove from import" — distinct from the post-confirmation "Delete transaction".
+  // No dialog: staged items were never committed.
+  async function handleRemoveItem(itemId: string) {
+    try {
+      const res = await fetch(`/api/v1/ingestion/staged/${itemId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        toast.error('Failed to remove item')
+      } else {
+        const data = await res.json().catch(() => ({})) as { dismissed?: boolean }
+        if (data.dismissed) toast.success('Upload dismissed — all items were removed')
+      }
+      await loadStaged()
+    } catch {
+      toast.error('Network error')
+      await loadStaged()
     }
   }
 
@@ -377,6 +530,13 @@ export default function UploadPage() {
       const formData = new FormData()
       formData.append('file', file)
       const uploadRes = await fetch('/api/v1/upload', { method: 'POST', body: formData })
+      if (uploadRes.status === 409) {
+        // Identifying duplicate block (R12): this exact file is already an active upload.
+        const err = await uploadRes.json().catch(() => ({})) as { error?: string; existingUploadId?: string }
+        updateStatus({ status: 'error', error: err.error ?? 'This file has already been uploaded.' })
+        toast.error(err.error ?? 'This file has already been uploaded.')
+        return
+      }
       if (!uploadRes.ok) {
         const err = await uploadRes.json().catch(() => ({})) as { error?: string }
         updateStatus({ status: 'error', error: err.error ?? 'Upload failed' })
@@ -394,7 +554,14 @@ export default function UploadPage() {
         updateStatus({ status: 'error', error: err.error ?? 'Extraction failed' })
         return
       }
-      updateStatus({ status: 'staged' })
+      const extractData = await extractRes.json().catch(() => ({})) as { warning?: string; stagedCount?: number }
+      if (extractData.warning === 'annual_summary') {
+        // R20: annual/EOFY documents warn but still stage so the user can proceed.
+        setAnnualWarningDocIds(prev => new Set(prev).add(sourceDocumentId))
+        toast.warning('This looks like an annual or EOFY summary. Monthly statements are preferred — review carefully before confirming.')
+      }
+      // R22: a zero-transaction statement is a valid, explicit, terminal outcome.
+      updateStatus({ status: extractData.stagedCount === 0 ? 'empty' : 'staged' })
       await Promise.all([loadStaged(), loadLoanSessions()])
     } catch {
       updateStatus({ status: 'error', error: 'Network error' })
@@ -483,22 +650,15 @@ export default function UploadPage() {
                         <p className="text-sm font-medium text-foreground truncate flex-1">{session.documentFileName}</p>
                         <span className="text-xs text-foreground-muted">{session.items.length} item{session.items.length !== 1 ? 's' : ''}</span>
                       </div>
+                      <SessionWarnings session={session} isAnnual={annualWarningDocIds.has(session.sourceDocumentId)} />
                       <div className="divide-y divide-ruled">
                         {session.items.map(item => (
-                          <div key={item.id} className="px-4 py-2.5 flex items-center gap-3">
-                            <span className="text-xs text-foreground-muted w-24 flex-shrink-0">{item.lineItemDate}</span>
-                            <span className="text-sm text-foreground flex-1 truncate min-w-0">{item.description}</span>
-                            <select
-                              value={item.category}
-                              onChange={e => handlePatchItem(item.id, { category: e.target.value })}
-                              className="text-xs border border-border rounded px-2 py-1 bg-surface text-foreground-muted flex-shrink-0"
-                            >
-                              {CATEGORY_OPTIONS.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                              ))}
-                            </select>
-                            <span className="text-xs text-foreground-muted text-right w-20 flex-shrink-0">{formatCents(item.amountCents)}</span>
-                          </div>
+                          <EditableReviewRow
+                            key={item.id}
+                            item={item}
+                            onPatch={patch => handlePatchItem(item.id, patch)}
+                            onRemove={() => handleRemoveItem(item.id)}
+                          />
                         ))}
                       </div>
                       <div className="px-4 py-3 border-t border-border bg-surface/50 flex items-center gap-3">
@@ -567,16 +727,21 @@ export default function UploadPage() {
                           {isExpanded ? 'Hide' : 'Expand'}
                         </button>
                       </div>
+                      <SessionWarnings session={session} isAnnual={annualWarningDocIds.has(session.sourceDocumentId)} />
                       {isExpanded && (
                         <div className="border-t border-border divide-y divide-ruled">
-                          {session.items.map(item => (
-                            <div key={item.id} className="px-4 py-2 flex items-center gap-3">
-                              <span className="text-xs text-foreground-muted w-24 flex-shrink-0">{item.lineItemDate}</span>
-                              <span className="text-sm text-foreground flex-1 truncate min-w-0">{item.description}</span>
-                              <span className="text-xs text-foreground-muted">{CATEGORY_LABELS[item.category] ?? item.category}</span>
-                              <span className="text-xs text-foreground-muted text-right w-20 flex-shrink-0">{formatCents(item.amountCents)}</span>
-                            </div>
-                          ))}
+                          {session.items.map(item => {
+                            const isCatchAll = CATCH_ALL_CATEGORIES.has(item.category)
+                            return (
+                              <div key={item.id} className={cn('px-4 py-2 flex items-center gap-3', isCatchAll && 'bg-warning-soft/40')}>
+                                <span className="text-xs text-foreground-muted w-24 flex-shrink-0">{item.lineItemDate}</span>
+                                <span className="text-sm text-foreground flex-1 truncate min-w-0">{item.description}</span>
+                                {isCatchAll && <span className="text-warning text-xs flex-shrink-0" title="Catch-all category">⚠</span>}
+                                <span className="text-xs text-foreground-muted">{CATEGORY_LABELS[item.category] ?? item.category}</span>
+                                <span className="text-xs text-foreground-muted text-right w-20 flex-shrink-0">{formatCents(item.amountCents)}</span>
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
@@ -792,7 +957,12 @@ export default function UploadPage() {
                 disabled={matchedSessions.length === 0 || committing}
                 onClick={handleCommit}
               >
-                {committing ? 'Committing…' : 'Confirm entries →'}
+                {committing
+                  ? 'Committing…'
+                  : (() => {
+                      const n = matchedSessions.reduce((sum, s) => sum + s.items.length, 0)
+                      return `Confirm ${n} transaction${n !== 1 ? 's' : ''} →`
+                    })()}
               </Button>
             </div>
           </div>
@@ -914,6 +1084,11 @@ export default function UploadPage() {
                             <polyline points="2,6 5,9 10,3"/>
                           </svg>
                           Staged
+                        </span>
+                      )}
+                      {f.status === 'empty' && (
+                        <span className="text-xs text-foreground-muted" title="No transactions found in this statement">
+                          No transactions found
                         </span>
                       )}
                       {f.status === 'error' && (
