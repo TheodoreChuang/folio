@@ -58,6 +58,25 @@ export async function commitStagedItems(
     throw new Error('One or more source documents not found or not owned by user')
   }
 
+  // Guard: a document with items still awaiting review must not be swept into a commit — the
+  // auto-dismiss path below would soft-delete it and destroy those pending edits. Reject the
+  // whole batch so the client resolves them first. A doc whose items are all rejected (no
+  // pending, zero approved) is still legitimately auto-dismissed.
+  const pending = await db
+    .select({ id: propertyStagingItems.id })
+    .from(propertyStagingItems)
+    .where(
+      and(
+        eq(propertyStagingItems.userId, userId),
+        inArray(propertyStagingItems.sourceDocumentId, sourceDocumentIds),
+        eq(propertyStagingItems.status, 'pending'),
+      )
+    )
+    .limit(1)
+  if (pending.length > 0) {
+    throw new Error('One or more documents have unreviewed items — approve or reject all items before committing')
+  }
+
   // Fetch approved staging items for these documents
   const approved = await db
     .select()

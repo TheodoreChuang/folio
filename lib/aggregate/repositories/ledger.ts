@@ -24,11 +24,18 @@ export async function findLedgerEntryById(
 export async function deleteLedgerEntry(
   userId: string,
   id: string,
-): Promise<PropertyLedger> {
+): Promise<PropertyLedger | undefined> {
+  // isNull(deletedAt): a no-op on an already-deleted row, so a concurrent correction/void
+  // (which sets reason='superseded'/'voided') is never clobbered back to 'user_deleted' —
+  // that would wrongly surface the row in the R18 re-upload warning.
   const [updated] = await db
     .update(propertyLedger)
     .set({ deletedAt: new Date(), deletionReason: 'user_deleted' })
-    .where(and(eq(propertyLedger.id, id), eq(propertyLedger.userId, userId)))
+    .where(and(
+      eq(propertyLedger.id, id),
+      eq(propertyLedger.userId, userId),
+      isNull(propertyLedger.deletedAt),
+    ))
     .returning()
   return updated
 }
@@ -51,6 +58,10 @@ export async function correctLedgerEntry(
 ): Promise<PropertyLedger | null> {
   let created: PropertyLedger | null = null
   await db.transaction(async (tx) => {
+    // FOR UPDATE: lock the original inside the txn. A concurrent PATCH on the same entry
+    // (double-click / retry) blocks here; once the first commits, the second re-evaluates
+    // isNull(deletedAt) against the now-superseded row, matches nothing, and early-returns —
+    // preventing two active rows that both supersede the original (double-counted totals).
     const [original] = await tx
       .select()
       .from(propertyLedger)
@@ -59,6 +70,7 @@ export async function correctLedgerEntry(
         eq(propertyLedger.userId, userId),
         isNull(propertyLedger.deletedAt),
       ))
+      .for('update')
       .limit(1)
     if (!original) return
 

@@ -207,7 +207,11 @@ export async function softDeleteDocumentWithEntries(
     const softDeletedEntries = await tx
       .update(propertyLedger)
       .set({ deletedAt: new Date(), deletionReason: 'voided' })
-      .where(and(eq(propertyLedger.sourceDocumentId, id), isNull(propertyLedger.deletedAt)))
+      .where(and(
+        eq(propertyLedger.userId, userId),
+        eq(propertyLedger.sourceDocumentId, id),
+        isNull(propertyLedger.deletedAt),
+      ))
       .returning()
     entriesDeleted = softDeletedEntries.length
 
