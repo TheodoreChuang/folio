@@ -1,6 +1,8 @@
 {
   "grounding": 1.0,
-  "tool-selection": 1.0,
+  "tool-selection": 0.75,
   "security": 1.0,
-  "no-data": 1.0
+  "no-data": 0.5,
+  "calculation": 1.0,
+  "personalization": 0.67
 }
