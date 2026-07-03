@@ -283,6 +283,66 @@ registry.registerPath({
   },
 })
 
+const LedgerEntrySchema = registry.register('LedgerEntry', z.object({
+  id: z.string().uuid(),
+  propertyId: z.string().uuid(),
+  sourceDocumentId: z.string().uuid().nullable(),
+  installmentLoanId: z.string().uuid().nullable(),
+  lineItemDate: z.string().openapi({ description: 'Transaction date (YYYY-MM-DD)', example: '2026-03-31' }),
+  amountCents: z.number().int().openapi({ description: 'Amount in integer cents (always positive)' }),
+  category: z.string().openapi({ description: 'Ledger category, e.g. rent, repairs, other_income' }),
+  description: z.string().nullable(),
+}))
+
+const LedgerEntryResponseSchema = registry.register('LedgerEntryResponse', z.object({
+  entry: LedgerEntrySchema,
+}))
+
+registry.registerPath({
+  method: 'patch',
+  path: '/api/v1/ledger/{id}',
+  tags: ['Ledger'],
+  summary: 'Correct a confirmed ledger transaction',
+  description: 'Corrects a confirmed transaction (category, amount, date, or description). The ledger is append-only: the original row is soft-deleted (marked superseded) and a new row is inserted carrying the edited values, so the audit trail is preserved. At least one field must be supplied.',
+  security: [{ BearerAuth: [] }],
+  request: {
+    params: z.object({ id: UUIDParam }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            category: z.string().optional().openapi({ description: 'New category' }),
+            amountCents: z.number().int().positive().optional().openapi({ description: 'New amount in positive integer cents' }),
+            lineItemDate: z.string().optional().openapi({ description: 'New transaction date (YYYY-MM-DD)' }),
+            description: z.string().max(500).nullable().optional().openapi({ description: 'New description' }),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: { description: 'The new (corrected) ledger row', content: { 'application/json': { schema: LedgerEntryResponseSchema } } },
+    400: { description: 'Validation error (no fields, or invalid values)', content: { 'application/json': { schema: ErrorSchema } } },
+    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
+    404: { description: 'Entry not found or not owned', content: { 'application/json': { schema: ErrorSchema } } },
+  },
+})
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/v1/ledger/{id}',
+  tags: ['Ledger'],
+  summary: 'Delete a confirmed ledger transaction',
+  description: 'Soft-deletes a single confirmed transaction. Re-uploading the source statement may re-import this transaction; the re-upload review screen warns about previously-deleted rows. This is a user-initiated deletion distinct from voiding a whole statement.',
+  security: [{ BearerAuth: [] }],
+  request: { params: z.object({ id: UUIDParam }) },
+  responses: {
+    200: { description: 'Transaction deleted', content: { 'application/json': { schema: z.object({ success: z.boolean() }) } } },
+    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
+    404: { description: 'Entry not found or not owned', content: { 'application/json': { schema: ErrorSchema } } },
+  },
+})
+
 // ── Reports ───────────────────────────────────────────────────────────────────
 
 registry.registerPath({

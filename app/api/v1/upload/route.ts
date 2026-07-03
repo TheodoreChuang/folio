@@ -6,9 +6,24 @@ import { resolveUser } from '@/lib/api-auth'
 import { logger } from '@/lib/logger'
 import { captureError, getStorageStatusCode } from '@/lib/api-error'
 import { MAX_UPLOAD_BYTES } from '@/lib/constants'
-import { findSourceDocumentByHash, insertSourceDocument } from '@/lib/ingestion'
+import { findSourceDocumentByHash, insertSourceDocument, findOwnedSourceDocumentAnyStatus } from '@/lib/ingestion'
 
 const documentTypeSchema = z.enum(['pm_statement', 'loan_statement', 'unknown'])
+const uuidSchema = z.string().uuid()
+
+// Drizzle wraps driver errors in DrizzleQueryError, so the Postgres error code lands on
+// `.cause.code`, not the top level. Check both.
+function getPgErrorCode(err: unknown): string | undefined {
+  if (!err || typeof err !== 'object') return undefined
+  const top = (err as { code?: unknown }).code
+  if (typeof top === 'string') return top
+  const cause = (err as { cause?: unknown }).cause
+  if (cause && typeof cause === 'object') {
+    const causeCode = (cause as { code?: unknown }).code
+    if (typeof causeCode === 'string') return causeCode
+  }
+  return undefined
+}
 
 function documentTypeToFolder(documentType: string): string {
   switch (documentType) {
@@ -90,6 +105,21 @@ export async function POST(request: Request) {
   }
   const documentTypeStr = documentTypeParsed.data
 
+  // Optional Replace (R23) anchor — the confirmed upload this new file supersedes.
+  const rawReplaces = formData.get('replacesSourceDocumentId')
+  let replacesSourceDocumentId: string | null = null
+  if (typeof rawReplaces === 'string' && rawReplaces.trim() !== '') {
+    const parsedReplaces = uuidSchema.safeParse(rawReplaces.trim())
+    if (!parsedReplaces.success) {
+      return NextResponse.json({ error: 'Invalid replacesSourceDocumentId' }, { status: 400 })
+    }
+    const target = await findOwnedSourceDocumentAnyStatus(userId, parsedReplaces.data)
+    if (!target) {
+      return NextResponse.json({ error: 'Replace target not found' }, { status: 404 })
+    }
+    replacesSourceDocumentId = parsedReplaces.data
+  }
+
   const buffer = await file.arrayBuffer()
   const hash = createHash('sha256')
     .update(Buffer.from(buffer))
@@ -98,32 +128,41 @@ export async function POST(request: Request) {
   const existing = await findSourceDocumentByHash(userId, hash)
   if (existing) {
     return NextResponse.json({
-      sourceDocumentId: existing.id,
-      filePath: existing.filePath,
-      isDuplicate: true,
-    })
+      error: 'This file has already been uploaded.',
+      existingUploadId: existing.id,
+    }, { status: 409 })
   }
 
   const folder = documentTypeToFolder(documentTypeStr)
-  const filePath = `documents/${userId}/${folder}/${file.name}`
+  // Storage path is keyed by content hash, not filename — two different files that share a
+  // name (e.g. "statement.pdf" across periods) must never collide on the same object. With the
+  // active-hash guard above, any path collision below is therefore a same-content orphan.
+  const filePath = `documents/${userId}/${folder}/${hash}.pdf`
 
-  const { error: uploadError } = await supabase.storage
+  let uploadError = (await supabase.storage
     .from('documents')
     .upload(filePath, buffer, {
       contentType: 'application/pdf',
       upsert: false,
-    })
+    })).error
+
+  if (uploadError && getStorageStatusCode(uploadError) === '409') {
+    // Path is hash-keyed and the active-hash check passed, so any object already here belongs
+    // to a soft-deleted (voided/dismissed) same-content doc whose best-effort delete failed
+    // (KTD-3) — identical bytes. Remove the orphan and re-insert. (upsert:true would need an
+    // UPDATE policy on storage.objects, which the bucket does not have — only INSERT/SELECT/
+    // DELETE — so remove-then-insert stays within the user's RLS permissions.)
+    logger.debug('storage upload 409 after hash check passed — removing orphan and retrying')
+    await supabase.storage.from('documents').remove([filePath])
+    uploadError = (await supabase.storage
+      .from('documents')
+      .upload(filePath, buffer, {
+        contentType: 'application/pdf',
+        upsert: false,
+      })).error
+  }
 
   if (uploadError) {
-    const statusCode = getStorageStatusCode(uploadError)
-    logger.debug('storage upload failed', { statusCode })
-    if (statusCode === '409') {
-      return NextResponse.json(
-        { error: 'File already uploaded' },
-        { status: 409 }
-      )
-    }
-
     captureError(uploadError, { route: 'POST /api/v1/upload', phase: 'storage' })
     return NextResponse.json(
       { error: 'Storage upload failed', detail: uploadError.message ?? String(uploadError) },
@@ -138,6 +177,7 @@ export async function POST(request: Request) {
       fileHash: hash,
       documentType: documentTypeStr,
       filePath,
+      replacesSourceDocumentId,
     })
 
     if (!doc) {
@@ -154,25 +194,23 @@ export async function POST(request: Request) {
       isDuplicate: false,
     }, { status: 201 })
   } catch (err) {
-    await supabase.storage.from('documents').remove([filePath])
-
-    const isUniqueViolation =
-      err &&
-      typeof err === 'object' &&
-      'code' in err &&
-      (err as { code: string }).code === '23505'
+    const isUniqueViolation = getPgErrorCode(err) === '23505'
 
     if (isUniqueViolation) {
+      // A concurrent request with identical content won the insert and now owns the shared
+      // hash-keyed object — must NOT remove it. Point the caller at the winning upload.
       const existingAfterRace = await findSourceDocumentByHash(userId, hash)
       if (existingAfterRace) {
         return NextResponse.json({
-          sourceDocumentId: existingAfterRace.id,
-          filePath: existingAfterRace.filePath,
-          isDuplicate: true,
-        })
+          error: 'This file has already been uploaded.',
+          existingUploadId: existingAfterRace.id,
+        }, { status: 409 })
       }
     }
 
+    // Non-duplicate failure: this request is the sole owner of the freshly-uploaded object
+    // (a same-hash rival would have surfaced as 23505), so cleaning it up is safe.
+    await supabase.storage.from('documents').remove([filePath])
     captureError(err, { route: 'POST /api/v1/upload' })
     return NextResponse.json(
       {

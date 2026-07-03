@@ -4,6 +4,9 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
 export const classificationResultSchema = z.object({
   documentType: z.enum(['pm_statement', 'loan_statement', 'unknown']),
+  // Independent of documentType: whether this is a single-period statement or an
+  // annual/summary document aggregating a whole year (R19). Defaults to 'periodic'.
+  statementScope: z.enum(['periodic', 'annual_summary']).default('periodic'),
   confidence: z.enum(['high', 'medium', 'low']),
 })
 
@@ -54,7 +57,9 @@ export const extractionResultSchema = z.object({
   propertyAddress: z.string(),
   statementPeriodStart: z.string().regex(DATE_REGEX, 'Must be YYYY-MM-DD'),
   statementPeriodEnd: z.string().regex(DATE_REGEX, 'Must be YYYY-MM-DD'),
-  lineItems: z.array(extractedLineItemSchema).min(1),
+  // .min(0): a valid statement with no transactions in the period must extract as an
+  // empty result (R22), not throw a schema error that surfaces as a 500.
+  lineItems: z.array(extractedLineItemSchema).min(0),
 })
 
 export type ExtractedLineItem = z.infer<typeof extractedLineItemSchema>

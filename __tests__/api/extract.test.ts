@@ -303,6 +303,38 @@ describe('POST /api/extract', () => {
     expect(json.result).toBeUndefined()
   })
 
+  it('carries no warning for a periodic PM statement (R20 regression)', async () => {
+    mocks.mockClassifyDocument.mockResolvedValue({ documentType: 'pm_statement', statementScope: 'periodic', confidence: 'high' })
+    mocks.mockStageExtractionResult.mockResolvedValue({ stagedCount: 3 })
+    const res = await POST(
+      new Request('http://localhost/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceDocumentId: docRow.id }),
+      })
+    )
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.warning).toBeUndefined()
+    expect(json.stagedCount).toBe(3)
+  })
+
+  it('carries the annual_summary warning but still stages items (R20)', async () => {
+    mocks.mockClassifyDocument.mockResolvedValue({ documentType: 'pm_statement', statementScope: 'annual_summary', confidence: 'high' })
+    mocks.mockStageExtractionResult.mockResolvedValue({ stagedCount: 12 })
+    const res = await POST(
+      new Request('http://localhost/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceDocumentId: docRow.id }),
+      })
+    )
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.warning).toBe('annual_summary')
+    expect(json.stagedCount).toBe(12)
+  })
+
   it('returns sourceDocumentId and stagedCount on loan success', async () => {
     mocks.mockClassifyDocument.mockResolvedValue({ documentType: 'loan_statement', confidence: 'high' })
     mocks.mockStageLoanExtractionResult.mockResolvedValue({ stagedCount: 2 })

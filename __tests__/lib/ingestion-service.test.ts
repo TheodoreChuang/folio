@@ -31,6 +31,7 @@ const sampleResult: ExtractionResult = {
 const mocks = vi.hoisted(() => ({
   mockInsertStagedItems: vi.fn(),
   mockDeletePropertyStaged: vi.fn(),
+  mockUpdateSourceDocumentPeriod: vi.fn(),
   mockDbSelect: vi.fn(),
   mockDbUpdate: vi.fn(),
   mockDbInsert: vi.fn(),
@@ -42,12 +43,21 @@ vi.mock('@/lib/ingestion/repositories/staging', () => ({
   deletePropertyStagedBySourceDocument: (...args: unknown[]) => mocks.mockDeletePropertyStaged(...args),
 }))
 
+vi.mock('@/lib/ingestion/repositories/documents', () => ({
+  updateSourceDocumentPeriod: (...args: unknown[]) => mocks.mockUpdateSourceDocumentPeriod(...args),
+}))
+
 // We mock db directly for commit tests
 vi.mock('@/lib/db', () => ({
   db: {
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockImplementation(() => mocks.mockDbSelect()),
+        // where() is directly awaitable (ownership + approved queries) and also exposes
+        // .limit() for the pending-items guard — both resolve via the same mockDbSelect call.
+        where: vi.fn().mockImplementation(() => {
+          const p = mocks.mockDbSelect()
+          return Object.assign(p, { limit: vi.fn().mockReturnValue(p) })
+        }),
       }),
     }),
     update: vi.fn().mockReturnValue({
@@ -75,6 +85,7 @@ describe('stageExtractionResult', () => {
     vi.clearAllMocks()
     mocks.mockDeletePropertyStaged.mockResolvedValue(undefined)
     mocks.mockInsertStagedItems.mockResolvedValue([{}, {}])
+    mocks.mockUpdateSourceDocumentPeriod.mockResolvedValue(undefined)
   })
 
   it('deletes existing staging rows before inserting', async () => {
@@ -153,6 +164,41 @@ describe('stageExtractionResult', () => {
     const [items] = mocks.mockInsertStagedItems.mock.calls[0] as [Array<{ installmentLoanId: string }>]
     expect(items[0].installmentLoanId).toBe(loanAccountId)
   })
+
+  it('persists the statement period onto the source document (R19)', async () => {
+    await stageExtractionResult(USER_ID, DOC_ID, sampleResult)
+    expect(mocks.mockUpdateSourceDocumentPeriod).toHaveBeenCalledWith(
+      USER_ID, DOC_ID, '2026-03-01', '2026-03-31',
+    )
+  })
+
+  it('does not insert and returns stagedCount 0 for a zero-transaction statement (R22)', async () => {
+    const emptyResult: ExtractionResult = { ...sampleResult, lineItems: [] }
+    const { stagedCount } = await stageExtractionResult(USER_ID, DOC_ID, emptyResult)
+    expect(stagedCount).toBe(0)
+    expect(mocks.mockInsertStagedItems).not.toHaveBeenCalled()
+    // Period is still persisted even when there are no line items.
+    expect(mocks.mockUpdateSourceDocumentPeriod).toHaveBeenCalledOnce()
+  })
+
+  it('propagates a catch-all other_income category to the staged item (R6)', async () => {
+    const catchAllResult: ExtractionResult = {
+      ...sampleResult,
+      lineItems: [
+        {
+          lineItemDate: '2026-03-20',
+          amountCents: 12000,
+          category: 'other_income',
+          description: 'Unrecognised credit',
+          confidence: 'low',
+        },
+      ],
+    }
+    mocks.mockInsertStagedItems.mockResolvedValue([{}])
+    await stageExtractionResult(USER_ID, DOC_ID, catchAllResult)
+    const [items] = mocks.mockInsertStagedItems.mock.calls[0] as [Array<{ category: string }>]
+    expect(items[0].category).toBe('other_income')
+  })
 })
 
 // ── commitStagedItems ─────────────────────────────────────────────────────────
@@ -178,13 +224,13 @@ describe('commitStagedItems', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Default: ownership check passes (1 doc found for 1 requested)
-    // Default: approved items query returns approvedItem
-    // select().from().where() is called twice — first for ownership, second for approved items
+    // Three select().from().where() calls in order: (1) ownership, (2) pending-items guard
+    // (empty = none awaiting review), (3) approved items.
     let selectCallCount = 0
     mocks.mockDbSelect.mockImplementation(() => {
       selectCallCount++
       if (selectCallCount === 1) return Promise.resolve([{ id: DOC_ID }])
+      if (selectCallCount === 2) return Promise.resolve([])
       return Promise.resolve([approvedItem])
     })
 
@@ -218,11 +264,20 @@ describe('commitStagedItems', () => {
 
   it('throws if an approved item has no propertyId', async () => {
     const noPropertyItem = { ...approvedItem, propertyId: null }
-    // ownership check OK, then approved items with no propertyId
+    // ownership OK, no pending items, then approved items with no propertyId
     mocks.mockDbSelect
       .mockResolvedValueOnce([{ id: DOC_ID }])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([noPropertyItem])
     await expect(commitStagedItems(USER_ID, [DOC_ID])).rejects.toThrow('propertyId')
+  })
+
+  it('throws if a document still has unreviewed (pending) items', async () => {
+    // ownership OK, then the pending-items guard finds an item awaiting review
+    mocks.mockDbSelect
+      .mockResolvedValueOnce([{ id: DOC_ID }])
+      .mockResolvedValueOnce([{ id: 'still-pending' }])
+    await expect(commitStagedItems(USER_ID, [DOC_ID])).rejects.toThrow('unreviewed items')
   })
 
   it('returns committed count from inserted rows', async () => {
@@ -233,9 +288,46 @@ describe('commitStagedItems', () => {
   it('returns committed: 0 when no approved items', async () => {
     mocks.mockDbSelect
       .mockResolvedValueOnce([{ id: DOC_ID }])
+      .mockResolvedValueOnce([]) // no pending items
       .mockResolvedValueOnce([]) // no approved items
     const result = await commitStagedItems(USER_ID, [DOC_ID])
     expect(result.committed).toBe(0)
+  })
+
+  function captureTxSetCalls(setCalls: unknown[], insertedRows: unknown[] = [approvedItem]) {
+    mocks.mockDbTransaction.mockImplementationOnce(async (fn: (tx: unknown) => Promise<void>) => {
+      const txMock = {
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockImplementation((v: unknown) => {
+            setCalls.push(v)
+            return { where: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([]) }) }
+          }),
+        }),
+        insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue(insertedRows) }) }),
+        delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
+      }
+      await fn(txMock)
+    })
+  }
+
+  it('sets committed document status to confirmed (R8)', async () => {
+    const setCalls: unknown[] = []
+    captureTxSetCalls(setCalls)
+    await commitStagedItems(USER_ID, [DOC_ID])
+    expect(setCalls).toContainEqual({ status: 'confirmed' })
+    expect(setCalls).not.toContainEqual(expect.objectContaining({ status: 'dismissed' }))
+  })
+
+  it('auto-dismisses a document with no committable items instead of leaving it pending (R7)', async () => {
+    mocks.mockDbSelect
+      .mockResolvedValueOnce([{ id: DOC_ID }]) // ownership OK
+      .mockResolvedValueOnce([])              // no pending items
+      .mockResolvedValueOnce([])              // no approved items
+    const setCalls: unknown[] = []
+    captureTxSetCalls(setCalls, [])
+    await commitStagedItems(USER_ID, [DOC_ID])
+    expect(setCalls).toContainEqual(expect.objectContaining({ status: 'dismissed' }))
+    expect(setCalls).not.toContainEqual({ status: 'confirmed' })
   })
 
   it('deletes staging items within the transaction after committing', async () => {

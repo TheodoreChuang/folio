@@ -108,12 +108,15 @@ export async function POST(request: Request) {
 
   // Skip AI classification if a prior run already determined the document type
   let documentType: 'pm_statement' | 'loan_statement' | 'unknown'
+  // Only set when classification runs (first extraction); annual-summary triggers the R20 warn.
+  let statementScope: 'periodic' | 'annual_summary' | undefined
   if (doc.documentType === 'pm_statement' || doc.documentType === 'loan_statement') {
     documentType = doc.documentType as 'pm_statement' | 'loan_statement'
   } else {
     try {
       const classification = await classifyDocument(pdfText, controller.signal)
       documentType = classification.documentType
+      statementScope = classification.statementScope
     } catch (err) {
       clearTimeout(timeoutId)
       if (isAbortError(err)) {
@@ -136,6 +139,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to update document type', detail: message }, { status: 500 })
     }
   }
+
+  // R20: annual-summary documents warn the user (they still stage so the user can
+  // acknowledge and proceed). Empty when scope is periodic or classification was skipped.
+  const scopeWarning = (): { warning?: 'annual_summary' } =>
+    statementScope === 'annual_summary' ? { warning: 'annual_summary' } : {}
 
   if (documentType === 'unknown') {
     clearTimeout(timeoutId)
@@ -177,7 +185,7 @@ export async function POST(request: Request) {
     }
 
     clearTimeout(timeoutId)
-    return NextResponse.json({ sourceDocumentId, stagedCount: loanStagedCount })
+    return NextResponse.json({ sourceDocumentId, stagedCount: loanStagedCount, ...scopeWarning() })
   }
 
   if (documentType === 'pm_statement') {
@@ -215,7 +223,7 @@ export async function POST(request: Request) {
     }
 
     clearTimeout(timeoutId)
-    return NextResponse.json({ sourceDocumentId, stagedCount })
+    return NextResponse.json({ sourceDocumentId, stagedCount, ...scopeWarning() })
   }
 
   clearTimeout(timeoutId)

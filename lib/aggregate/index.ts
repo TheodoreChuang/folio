@@ -21,7 +21,9 @@ export {
   listLedgerEntriesInRange,
   findLedgerEntryById,
   deleteLedgerEntry,
+  correctLedgerEntry,
 } from './repositories/ledger'
+export type { LedgerCorrection } from './repositories/ledger'
 
 export { fetchPlanContext } from './plan/context'
 export type { PlanContext, PlanContextProperty, PlanContextLoan } from './plan/context'
