@@ -199,8 +199,9 @@ describe('source_documents partial unique hash index (integration — U1/R14)', 
     const [first] = await db.insert(sourceDocuments).values(docValues(hash, false)).returning()
     createdIds.push(first.id)
 
+    // Drizzle wraps driver errors — the Postgres code is on the cause, not the top level.
     await expect(
       db.insert(sourceDocuments).values(docValues(hash, false)).returning()
-    ).rejects.toMatchObject({ code: '23505' })
+    ).rejects.toMatchObject({ cause: { code: '23505' } })
   })
 })
