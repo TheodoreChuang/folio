@@ -52,7 +52,12 @@ vi.mock('@/lib/db', () => ({
   db: {
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockImplementation(() => mocks.mockDbSelect()),
+        // where() is directly awaitable (ownership + approved queries) and also exposes
+        // .limit() for the pending-items guard — both resolve via the same mockDbSelect call.
+        where: vi.fn().mockImplementation(() => {
+          const p = mocks.mockDbSelect()
+          return Object.assign(p, { limit: vi.fn().mockReturnValue(p) })
+        }),
       }),
     }),
     update: vi.fn().mockReturnValue({
@@ -219,13 +224,13 @@ describe('commitStagedItems', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Default: ownership check passes (1 doc found for 1 requested)
-    // Default: approved items query returns approvedItem
-    // select().from().where() is called twice — first for ownership, second for approved items
+    // Three select().from().where() calls in order: (1) ownership, (2) pending-items guard
+    // (empty = none awaiting review), (3) approved items.
     let selectCallCount = 0
     mocks.mockDbSelect.mockImplementation(() => {
       selectCallCount++
       if (selectCallCount === 1) return Promise.resolve([{ id: DOC_ID }])
+      if (selectCallCount === 2) return Promise.resolve([])
       return Promise.resolve([approvedItem])
     })
 
@@ -259,11 +264,20 @@ describe('commitStagedItems', () => {
 
   it('throws if an approved item has no propertyId', async () => {
     const noPropertyItem = { ...approvedItem, propertyId: null }
-    // ownership check OK, then approved items with no propertyId
+    // ownership OK, no pending items, then approved items with no propertyId
     mocks.mockDbSelect
       .mockResolvedValueOnce([{ id: DOC_ID }])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([noPropertyItem])
     await expect(commitStagedItems(USER_ID, [DOC_ID])).rejects.toThrow('propertyId')
+  })
+
+  it('throws if a document still has unreviewed (pending) items', async () => {
+    // ownership OK, then the pending-items guard finds an item awaiting review
+    mocks.mockDbSelect
+      .mockResolvedValueOnce([{ id: DOC_ID }])
+      .mockResolvedValueOnce([{ id: 'still-pending' }])
+    await expect(commitStagedItems(USER_ID, [DOC_ID])).rejects.toThrow('unreviewed items')
   })
 
   it('returns committed count from inserted rows', async () => {
@@ -274,6 +288,7 @@ describe('commitStagedItems', () => {
   it('returns committed: 0 when no approved items', async () => {
     mocks.mockDbSelect
       .mockResolvedValueOnce([{ id: DOC_ID }])
+      .mockResolvedValueOnce([]) // no pending items
       .mockResolvedValueOnce([]) // no approved items
     const result = await commitStagedItems(USER_ID, [DOC_ID])
     expect(result.committed).toBe(0)
@@ -306,6 +321,7 @@ describe('commitStagedItems', () => {
   it('auto-dismisses a document with no committable items instead of leaving it pending (R7)', async () => {
     mocks.mockDbSelect
       .mockResolvedValueOnce([{ id: DOC_ID }]) // ownership OK
+      .mockResolvedValueOnce([])              // no pending items
       .mockResolvedValueOnce([])              // no approved items
     const setCalls: unknown[] = []
     captureTxSetCalls(setCalls, [])

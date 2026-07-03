@@ -129,7 +129,7 @@ describe('POST /api/upload', () => {
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
     expect(res.status).toBe(201)
     expect(mocks.mockUpload).toHaveBeenCalledWith(
-      'documents/user-123/documents/test.pdf',
+      expect.stringMatching(/^documents\/user-123\/documents\/[0-9a-f]{64}\.pdf$/),
       expect.any(ArrayBuffer),
       { contentType: 'application/pdf', upsert: false }
     )
@@ -157,7 +157,7 @@ describe('POST /api/upload', () => {
     expect(json.sourceDocumentId).toBe('doc-uuid')
     expect(json.filePath).toBe('documents/user-123/pm_statements/test.pdf')
     expect(mocks.mockUpload).toHaveBeenCalledWith(
-      'documents/user-123/pm_statements/test.pdf',
+      expect.stringMatching(/^documents\/user-123\/pm_statements\/[0-9a-f]{64}\.pdf$/),
       expect.any(ArrayBuffer),
       { contentType: 'application/pdf', upsert: false }
     )
@@ -186,7 +186,9 @@ describe('POST /api/upload', () => {
     const form = formDataWithFile({ fileName: 'cleanup-test.pdf' })
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
     expect(res.status).toBe(500)
-    expect(mocks.mockRemove).toHaveBeenCalledWith(['documents/user-123/pm_statements/cleanup-test.pdf'])
+    expect(mocks.mockRemove).toHaveBeenCalledWith([
+      expect.stringMatching(/^documents\/user-123\/pm_statements\/[0-9a-f]{64}\.pdf$/),
+    ])
   })
 
   it('returns 409 with existingUploadId on unique constraint (race)', async () => {
@@ -204,7 +206,8 @@ describe('POST /api/upload', () => {
     expect(res.status).toBe(409)
     const json = await res.json()
     expect(json.existingUploadId).toBe('existing-id')
-    expect(mocks.mockRemove).toHaveBeenCalledWith(['documents/user-123/pm_statements/test.pdf'])
+    // The concurrent winner owns the shared hash-keyed object — it must NOT be removed.
+    expect(mocks.mockRemove).not.toHaveBeenCalled()
   })
 
   it('removes the orphan and re-inserts when the first write 409s after the hash check passed', async () => {
@@ -216,10 +219,12 @@ describe('POST /api/upload', () => {
     const form = formDataWithFile({})
     const res = await POST(new Request('http://localhost/api/upload', { method: 'POST', body: form }))
     expect(res.status).toBe(201)
-    expect(mocks.mockRemove).toHaveBeenCalledWith(['documents/user-123/pm_statements/test.pdf'])
+    expect(mocks.mockRemove).toHaveBeenCalledWith([
+      expect.stringMatching(/^documents\/user-123\/pm_statements\/[0-9a-f]{64}\.pdf$/),
+    ])
     expect(mocks.mockUpload).toHaveBeenCalledTimes(2)
     expect(mocks.mockUpload).toHaveBeenLastCalledWith(
-      'documents/user-123/pm_statements/test.pdf',
+      expect.stringMatching(/^documents\/user-123\/pm_statements\/[0-9a-f]{64}\.pdf$/),
       expect.any(ArrayBuffer),
       { contentType: 'application/pdf', upsert: false }
     )

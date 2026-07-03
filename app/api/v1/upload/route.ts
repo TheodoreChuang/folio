@@ -134,7 +134,10 @@ export async function POST(request: Request) {
   }
 
   const folder = documentTypeToFolder(documentTypeStr)
-  const filePath = `documents/${userId}/${folder}/${file.name}`
+  // Storage path is keyed by content hash, not filename — two different files that share a
+  // name (e.g. "statement.pdf" across periods) must never collide on the same object. With the
+  // active-hash guard above, any path collision below is therefore a same-content orphan.
+  const filePath = `documents/${userId}/${folder}/${hash}.pdf`
 
   let uploadError = (await supabase.storage
     .from('documents')
@@ -144,11 +147,11 @@ export async function POST(request: Request) {
     })).error
 
   if (uploadError && getStorageStatusCode(uploadError) === '409') {
-    // The active-hash check already passed, so no active document owns this object — it is
-    // an orphan from a prior void/dismiss whose best-effort delete failed (KTD-3). Remove
-    // it and re-insert. (upsert:true would need an UPDATE policy on storage.objects, which
-    // the bucket does not have — only INSERT/SELECT/DELETE — so remove-then-insert is the
-    // path that stays within the user's RLS permissions.)
+    // Path is hash-keyed and the active-hash check passed, so any object already here belongs
+    // to a soft-deleted (voided/dismissed) same-content doc whose best-effort delete failed
+    // (KTD-3) — identical bytes. Remove the orphan and re-insert. (upsert:true would need an
+    // UPDATE policy on storage.objects, which the bucket does not have — only INSERT/SELECT/
+    // DELETE — so remove-then-insert stays within the user's RLS permissions.)
     logger.debug('storage upload 409 after hash check passed — removing orphan and retrying')
     await supabase.storage.from('documents').remove([filePath])
     uploadError = (await supabase.storage
@@ -191,11 +194,11 @@ export async function POST(request: Request) {
       isDuplicate: false,
     }, { status: 201 })
   } catch (err) {
-    await supabase.storage.from('documents').remove([filePath])
-
     const isUniqueViolation = getPgErrorCode(err) === '23505'
 
     if (isUniqueViolation) {
+      // A concurrent request with identical content won the insert and now owns the shared
+      // hash-keyed object — must NOT remove it. Point the caller at the winning upload.
       const existingAfterRace = await findSourceDocumentByHash(userId, hash)
       if (existingAfterRace) {
         return NextResponse.json({
@@ -205,6 +208,9 @@ export async function POST(request: Request) {
       }
     }
 
+    // Non-duplicate failure: this request is the sole owner of the freshly-uploaded object
+    // (a same-hash rival would have surfaced as 23505), so cleaning it up is safe.
+    await supabase.storage.from('documents').remove([filePath])
     captureError(err, { route: 'POST /api/v1/upload' })
     return NextResponse.json(
       {
