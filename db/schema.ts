@@ -1,8 +1,9 @@
 import {
   pgTable, text, integer, timestamp,
-  date, pgEnum, varchar, uuid, unique, index, foreignKey,
+  date, pgEnum, varchar, uuid, unique, uniqueIndex, index, foreignKey,
   numeric,
 } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 export const entityTypeEnum = pgEnum('entity_type', [
   'individual', 'joint', 'trust', 'company', 'superannuation',
@@ -68,6 +69,10 @@ export const properties = pgTable('properties', {
   index('idx_properties_entity').on(t.entityId),
 ])
 
+export const sourceDocumentStatusEnum = pgEnum('source_document_status', [
+  'pending', 'confirmed', 'voided', 'dismissed',
+])
+
 export const sourceDocuments = pgTable('source_documents', {
   id:           uuid('id').primaryKey().defaultRandom(),
   userId:       uuid('user_id').notNull(),
@@ -77,6 +82,8 @@ export const sourceDocuments = pgTable('source_documents', {
   fileHash:     text('file_hash').notNull(),
   documentType: varchar('document_type', { length: 50 }).notNull(),
   filePath:     text('file_path').notNull(),
+  status:       sourceDocumentStatusEnum('status').notNull().default('pending'),
+  replacesSourceDocumentId: uuid('replaces_source_document_id'),
   periodStart:  date('period_start'),
   periodEnd:    date('period_end'),
   uploadedAt:   timestamp('uploaded_at').defaultNow().notNull(),
@@ -84,7 +91,17 @@ export const sourceDocuments = pgTable('source_documents', {
                   .$onUpdate(() => new Date()),
   deletedAt:    timestamp('deleted_at', { withTimezone: true }),
 }, (t) => [
-  unique().on(t.userId, t.fileHash),
+  // Partial unique index: uniqueness scoped to active (non-deleted) uploads so a
+  // voided/dismissed row does not block re-upload of the same file (R14).
+  uniqueIndex('idx_source_documents_user_hash_active')
+    .on(t.userId, t.fileHash)
+    .where(sql`deleted_at IS NULL`),
+  // Explicit FK name — auto-generated name would exceed the 63-char Postgres limit.
+  foreignKey({
+    name: 'sd_replaces_fk',
+    columns: [t.replacesSourceDocumentId],
+    foreignColumns: [t.id],
+  }).onDelete('set null'),
 ])
 
 export const loanTypeEnum = pgEnum('loan_type', [
@@ -135,6 +152,10 @@ export const loanLedger = pgTable('loan_ledger', {
   index('idx_loan_ledger_user').on(t.userId),
 ])
 
+export const ledgerDeletionReasonEnum = pgEnum('ledger_deletion_reason', [
+  'user_deleted', 'superseded', 'voided',
+])
+
 export const propertyLedger = pgTable('property_ledger', {
   id:                uuid('id').primaryKey().defaultRandom(),
   userId:            uuid('user_id').notNull(),
@@ -149,6 +170,11 @@ export const propertyLedger = pgTable('property_ledger', {
   category:          ledgerCategoryEnum('category').notNull(),
   description:       text('description'),
   userNotes:         text('user_notes'),
+  // Why a soft-deleted row was deleted — read by the R18 re-upload warning (only
+  // 'user_deleted' fires it) and the R9 correction exclusion. Null on active rows.
+  deletionReason:    ledgerDeletionReasonEnum('deletion_reason'),
+  // On an R9 correction the new row points back to the superseded original.
+  supersededByEntryId: uuid('superseded_by_entry_id'),
   createdAt:         timestamp('created_at').defaultNow().notNull(),
   updatedAt:         timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
                        .$onUpdate(() => new Date()),
@@ -157,6 +183,12 @@ export const propertyLedger = pgTable('property_ledger', {
   index('idx_ledger_user_month').on(t.userId, t.lineItemDate),
   index('idx_ledger_property').on(t.propertyId, t.lineItemDate),
   index('idx_ledger_source_doc').on(t.sourceDocumentId),
+  // Explicit FK name — auto-generated name would exceed the 63-char Postgres limit.
+  foreignKey({
+    name: 'pl_superseded_by_fk',
+    columns: [t.supersededByEntryId],
+    foreignColumns: [t.id],
+  }).onDelete('set null'),
 ])
 
 
@@ -313,6 +345,8 @@ export const personalBudgetItems = pgTable('personal_budget_items', {
 export type Property               = typeof properties.$inferSelect
 export type SourceDocument         = typeof sourceDocuments.$inferSelect
 export type NewSourceDocument      = typeof sourceDocuments.$inferInsert
+export type SourceDocumentStatus   = typeof sourceDocumentStatusEnum.enumValues[number]
+export type LedgerDeletionReason   = typeof ledgerDeletionReasonEnum.enumValues[number]
 export type InstallmentLoan        = typeof installmentLoans.$inferSelect
 export type PropertyLedger         = typeof propertyLedger.$inferSelect
 export type LedgerCategory         = typeof ledgerCategoryEnum.enumValues[number]
