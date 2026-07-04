@@ -59,6 +59,7 @@ const CATEGORY_LABELS: Record<LedgerCategory, string> = {
 // Includes loan_payment (unlike MANUAL_CATEGORIES) so an imported entry already
 // categorized as a loan payment can still be corrected without losing that value.
 const CORRECTION_CATEGORIES: LedgerCategory[] = [...MANUAL_CATEGORIES, 'loan_payment']
+const CORRECTION_CATEGORY_OPTIONS = CORRECTION_CATEGORIES.map(c => ({ value: c, label: CATEGORY_LABELS[c] }))
 
 const VALUATION_SOURCES = [
   { value: 'manual_estimate', label: 'Manual estimate' },
@@ -264,6 +265,32 @@ function PropSelectRow({
   )
 }
 
+function EntryCellDisplay({
+  displayValue, isSaving, onStartEdit,
+}: {
+  displayValue: ReactNode
+  isSaving: boolean
+  onStartEdit: () => void
+}) {
+  return (
+    <div
+      role="button" tabIndex={0}
+      onClick={onStartEdit}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStartEdit() }}
+      className={`group/cell cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
+    >
+      {displayValue}
+      {!isSaving && (
+        <span className="opacity-0 group-hover/cell:opacity-60 transition-opacity">
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
+            <path d="M2 8.5L8 2.5l1.5 1.5L3.5 10H2v-1.5z"/>
+          </svg>
+        </span>
+      )}
+    </div>
+  )
+}
+
 type EntryCellProps = {
   fieldKey: string
   editingKey: string | null
@@ -306,23 +333,7 @@ function EntryCell({
       </div>
     )
   }
-  return (
-    <div
-      role="button" tabIndex={0}
-      onClick={onStartEdit}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStartEdit() }}
-      className={`group/cell cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
-    >
-      {displayValue}
-      {!isSaving && (
-        <span className="opacity-0 group-hover/cell:opacity-60 transition-opacity">
-          <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
-            <path d="M2 8.5L8 2.5l1.5 1.5L3.5 10H2v-1.5z"/>
-          </svg>
-        </span>
-      )}
-    </div>
-  )
+  return <EntryCellDisplay displayValue={displayValue} isSaving={isSaving} onStartEdit={onStartEdit} />
 }
 
 type EntrySelectCellProps = {
@@ -358,23 +369,7 @@ function EntrySelectCell({
       </select>
     )
   }
-  return (
-    <div
-      role="button" tabIndex={0}
-      onClick={onStartEdit}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStartEdit() }}
-      className={`group/cell cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
-    >
-      {displayValue}
-      {!isSaving && (
-        <span className="opacity-0 group-hover/cell:opacity-60 transition-opacity">
-          <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
-            <path d="M2 8.5L8 2.5l1.5 1.5L3.5 10H2v-1.5z"/>
-          </svg>
-        </span>
-      )}
-    </div>
-  )
+  return <EntryCellDisplay displayValue={displayValue} isSaving={isSaving} onStartEdit={onStartEdit} />
 }
 
 export default function PropertyDetailPage() {
@@ -1738,7 +1733,7 @@ export default function PropertyDetailPage() {
                               {CATEGORY_LABELS[entry.category] ?? entry.category}
                             </span>
                           }
-                          options={CORRECTION_CATEGORIES.map(c => ({ value: c, label: CATEGORY_LABELS[c] }))}
+                          options={CORRECTION_CATEGORY_OPTIONS}
                           onStartEdit={() => startEntryEdit(entry, 'category')}
                           onValueChange={setEditEntryValue}
                           onCommit={v => commitEntryField(entry, 'category', v)}
