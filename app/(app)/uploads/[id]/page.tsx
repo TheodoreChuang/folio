@@ -5,36 +5,28 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Badge, type badgeVariants } from '@/components/ui/badge'
 import {
   Dialog, DialogContent, DialogHeader, DialogFooter,
   DialogTitle, DialogDescription, DialogClose,
 } from '@/components/ui/dialog'
+import { formatDate } from '@/lib/format'
 import type { SourceDocument } from '@/db/schema'
+import type { VariantProps } from 'class-variance-authority'
 
-const STATUS_LABELS: Record<SourceDocument['status'], string> = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  voided: 'Voided',
-  dismissed: 'Dismissed',
+// The GET route serializes uploadedAt as JSON, so it arrives as a string, not a Date.
+type UploadDocument = Omit<SourceDocument, 'uploadedAt'> & { uploadedAt: string }
+
+const STATUS_META: Record<SourceDocument['status'], { label: string; badgeVariant: VariantProps<typeof badgeVariants>['variant'] }> = {
+  pending: { label: 'Pending', badgeVariant: 'partial' },
+  confirmed: { label: 'Confirmed', badgeVariant: 'complete' },
+  voided: { label: 'Voided', badgeVariant: 'neutral' },
+  dismissed: { label: 'Dismissed', badgeVariant: 'neutral' },
 }
 
-const STATUS_STYLES: Record<SourceDocument['status'], string> = {
-  pending: 'bg-amber-100 text-amber-700 border-amber-200',
-  confirmed: 'bg-green-100 text-green-700 border-green-200',
-  voided: 'bg-surface-sunken text-foreground-muted border-border',
-  dismissed: 'bg-surface-sunken text-foreground-muted border-border',
-}
-
-function formatDate(d: string | null | undefined): string {
+function formatDateTime(d: string | null | undefined): string {
   if (!d) return '—'
-  const [y, m, day] = d.split('-')
-  return `${day}/${m}/${y}`
-}
-
-function formatDateTime(d: Date | string | null | undefined): string {
-  if (!d) return '—'
-  const date = typeof d === 'string' ? new Date(d) : d
-  return date.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })
+  return new Date(d).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 export default function UploadDetailPage() {
@@ -43,7 +35,7 @@ export default function UploadDetailPage() {
 
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-  const [document, setDocument] = useState<SourceDocument | null>(null)
+  const [document, setDocument] = useState<UploadDocument | null>(null)
   const [activeTransactionCount, setActiveTransactionCount] = useState(0)
 
   const [showVoidModal, setShowVoidModal] = useState(false)
@@ -56,7 +48,7 @@ export default function UploadDetailPage() {
       if (res.status === 401) { router.push('/login'); return }
       if (res.status === 404) { setNotFound(true); return }
       if (!res.ok) { toast.error('Failed to load upload'); return }
-      const data = await res.json() as { document: SourceDocument; activeTransactionCount: number }
+      const data = await res.json() as { document: UploadDocument; activeTransactionCount: number }
       setDocument(data.document)
       setActiveTransactionCount(data.activeTransactionCount)
     } catch {
@@ -80,7 +72,10 @@ export default function UploadDetailPage() {
       const data = await res.json() as { outcome: 'voided' | 'dismissed'; entriesDeleted: number }
       toast.success(data.outcome === 'voided' ? 'Upload voided' : 'Upload dismissed')
       setShowVoidModal(false)
-      await loadDocument()
+      // The GET route excludes soft-deleted documents, so refetching here would 404
+      // on the document we just voided. Reflect the outcome locally instead.
+      setDocument(prev => prev ? { ...prev, status: data.outcome } : prev)
+      setActiveTransactionCount(0)
     } catch {
       toast.error('Network error — please try again')
     } finally {
@@ -120,9 +115,9 @@ export default function UploadDetailPage() {
       <div className="mb-6">
         <h1 className="font-display text-2xl text-foreground truncate">{document.fileName}</h1>
         <div className="flex items-center gap-2 mt-2 flex-wrap">
-          <span className={`inline-flex items-center h-[22px] px-3 rounded-full text-[10px] font-medium uppercase tracking-wide border whitespace-nowrap ${STATUS_STYLES[document.status]}`}>
-            {STATUS_LABELS[document.status]}
-          </span>
+          <Badge variant={STATUS_META[document.status].badgeVariant}>
+            {STATUS_META[document.status].label}
+          </Badge>
           <span className="text-xs text-foreground-subtle">Uploaded {formatDateTime(document.uploadedAt)}</span>
           {(document.periodStart || document.periodEnd) && (
             <span className="text-xs text-foreground-subtle">
@@ -139,7 +134,7 @@ export default function UploadDetailPage() {
         </div>
         <div className="flex items-center justify-between py-2">
           <span className="text-xs font-medium text-foreground-subtle">Status</span>
-          <span className="text-sm">{STATUS_LABELS[document.status]}</span>
+          <span className="text-sm">{STATUS_META[document.status].label}</span>
         </div>
 
         {isVoidable && (

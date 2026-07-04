@@ -26,6 +26,12 @@ export function formatCents(cents: number): string {
   }).format(cents / 100)
 }
 
+export function formatDate(d: string | null | undefined): string {
+  if (!d) return '—'
+  const [y, m, day] = d.split('-')
+  return `${day}/${m}/${y}`
+}
+
 export function formatMonth(month: string): string {
   const [year, mon] = month.split('-').map(Number)
   return new Date(year, mon - 1).toLocaleDateString('en-AU', {
