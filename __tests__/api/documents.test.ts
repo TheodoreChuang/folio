@@ -4,7 +4,11 @@ import { GET } from '@/app/api/v1/documents/route'
 const docRow = {
   id: 'doc-uuid-1111-1111-1111-111111111111',
   fileName: 'jan-statement.pdf',
-  propertyId: 'prop-uuid-2222-2222-2222-222222222222',
+  propertyId: 'a2b2c2d2-e2f2-4222-a222-222222222222',
+  status: 'confirmed' as const,
+  periodStart: '2026-01-01',
+  periodEnd: '2026-01-31',
+  replacesSourceDocumentId: null,
   uploadedAt: new Date('2026-01-15T10:00:00Z'),
 }
 
@@ -77,8 +81,22 @@ describe('GET /api/documents', () => {
       id: docRow.id,
       fileName: docRow.fileName,
       propertyId: docRow.propertyId,
+      status: docRow.status,
+      periodStart: docRow.periodStart,
+      periodEnd: docRow.periodEnd,
+      replacesSourceDocumentId: docRow.replacesSourceDocumentId,
     })
     expect(json.documents[0].uploadedAt).toBeDefined()
+  })
+
+  it('applies propertyId as a post-filter on the month-scoped branch too', async () => {
+    const otherPropertyDoc = { ...docRow, id: 'doc-uuid-3333-3333-3333-333333333333', propertyId: 'prop-uuid-9999-9999-9999-999999999999' }
+    mocks.mockListDocumentsForDateRange.mockResolvedValue([docRow, otherPropertyDoc])
+    const res = await GET(makeGetRequest('2026-01', docRow.propertyId))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.documents).toHaveLength(1)
+    expect(json.documents[0].id).toBe(docRow.id)
   })
 
   it('returns empty array for a month with no docs (another month excluded)', async () => {

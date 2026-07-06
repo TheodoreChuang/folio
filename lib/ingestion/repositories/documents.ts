@@ -9,13 +9,6 @@ export type PreviouslyDeletedEntry = {
   description: string | null
 }
 
-export type DocumentForDateRange = {
-  id: string
-  fileName: string
-  propertyId: string
-  uploadedAt: Date
-}
-
 export type DocumentSummary = {
   id: string
   fileName: string
@@ -125,7 +118,7 @@ export async function listDocumentsForDateRange(
   userId: string,
   startDate: string,
   endDate: string,
-): Promise<DocumentForDateRange[]> {
+): Promise<DocumentSummary[]> {
   const rows = await db
     .selectDistinctOn(
       [propertyLedger.propertyId, propertyLedger.sourceDocumentId],
@@ -133,6 +126,10 @@ export async function listDocumentsForDateRange(
         id: sourceDocuments.id,
         fileName: sourceDocuments.fileName,
         propertyId: propertyLedger.propertyId,
+        status: sourceDocuments.status,
+        periodStart: sourceDocuments.periodStart,
+        periodEnd: sourceDocuments.periodEnd,
+        replacesSourceDocumentId: sourceDocuments.replacesSourceDocumentId,
         uploadedAt: sourceDocuments.uploadedAt,
       }
     )
@@ -149,25 +146,20 @@ export async function listDocumentsForDateRange(
       )
     )
 
-  return rows.map(r => ({
-    id: r.id,
-    fileName: r.fileName,
-    propertyId: r.propertyId,
-    uploadedAt: r.uploadedAt,
-  }))
+  return rows
 }
 
 // R24: source_documents.propertyId is never populated by the ingestion pipeline —
 // property assignment lives per line item on property_ledger. So property comes from
 // a LEFT JOIN (not sourceDocuments.propertyId), and unlike listDocumentsForDateRange
-// this omits both the month bound and isNull(propertyLedger.deletedAt) so a voided
-// document's ledger rows (soft-deleted) still resolve its property, and so voided/
-// dismissed uploads with no active ledger rows still appear in the full history.
-// A dismissed pending document never had ledger rows (its staging rows are
-// hard-deleted on dismiss) and surfaces with propertyId null — genuinely unattributable,
-// not a query bug. selectDistinctOn collapses the join's per-line-item duplicates to one
-// row per (document, property) pair — a document spanning multiple properties
-// legitimately appears once under each.
+// this omits the month bound and isNull(deletedAt) on BOTH sourceDocuments and
+// propertyLedger — deliberately, so a voided document (deletedAt set on both its own
+// row and its ledger rows) still resolves its property and still appears in the full
+// history, alongside dismissed documents. A dismissed pending document never had ledger
+// rows (its staging rows are hard-deleted on dismiss) and surfaces with propertyId null
+// — genuinely unattributable, not a query bug. selectDistinctOn collapses the join's
+// per-line-item duplicates to one row per (document, property) pair — a document
+// spanning multiple properties legitimately appears once under each.
 export async function listDocumentsForProperty(
   userId: string,
   propertyId?: string,

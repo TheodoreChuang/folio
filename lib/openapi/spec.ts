@@ -351,12 +351,12 @@ registry.registerPath({
   path: '/api/v1/documents',
   tags: ['Documents'],
   summary: 'List uploaded source documents (PM statements)',
-  description: 'Returns the authenticated user\'s uploaded statements, including voided and dismissed ones. Pass `month` (YYYY-MM) to scope to documents with active transactions in that month; omit it to list full upload history, optionally filtered by `propertyId`. Use this to audit upload history, detect overlapping statement periods, or find a document by property.',
+  description: 'Returns the authenticated user\'s uploaded statements, including voided and dismissed ones. Pass `month` (YYYY-MM) to scope to documents with active transactions in that month; omit it to list full upload history. Optionally filter by `propertyId` in either mode. Use this to audit upload history, detect overlapping statement periods, or find a document by property.',
   security: [{ BearerAuth: [] }],
   request: {
     query: z.object({
       month: z.string().regex(/^\d{4}-\d{2}$/).optional().openapi({ description: 'Scope to documents with active transactions in this month (YYYY-MM). Omit to list full history.' }),
-      propertyId: z.string().uuid().optional().openapi({ description: 'Filter by property (only applies when month is omitted)' }),
+      propertyId: z.string().uuid().optional().openapi({ description: 'Filter by property. Applies whether or not month is supplied.' }),
     }),
   },
   responses: {

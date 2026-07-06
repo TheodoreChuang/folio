@@ -115,14 +115,27 @@ export default function UploadDetailPage() {
       // a cancelled file picker or a rejected upload/extraction leaves the original
       // confirmed and untouched rather than stranding it voided with no replacement.
       const voidRes = await fetch(`/api/v1/documents/${id}`, { method: 'DELETE' })
+      if (voidRes.status === 404) {
+        // Another session already voided/dismissed this document in the time between
+        // page load and this call — the desired end state (original gone) already
+        // holds, so this isn't a failure requiring manual cleanup.
+        toast.success('Replacement staged — the original was already removed.')
+        router.push('/upload')
+        return
+      }
       if (!voidRes.ok) {
-        toast.error('Replacement staged, but the original could not be voided automatically — void it manually below.')
+        toast.error('Replacement staged, but the original could not be voided automatically — find it in Uploads and void it manually.')
+        await loadDocument()
         return
       }
       toast.success('Replacement staged — review and confirm it on the upload page.')
       router.push('/upload')
     } catch {
       toast.error('Network error — please try again')
+      // The failure could have happened after the void DELETE was received by the
+      // server but before its response reached the client — refetch so the UI
+      // reflects server truth rather than a possibly-stale 'confirmed' status.
+      await loadDocument()
     } finally {
       setReplacing(false)
     }

@@ -34,8 +34,11 @@ export async function GET(request: Request) {
     const endDate = lastDayOfMonth(month)
 
     const docs = await listDocumentsForDateRange(user.id, startDate, endDate)
+    // propertyId narrows this branch too — the spec documents it as applying
+    // whenever supplied, not only when month is omitted.
+    const filtered = propertyId ? docs.filter(d => d.propertyId === propertyId) : docs
 
-    return NextResponse.json({ documents: docs })
+    return NextResponse.json({ documents: filtered })
   } catch (err) {
     captureError(err, { route: 'GET /api/v1/documents' })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

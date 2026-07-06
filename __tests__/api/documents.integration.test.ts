@@ -598,4 +598,76 @@ describe('GET /api/documents without month — full history (integration — U12
     const res = await getDocumentsNoMonth('not-a-uuid')
     expect(res.status).toBe(400)
   })
+
+  it('dedupes multiple ledger rows for one document into a single entry, and fans out one row per property for a multi-property document', async () => {
+    if (!hasEnv) return
+    const [otherProp] = await db.insert(properties)
+      .values({ userId, address: `R24 Fanout ${crypto.randomUUID()}`, startDate: '2020-01-01' })
+      .returning()
+    const [doc] = await db.insert(sourceDocuments).values({
+      userId,
+      fileName: `r24-fanout-${crypto.randomUUID()}.pdf`,
+      fileHash: crypto.randomUUID(),
+      documentType: 'pm_statement',
+      filePath: `documents/${userId}/pm_statements/${crypto.randomUUID()}.pdf`,
+      status: 'confirmed',
+    }).returning()
+    createdDocIds.push(doc.id)
+    // Two line items against the same property (the realistic multi-transaction case
+    // selectDistinctOn exists to collapse) plus one against a second property (the
+    // multi-property fan-out case).
+    await db.insert(propertyLedger).values([
+      { userId, propertyId, sourceDocumentId: doc.id, lineItemDate: '2026-03-05', amountCents: 10000, category: 'rent' },
+      { userId, propertyId, sourceDocumentId: doc.id, lineItemDate: '2026-03-12', amountCents: 20000, category: 'rent' },
+      { userId, propertyId: otherProp.id, sourceDocumentId: doc.id, lineItemDate: '2026-03-20', amountCents: 30000, category: 'rent' },
+    ])
+
+    try {
+      const res = await getDocumentsNoMonth()
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      const rowsForDoc = json.documents.filter((d: { id: string }) => d.id === doc.id)
+      expect(rowsForDoc).toHaveLength(2)
+      const propertyIds = rowsForDoc.map((d: { propertyId: string }) => d.propertyId).sort()
+      expect(propertyIds).toEqual([otherProp.id, propertyId].sort())
+    } finally {
+      await db.delete(propertyLedger).where(eq(propertyLedger.sourceDocumentId, doc.id))
+      await db.delete(properties).where(eq(properties.id, otherProp.id))
+    }
+  })
+
+  it('cross-user isolation: another user\'s document and property never appear, even when propertyId targets it directly', async () => {
+    if (!hasEnv) return
+    const otherUserId = 'ffffffff-ffff-4fff-bfff-ffffffffffff'
+    const [otherProp] = await db.insert(properties)
+      .values({ userId: otherUserId, address: `R24 Other User ${crypto.randomUUID()}`, startDate: '2020-01-01' })
+      .returning()
+    const [otherDoc] = await db.insert(sourceDocuments).values({
+      userId: otherUserId,
+      fileName: `r24-other-user-${crypto.randomUUID()}.pdf`,
+      fileHash: crypto.randomUUID(),
+      documentType: 'pm_statement',
+      filePath: `documents/${otherUserId}/pm_statements/${crypto.randomUUID()}.pdf`,
+      status: 'confirmed',
+    }).returning()
+    await db.insert(propertyLedger).values({
+      userId: otherUserId, propertyId: otherProp.id, sourceDocumentId: otherDoc.id,
+      lineItemDate: '2026-03-10', amountCents: 50000, category: 'rent',
+    })
+
+    try {
+      const unfiltered = await getDocumentsNoMonth()
+      const unfilteredIds = (await unfiltered.json()).documents.map((d: { id: string }) => d.id)
+      expect(unfilteredIds).not.toContain(otherDoc.id)
+
+      const filteredByOtherProperty = await getDocumentsNoMonth(otherProp.id)
+      expect(filteredByOtherProperty.status).toBe(200)
+      const filteredJson = await filteredByOtherProperty.json()
+      expect(filteredJson.documents).toEqual([])
+    } finally {
+      await db.delete(propertyLedger).where(eq(propertyLedger.sourceDocumentId, otherDoc.id))
+      await db.delete(sourceDocuments).where(eq(sourceDocuments.id, otherDoc.id))
+      await db.delete(properties).where(eq(properties.id, otherProp.id))
+    }
+  })
 })
