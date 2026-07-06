@@ -7,6 +7,7 @@ import {
   ApiKeyCreatedResponseSchema,
   ApiKeyRevokedResponseSchema,
   ApiKeysListResponseSchema,
+  DocumentsListResponseSchema,
   EntitiesListResponseSchema,
   EntityCreatedResponseSchema,
   LedgerFyResponseSchema,
@@ -340,6 +341,28 @@ registry.registerPath({
     200: { description: 'Transaction deleted', content: { 'application/json': { schema: z.object({ success: z.boolean() }) } } },
     401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
     404: { description: 'Entry not found or not owned', content: { 'application/json': { schema: ErrorSchema } } },
+  },
+})
+
+// ── Documents ─────────────────────────────────────────────────────────────────
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/documents',
+  tags: ['Documents'],
+  summary: 'List uploaded source documents (PM statements)',
+  description: 'Returns the authenticated user\'s uploaded statements, including voided and dismissed ones. Pass `month` (YYYY-MM) to scope to documents with active transactions in that month; omit it to list full upload history. Optionally filter by `propertyId` in either mode. Use this to audit upload history, detect overlapping statement periods, or find a document by property.',
+  security: [{ BearerAuth: [] }],
+  request: {
+    query: z.object({
+      month: z.string().regex(/^\d{4}-\d{2}$/).optional().openapi({ description: 'Scope to documents with active transactions in this month (YYYY-MM). Omit to list full history.' }),
+      propertyId: z.string().uuid().optional().openapi({ description: 'Filter by property. Applies whether or not month is supplied.' }),
+    }),
+  },
+  responses: {
+    200: { description: 'List of documents', content: { 'application/json': { schema: DocumentsListResponseSchema } } },
+    400: { description: 'Invalid month or propertyId format', content: { 'application/json': { schema: ErrorSchema } } },
+    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorSchema } } },
   },
 })
 

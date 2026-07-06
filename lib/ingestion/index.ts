@@ -10,12 +10,13 @@ export {
   updateSourceDocumentType,
   updateSourceDocumentPeriod,
   listDocumentsForDateRange,
+  listDocumentsForProperty,
   softDeleteDocumentWithEntries,
   dismissPendingDocument,
   countActiveLinkedTransactions,
   listPreviouslyDeletedForReupload,
 } from './repositories/documents'
-export type { PreviouslyDeletedEntry } from './repositories/documents'
+export type { PreviouslyDeletedEntry, DocumentSummary } from './repositories/documents'
 export { stageExtractionResult, commitStagedItems } from './services/ingestion'
 export { stageLoanExtractionResult, commitLoanStagedItems } from './services/loan-ingestion'
 export { groupStagedItemsByDocument } from './utils'
