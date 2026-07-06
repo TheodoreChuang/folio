@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -14,6 +15,7 @@ type FileUploadStatus = {
   name: string
   status: 'uploading' | 'extracting' | 'staged' | 'empty' | 'error'
   error?: string
+  existingUploadId?: string
 }
 
 type StagedItem = {
@@ -533,7 +535,7 @@ export default function UploadPage() {
       if (uploadRes.status === 409) {
         // Identifying duplicate block (R12): this exact file is already an active upload.
         const err = await uploadRes.json().catch(() => ({})) as { error?: string; existingUploadId?: string }
-        updateStatus({ status: 'error', error: err.error ?? 'This file has already been uploaded.' })
+        updateStatus({ status: 'error', error: err.error ?? 'This file has already been uploaded.', existingUploadId: err.existingUploadId })
         toast.error(err.error ?? 'This file has already been uploaded.')
         return
       }
@@ -1092,7 +1094,17 @@ export default function UploadPage() {
                         </span>
                       )}
                       {f.status === 'error' && (
-                        <span className="text-xs text-red-600" title={f.error}>Error</span>
+                        f.existingUploadId ? (
+                          <Link
+                            href={`/uploads/${f.existingUploadId}`}
+                            className="text-xs text-red-600 hover:underline"
+                            title={f.error}
+                          >
+                            Already uploaded — view
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-red-600" title={f.error}>Error</span>
+                        )
                       )}
                     </div>
                   </div>
