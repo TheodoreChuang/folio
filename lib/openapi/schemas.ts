@@ -193,7 +193,7 @@ export const LedgerSummaryResponseSchema = z.object({
 export const DocumentSummarySchema = z.object({
   id: z.string().openapi({ format: 'uuid' }),
   fileName: z.string(),
-  propertyId: z.string().nullable().openapi({ format: 'uuid' }),
+  propertyId: z.string().nullable().openapi({ format: 'uuid', description: 'Property resolved from linked ledger entries; null if the document was dismissed before ever producing one (property was never assigned)' }),
   status: z.enum(['pending', 'confirmed', 'voided', 'dismissed']),
   periodStart: z.string().nullable().openapi({ description: 'Statement period start (YYYY-MM-DD)' }),
   periodEnd: z.string().nullable().openapi({ description: 'Statement period end (YYYY-MM-DD)' }),

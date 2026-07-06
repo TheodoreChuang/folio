@@ -157,30 +157,43 @@ export async function listDocumentsForDateRange(
   }))
 }
 
-// R24: unlike listDocumentsForDateRange, this selects directly from source_documents
-// (no ledger join, no month bound) so a voided/dismissed upload with no remaining
-// active ledger rows still appears — the uploads list must show full history, not
-// just documents with currently-active transactions. isNull(deletedAt) is deliberately
-// omitted for that reason.
+// R24: source_documents.propertyId is never populated by the ingestion pipeline —
+// property assignment lives per line item on property_ledger. So property comes from
+// a LEFT JOIN (not sourceDocuments.propertyId), and unlike listDocumentsForDateRange
+// this omits both the month bound and isNull(propertyLedger.deletedAt) so a voided
+// document's ledger rows (soft-deleted) still resolve its property, and so voided/
+// dismissed uploads with no active ledger rows still appear in the full history.
+// A dismissed pending document never had ledger rows (its staging rows are
+// hard-deleted on dismiss) and surfaces with propertyId null — genuinely unattributable,
+// not a query bug. selectDistinctOn collapses the join's per-line-item duplicates to one
+// row per (document, property) pair — a document spanning multiple properties
+// legitimately appears once under each.
 export async function listDocumentsForProperty(
   userId: string,
   propertyId?: string,
 ): Promise<DocumentSummary[]> {
   return db
-    .select({
-      id: sourceDocuments.id,
-      fileName: sourceDocuments.fileName,
-      propertyId: sourceDocuments.propertyId,
-      status: sourceDocuments.status,
-      periodStart: sourceDocuments.periodStart,
-      periodEnd: sourceDocuments.periodEnd,
-      replacesSourceDocumentId: sourceDocuments.replacesSourceDocumentId,
-      uploadedAt: sourceDocuments.uploadedAt,
-    })
+    .selectDistinctOn(
+      [sourceDocuments.id, propertyLedger.propertyId],
+      {
+        id: sourceDocuments.id,
+        fileName: sourceDocuments.fileName,
+        propertyId: propertyLedger.propertyId,
+        status: sourceDocuments.status,
+        periodStart: sourceDocuments.periodStart,
+        periodEnd: sourceDocuments.periodEnd,
+        replacesSourceDocumentId: sourceDocuments.replacesSourceDocumentId,
+        uploadedAt: sourceDocuments.uploadedAt,
+      }
+    )
     .from(sourceDocuments)
+    .leftJoin(propertyLedger, and(
+      eq(propertyLedger.sourceDocumentId, sourceDocuments.id),
+      eq(propertyLedger.userId, sourceDocuments.userId),
+    ))
     .where(and(
       eq(sourceDocuments.userId, userId),
-      propertyId ? eq(sourceDocuments.propertyId, propertyId) : undefined,
+      propertyId ? eq(propertyLedger.propertyId, propertyId) : undefined,
     ))
 }
 

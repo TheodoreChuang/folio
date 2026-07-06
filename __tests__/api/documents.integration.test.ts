@@ -459,3 +459,143 @@ describe('R18 previously-deleted re-upload warning (integration — U8)', () => 
     expect(warning[0].description).toBe('T2 user-removed')
   })
 })
+
+describe('GET /api/documents without month — full history (integration — U12 R24)', () => {
+  let userId: string
+  let propertyId: string
+  const createdDocIds: string[] = []
+
+  beforeAll(async () => {
+    if (!hasEnv) return
+    const anon = createClient(url!, anonKey!)
+    const { data: { session }, error } = await anon.auth.signInWithPassword({
+      email: testEmail!,
+      password: testPassword!,
+    })
+    if (error || !session) throw new Error(`Sign-in failed: ${error?.message ?? 'no session'}`)
+    userId = session.user.id
+    const [prop] = await db.insert(properties)
+      .values({ userId, address: `R24 Test ${crypto.randomUUID()}`, startDate: '2020-01-01' })
+      .returning()
+    propertyId = prop.id
+  })
+
+  afterAll(async () => {
+    if (!hasEnv) return
+    for (const id of createdDocIds) {
+      await db.delete(propertyLedger).where(eq(propertyLedger.sourceDocumentId, id))
+      await db.delete(propertyStagingItems).where(eq(propertyStagingItems.sourceDocumentId, id))
+      await db.delete(sourceDocuments).where(eq(sourceDocuments.id, id))
+    }
+    if (propertyId) await db.delete(properties).where(eq(properties.id, propertyId))
+  })
+
+  async function getDocumentsNoMonth(propertyIdFilter?: string) {
+    const { GET } = await import('@/app/api/v1/documents/route')
+    const qs = propertyIdFilter ? `?propertyId=${propertyIdFilter}` : ''
+    return GET(new Request(`http://localhost/api/documents${qs}`, { method: 'GET' }))
+  }
+
+  it('returns a voided document, resolving its property via the (soft-deleted) ledger row', async () => {
+    if (!hasEnv) return
+    const [doc] = await db.insert(sourceDocuments).values({
+      userId,
+      fileName: `r24-voided-${crypto.randomUUID()}.pdf`,
+      fileHash: crypto.randomUUID(),
+      documentType: 'pm_statement',
+      filePath: `documents/${userId}/pm_statements/${crypto.randomUUID()}.pdf`,
+      status: 'confirmed',
+      periodStart: '2026-03-01',
+      periodEnd: '2026-03-31',
+    }).returning()
+    createdDocIds.push(doc.id)
+    await db.insert(propertyLedger).values({
+      userId, propertyId, sourceDocumentId: doc.id,
+      lineItemDate: '2026-03-15', amountCents: 100000, category: 'rent',
+    })
+    await softDeleteDocumentWithEntries(userId, doc.id)
+
+    const res = await getDocumentsNoMonth()
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    const found = json.documents.find((d: { id: string }) => d.id === doc.id)
+    expect(found).toBeTruthy()
+    expect(found.status).toBe('voided')
+    expect(found.propertyId).toBe(propertyId)
+  })
+
+  it('returns a dismissed pending document with propertyId null (staging never linked a property)', async () => {
+    if (!hasEnv) return
+    const [doc] = await db.insert(sourceDocuments).values({
+      userId,
+      fileName: `r24-dismissed-${crypto.randomUUID()}.pdf`,
+      fileHash: crypto.randomUUID(),
+      documentType: 'pm_statement',
+      filePath: `documents/${userId}/pm_statements/${crypto.randomUUID()}.pdf`,
+      status: 'pending',
+      periodStart: '2026-03-01',
+      periodEnd: '2026-03-31',
+    }).returning()
+    createdDocIds.push(doc.id)
+    await dismissPendingDocument(userId, doc.id)
+
+    const res = await getDocumentsNoMonth()
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    const found = json.documents.find((d: { id: string }) => d.id === doc.id)
+    expect(found).toBeTruthy()
+    expect(found.status).toBe('dismissed')
+    expect(found.propertyId).toBeNull()
+  })
+
+  it('propertyId filter narrows to documents linked to that property only', async () => {
+    if (!hasEnv) return
+    const [otherProp] = await db.insert(properties)
+      .values({ userId, address: `R24 Other ${crypto.randomUUID()}`, startDate: '2020-01-01' })
+      .returning()
+    const [docA] = await db.insert(sourceDocuments).values({
+      userId,
+      fileName: `r24-filter-a-${crypto.randomUUID()}.pdf`,
+      fileHash: crypto.randomUUID(),
+      documentType: 'pm_statement',
+      filePath: `documents/${userId}/pm_statements/${crypto.randomUUID()}.pdf`,
+      status: 'confirmed',
+    }).returning()
+    createdDocIds.push(docA.id)
+    await db.insert(propertyLedger).values({
+      userId, propertyId, sourceDocumentId: docA.id,
+      lineItemDate: '2026-03-10', amountCents: 50000, category: 'rent',
+    })
+    const [docB] = await db.insert(sourceDocuments).values({
+      userId,
+      fileName: `r24-filter-b-${crypto.randomUUID()}.pdf`,
+      fileHash: crypto.randomUUID(),
+      documentType: 'pm_statement',
+      filePath: `documents/${userId}/pm_statements/${crypto.randomUUID()}.pdf`,
+      status: 'confirmed',
+    }).returning()
+    createdDocIds.push(docB.id)
+    await db.insert(propertyLedger).values({
+      userId, propertyId: otherProp.id, sourceDocumentId: docB.id,
+      lineItemDate: '2026-03-10', amountCents: 50000, category: 'rent',
+    })
+
+    try {
+      const res = await getDocumentsNoMonth(propertyId)
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      const ids = json.documents.map((d: { id: string }) => d.id)
+      expect(ids).toContain(docA.id)
+      expect(ids).not.toContain(docB.id)
+    } finally {
+      await db.delete(propertyLedger).where(eq(propertyLedger.sourceDocumentId, docB.id))
+      await db.delete(properties).where(eq(properties.id, otherProp.id))
+    }
+  })
+
+  it('returns 400 for a malformed propertyId', async () => {
+    if (!hasEnv) return
+    const res = await getDocumentsNoMonth('not-a-uuid')
+    expect(res.status).toBe(400)
+  })
+})
