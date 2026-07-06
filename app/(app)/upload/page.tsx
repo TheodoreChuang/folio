@@ -592,6 +592,7 @@ export default function UploadPage() {
         <div>
           <h1 className="font-display text-2xl text-foreground">Upload</h1>
           <p className="text-sm text-foreground-muted mt-0.5">Drop a statement. Folio classifies it and asks only when uncertain.</p>
+          <Link href="/uploads" className="text-xs text-accent hover:underline mt-1 inline-block">View upload history →</Link>
         </div>
         {totalSessions > 0 && (
           <div className="inline-flex items-center gap-0.5 p-0.5 bg-sunken border border-border rounded-lg">

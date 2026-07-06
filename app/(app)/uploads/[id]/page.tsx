@@ -5,29 +5,17 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Badge, type badgeVariants } from '@/components/ui/badge'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog, DialogContent, DialogHeader, DialogFooter,
   DialogTitle, DialogDescription, DialogClose,
 } from '@/components/ui/dialog'
 import { formatDate } from '@/lib/format'
+import { STATUS_META, formatDateTime } from '../status'
 import type { SourceDocument } from '@/db/schema'
-import type { VariantProps } from 'class-variance-authority'
 
 // The GET route serializes uploadedAt as JSON, so it arrives as a string, not a Date.
 type UploadDocument = Omit<SourceDocument, 'uploadedAt'> & { uploadedAt: string }
-
-const STATUS_META: Record<SourceDocument['status'], { label: string; badgeVariant: VariantProps<typeof badgeVariants>['variant'] }> = {
-  pending: { label: 'Pending', badgeVariant: 'partial' },
-  confirmed: { label: 'Confirmed', badgeVariant: 'complete' },
-  voided: { label: 'Voided', badgeVariant: 'neutral' },
-  dismissed: { label: 'Dismissed', badgeVariant: 'neutral' },
-}
-
-function formatDateTime(d: string | null | undefined): string {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })
-}
 
 export default function UploadDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -106,7 +94,7 @@ export default function UploadDetailPage() {
     <div>
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-xs text-foreground-muted mb-3">
-        <Link href="/upload" className="hover:text-foreground transition-colors">Upload</Link>
+        <Link href="/uploads" className="hover:text-foreground transition-colors">Uploads</Link>
         <span>›</span>
         <span className="truncate">{document.fileName}</span>
       </div>
