@@ -21,7 +21,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
-import { formatCents, recentMonths } from '@/lib/format'
+import { formatCents, formatDate, recentMonths } from '@/lib/format'
 import type {
   Property, PropertyLedger, PropertyValuation, InstallmentLoan,
   Entity, PropertyTenancy, PropertyManagementAgent, PropertyType, StatementCadence,
@@ -61,6 +61,51 @@ const CATEGORY_LABELS: Record<LedgerCategory, string> = {
 const CORRECTION_CATEGORIES: LedgerCategory[] = [...MANUAL_CATEGORIES, 'loan_payment']
 const CORRECTION_CATEGORY_OPTIONS = CORRECTION_CATEGORIES.map(c => ({ value: c, label: CATEGORY_LABELS[c] }))
 
+type EntryField = 'lineItemDate' | 'amountCents' | 'category' | 'description'
+
+// Record<EntryField, ...> forces every field to be handled here — adding a 5th field
+// without an entry is a compile error instead of a silent fallthrough.
+const ENTRY_FIELD_CONFIG: Record<EntryField, {
+  getEditValue: (entry: PropertyLedger) => string
+  parseCommit: (entry: PropertyLedger, rawValue: string) => { updates: Record<string, unknown> } | { error: string } | null
+}> = {
+  amountCents: {
+    getEditValue: entry => (entry.amountCents / 100).toString(),
+    parseCommit: (entry, rawValue) => {
+      const raw = rawValue.replace(/,/g, '').trim()
+      if (!/^\d+(\.\d{1,2})?$/.test(raw)) return { error: 'Invalid amount' }
+      const dollars = parseFloat(raw)
+      if (dollars <= 0) return { error: 'Invalid amount' }
+      const cents = Math.round(dollars * 100)
+      if (cents === entry.amountCents) return null
+      return { updates: { amountCents: cents } }
+    },
+  },
+  lineItemDate: {
+    getEditValue: entry => entry.lineItemDate,
+    parseCommit: (entry, rawValue) => {
+      if (!rawValue || rawValue === entry.lineItemDate) return null
+      return { updates: { lineItemDate: rawValue } }
+    },
+  },
+  category: {
+    getEditValue: entry => entry.category,
+    parseCommit: (entry, rawValue) => {
+      if (rawValue === entry.category) return null
+      return { updates: { category: rawValue } }
+    },
+  },
+  description: {
+    getEditValue: entry => entry.description ?? '',
+    parseCommit: (entry, rawValue) => {
+      const desc = rawValue.trim() || null
+      if (desc && desc.length > 500) return { error: 'Description is too long (max 500 characters)' }
+      if (desc === (entry.description ?? null)) return null
+      return { updates: { description: desc } }
+    },
+  },
+}
+
 const VALUATION_SOURCES = [
   { value: 'manual_estimate', label: 'Manual estimate' },
   { value: 'bank_valuation', label: 'Bank valuation' },
@@ -92,12 +137,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   strata_fees:         'hsl(14 58% 42%)',
   other_expense:       'hsl(32 6% 50%)',
   loan_payment:        'hsl(32 6% 38%)',
-}
-
-function formatDate(d: string | null | undefined): string {
-  if (!d) return '—'
-  const [y, m, day] = d.split('-')
-  return `${day}/${m}/${y}`
 }
 
 function todayIso(): string {
@@ -266,21 +305,26 @@ function PropSelectRow({
 }
 
 function EntryCellDisplay({
-  displayValue, isSaving, onStartEdit,
+  displayValue, isSaving, rowSaving, onStartEdit,
 }: {
   displayValue: ReactNode
   isSaving: boolean
+  rowSaving: boolean
   onStartEdit: () => void
 }) {
+  // A row whose identity is about to change (append-only correction) must not accept
+  // a second concurrent edit — the second PATCH would target an already-superseded id.
+  const disabled = isSaving || rowSaving
   return (
     <div
-      role="button" tabIndex={0}
-      onClick={onStartEdit}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onStartEdit() }}
-      className={`group/cell cursor-pointer px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${isSaving ? ' opacity-50' : ' hover:bg-surface-sunken'}`}
+      role="button" tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled}
+      onClick={disabled ? undefined : onStartEdit}
+      onKeyDown={e => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) onStartEdit() }}
+      className={`group/cell px-2 py-0.5 -mx-2 rounded inline-flex items-center gap-1 transition-colors${disabled ? ' opacity-50 cursor-default' : ' cursor-pointer hover:bg-surface-sunken'}`}
     >
       {displayValue}
-      {!isSaving && (
+      {!disabled && (
         <span className="opacity-0 group-hover/cell:opacity-60 transition-opacity">
           <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden>
             <path d="M2 8.5L8 2.5l1.5 1.5L3.5 10H2v-1.5z"/>
@@ -296,6 +340,7 @@ type EntryCellProps = {
   editingKey: string | null
   editValue: string
   savingKey: string | null
+  rowSaving: boolean
   displayValue: ReactNode
   inputType?: 'text' | 'date'
   editPrefix?: string
@@ -306,7 +351,7 @@ type EntryCellProps = {
 }
 
 function EntryCell({
-  fieldKey, editingKey, editValue, savingKey, displayValue,
+  fieldKey, editingKey, editValue, savingKey, rowSaving, displayValue,
   inputType = 'text', editPrefix, onStartEdit, onValueChange, onCommit, onCancel,
 }: EntryCellProps) {
   const isEditing = editingKey === fieldKey
@@ -333,7 +378,7 @@ function EntryCell({
       </div>
     )
   }
-  return <EntryCellDisplay displayValue={displayValue} isSaving={isSaving} onStartEdit={onStartEdit} />
+  return <EntryCellDisplay displayValue={displayValue} isSaving={isSaving} rowSaving={rowSaving} onStartEdit={onStartEdit} />
 }
 
 type EntrySelectCellProps = {
@@ -341,6 +386,7 @@ type EntrySelectCellProps = {
   editingKey: string | null
   editValue: string
   savingKey: string | null
+  rowSaving: boolean
   displayValue: ReactNode
   options: { value: string; label: string }[]
   onStartEdit: () => void
@@ -350,7 +396,7 @@ type EntrySelectCellProps = {
 }
 
 function EntrySelectCell({
-  fieldKey, editingKey, editValue, savingKey, displayValue,
+  fieldKey, editingKey, editValue, savingKey, rowSaving, displayValue,
   options, onStartEdit, onValueChange, onCommit, onCancel,
 }: EntrySelectCellProps) {
   const isEditing = editingKey === fieldKey
@@ -369,7 +415,7 @@ function EntrySelectCell({
       </select>
     )
   }
-  return <EntryCellDisplay displayValue={displayValue} isSaving={isSaving} onStartEdit={onStartEdit} />
+  return <EntryCellDisplay displayValue={displayValue} isSaving={isSaving} rowSaving={rowSaving} onStartEdit={onStartEdit} />
 }
 
 export default function PropertyDetailPage() {
@@ -772,6 +818,14 @@ export default function PropertyDetailPage() {
       if (!res.ok) { toast.error('Failed to delete transaction'); return }
       setEntries(prev => prev.filter(e => e.id !== deleteEntryTarget.id))
       setDeleteEntryTarget(null)
+      fetch(`/api/v1/properties/${id}/trends?months=12`)
+        .then(r => r.ok ? r.json() : null)
+        .then((data: { trends?: TrendPoint[]; avgMonthlyNetCents?: number | null } | null) => {
+          if (!data) return
+          setAvgMonthlyNetCents(data.avgMonthlyNetCents ?? null)
+          setTrends(data.trends ?? [])
+        })
+        .catch(() => {})
     } catch {
       toast.error('Failed to delete transaction')
     } finally {
@@ -779,43 +833,18 @@ export default function PropertyDetailPage() {
     }
   }
 
-  function startEntryEdit(
-    entry: PropertyLedger,
-    field: 'lineItemDate' | 'amountCents' | 'category' | 'description'
-  ) {
+  function startEntryEdit(entry: PropertyLedger, field: EntryField) {
     setEditingEntryKey(`${entry.id}:${field}`)
-    if (field === 'amountCents') setEditEntryValue((entry.amountCents / 100).toString())
-    else if (field === 'description') setEditEntryValue(entry.description ?? '')
-    else if (field === 'category') setEditEntryValue(entry.category)
-    else setEditEntryValue(entry.lineItemDate)
+    setEditEntryValue(ENTRY_FIELD_CONFIG[field].getEditValue(entry))
   }
 
-  async function commitEntryField(
-    entry: PropertyLedger,
-    field: 'lineItemDate' | 'amountCents' | 'category' | 'description',
-    rawValue: string
-  ) {
+  async function commitEntryField(entry: PropertyLedger, field: EntryField, rawValue: string) {
     setEditingEntryKey(null)
 
-    let updates: Record<string, unknown>
-    if (field === 'amountCents') {
-      const raw = rawValue.replace(/,/g, '')
-      const dollars = parseFloat(raw)
-      if (!raw.trim() || isNaN(dollars) || dollars <= 0) { toast.error('Invalid amount'); return }
-      const cents = Math.round(dollars * 100)
-      if (cents === entry.amountCents) return
-      updates = { amountCents: cents }
-    } else if (field === 'lineItemDate') {
-      if (!rawValue || rawValue === entry.lineItemDate) return
-      updates = { lineItemDate: rawValue }
-    } else if (field === 'category') {
-      if (rawValue === entry.category) return
-      updates = { category: rawValue }
-    } else {
-      const desc = rawValue.trim() || null
-      if (desc === (entry.description ?? null)) return
-      updates = { description: desc }
-    }
+    const result = ENTRY_FIELD_CONFIG[field].parseCommit(entry, rawValue)
+    if (!result) return
+    if ('error' in result) { toast.error(result.error); return }
+    const { updates } = result
 
     const key = `${entry.id}:${field}`
     setSavingEntryKey(key)
@@ -826,9 +855,15 @@ export default function PropertyDetailPage() {
         body: JSON.stringify(updates),
       })
       if (!res.ok) {
+        if (res.status === 404) {
+          // The row was superseded or deleted server-side since it was loaded — the
+          // local list can genuinely be stale here, unlike other failure branches.
+          toast.error('This entry was just changed — reloading')
+          await loadEntries(new AbortController().signal)
+          return
+        }
         const err = await res.json().catch(() => ({})) as { error?: string }
         toast.error(err.error ?? 'Failed to save')
-        await loadEntries(new AbortController().signal)
         return
       }
       const { entry: updated } = await res.json() as { entry: PropertyLedger }
@@ -849,7 +884,6 @@ export default function PropertyDetailPage() {
         .catch(() => {})
     } catch {
       toast.error('Network error — please try again')
-      await loadEntries(new AbortController().signal)
     } finally {
       setSavingEntryKey(null)
     }
@@ -1702,7 +1736,9 @@ export default function PropertyDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map(entry => (
+                  {entries.map(entry => {
+                    const rowSaving = savingEntryKey?.startsWith(`${entry.id}:`) ?? false
+                    return (
                     <tr key={entry.id} className="border-b border-rule last:border-b-0 group">
                       <td className="py-2.5 px-4 text-foreground-muted">
                         <EntryCell
@@ -1710,6 +1746,7 @@ export default function PropertyDetailPage() {
                           editingKey={editingEntryKey}
                           editValue={editEntryValue}
                           savingKey={savingEntryKey}
+                          rowSaving={rowSaving}
                           displayValue={formatDate(entry.lineItemDate)}
                           inputType="date"
                           onStartEdit={() => startEntryEdit(entry, 'lineItemDate')}
@@ -1724,6 +1761,7 @@ export default function PropertyDetailPage() {
                           editingKey={editingEntryKey}
                           editValue={editEntryValue}
                           savingKey={savingEntryKey}
+                          rowSaving={rowSaving}
                           displayValue={
                             <span className="inline-flex items-center gap-1.5">
                               <span
@@ -1746,6 +1784,7 @@ export default function PropertyDetailPage() {
                           editingKey={editingEntryKey}
                           editValue={editEntryValue}
                           savingKey={savingEntryKey}
+                          rowSaving={rowSaving}
                           displayValue={entry.description ?? <span className="text-foreground-faint">—</span>}
                           onStartEdit={() => startEntryEdit(entry, 'description')}
                           onValueChange={setEditEntryValue}
@@ -1759,6 +1798,7 @@ export default function PropertyDetailPage() {
                           editingKey={editingEntryKey}
                           editValue={editEntryValue}
                           savingKey={savingEntryKey}
+                          rowSaving={rowSaving}
                           displayValue={
                             (entry.category === 'rent' || entry.category === 'other_income')
                               ? <span className="text-green-700">+{formatCents(entry.amountCents)}</span>
@@ -1801,7 +1841,8 @@ export default function PropertyDetailPage() {
                         </DropdownMenu>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

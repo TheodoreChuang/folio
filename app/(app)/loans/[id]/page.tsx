@@ -8,16 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MetricTile } from '@/components/ui/metric-tile'
-import { formatCents } from '@/lib/format'
+import { formatCents, formatDate } from '@/lib/format'
 import type { ReactNode } from 'react'
 import type { InstallmentLoan, InstallmentLoanBalance } from '@/db/schema'
 import type { InstallmentLoanDetail, LoanLedgerWithSource } from '@/lib/borrowings'
-
-function formatDate(d: string | null | undefined): string {
-  if (!d) return '—'
-  const [y, m, day] = d.split('-')
-  return `${day}/${m}/${y}`
-}
 
 function ioCountdownMonths(ioEndDate: string): number {
   const msRemaining = new Date(ioEndDate).getTime() - Date.now()
