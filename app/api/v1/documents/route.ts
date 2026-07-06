@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
 import { lastDayOfMonth } from '@/lib/format'
-import { listDocumentsForDateRange } from '@/lib/ingestion'
+import { listDocumentsForDateRange, listDocumentsForProperty } from '@/lib/ingestion'
 
 const MONTH_REGEX = /^\d{4}-\d{2}$/
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function GET(request: Request) {
   try {
@@ -13,9 +14,17 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const month = searchParams.get('month')
+    const propertyId = searchParams.get('propertyId')
 
+    if (propertyId !== null && !UUID_REGEX.test(propertyId)) {
+      return NextResponse.json({ error: 'Invalid propertyId (must be a valid UUID)' }, { status: 400 })
+    }
+
+    // R24: with no month, list the caller's full upload history (including
+    // voided/dismissed) rather than requiring a date range.
     if (!month) {
-      return NextResponse.json({ error: 'Missing month parameter' }, { status: 400 })
+      const docs = await listDocumentsForProperty(user.id, propertyId ?? undefined)
+      return NextResponse.json({ documents: docs })
     }
     if (!MONTH_REGEX.test(month)) {
       return NextResponse.json({ error: 'Invalid month format (must be YYYY-MM)' }, { status: 400 })

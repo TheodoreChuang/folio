@@ -16,6 +16,17 @@ export type DocumentForDateRange = {
   uploadedAt: Date
 }
 
+export type DocumentSummary = {
+  id: string
+  fileName: string
+  propertyId: string | null
+  status: SourceDocument['status']
+  periodStart: string | null
+  periodEnd: string | null
+  replacesSourceDocumentId: string | null
+  uploadedAt: Date
+}
+
 export async function getDocumentsByUser(userId: string): Promise<SourceDocument[]> {
   return db
     .select()
@@ -144,6 +155,33 @@ export async function listDocumentsForDateRange(
     propertyId: r.propertyId,
     uploadedAt: r.uploadedAt,
   }))
+}
+
+// R24: unlike listDocumentsForDateRange, this selects directly from source_documents
+// (no ledger join, no month bound) so a voided/dismissed upload with no remaining
+// active ledger rows still appears — the uploads list must show full history, not
+// just documents with currently-active transactions. isNull(deletedAt) is deliberately
+// omitted for that reason.
+export async function listDocumentsForProperty(
+  userId: string,
+  propertyId?: string,
+): Promise<DocumentSummary[]> {
+  return db
+    .select({
+      id: sourceDocuments.id,
+      fileName: sourceDocuments.fileName,
+      propertyId: sourceDocuments.propertyId,
+      status: sourceDocuments.status,
+      periodStart: sourceDocuments.periodStart,
+      periodEnd: sourceDocuments.periodEnd,
+      replacesSourceDocumentId: sourceDocuments.replacesSourceDocumentId,
+      uploadedAt: sourceDocuments.uploadedAt,
+    })
+    .from(sourceDocuments)
+    .where(and(
+      eq(sourceDocuments.userId, userId),
+      propertyId ? eq(sourceDocuments.propertyId, propertyId) : undefined,
+    ))
 }
 
 export async function countActiveLinkedTransactions(userId: string, id: string): Promise<number> {
