@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -11,6 +11,7 @@ import {
   DialogTitle, DialogDescription, DialogClose,
 } from '@/components/ui/dialog'
 import { formatDate } from '@/lib/format'
+import { MAX_UPLOAD_BYTES } from '@/lib/constants'
 import { STATUS_META, formatDateTime } from '../status'
 import type { SourceDocument } from '@/db/schema'
 
@@ -28,6 +29,9 @@ export default function UploadDetailPage() {
 
   const [showVoidModal, setShowVoidModal] = useState(false)
   const [voiding, setVoiding] = useState(false)
+
+  const [replacing, setReplacing] = useState(false)
+  const replaceFileInputRef = useRef<HTMLInputElement>(null)
 
   const loadDocument = useCallback(async () => {
     setLoading(true)
@@ -71,6 +75,59 @@ export default function UploadDetailPage() {
     }
   }
 
+  async function handleReplaceFile(file: File) {
+    if (!(file.type === 'application/pdf' || file.name.endsWith('.pdf'))) {
+      toast.error('Only PDF files are supported')
+      return
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast.error(`${file.name} is too large (max 1 MB)`)
+      return
+    }
+    setReplacing(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('replacesSourceDocumentId', id)
+      const uploadRes = await fetch('/api/v1/upload', { method: 'POST', body: formData })
+      if (uploadRes.status === 409) {
+        const err = await uploadRes.json().catch(() => ({})) as { error?: string }
+        toast.error(err.error ?? 'This file has already been uploaded.')
+        return
+      }
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({})) as { error?: string }
+        toast.error(err.error ?? 'Upload failed')
+        return
+      }
+      const { sourceDocumentId } = await uploadRes.json() as { sourceDocumentId: string }
+      const extractRes = await fetch('/api/v1/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceDocumentId }),
+      })
+      if (!extractRes.ok) {
+        const err = await extractRes.json().catch(() => ({})) as { error?: string }
+        toast.error(err.error ?? 'Extraction of the replacement failed')
+        return
+      }
+      // R23: only void the original once the replacement has successfully staged —
+      // a cancelled file picker or a rejected upload/extraction leaves the original
+      // confirmed and untouched rather than stranding it voided with no replacement.
+      const voidRes = await fetch(`/api/v1/documents/${id}`, { method: 'DELETE' })
+      if (!voidRes.ok) {
+        toast.error('Replacement staged, but the original could not be voided automatically — void it manually below.')
+        return
+      }
+      toast.success('Replacement staged — review and confirm it on the upload page.')
+      router.push('/upload')
+    } catch {
+      toast.error('Network error — please try again')
+    } finally {
+      setReplacing(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-64">
@@ -89,6 +146,7 @@ export default function UploadDetailPage() {
   }
 
   const isVoidable = document.status === 'confirmed' || document.status === 'pending'
+  const isReplaceable = document.status === 'confirmed'
 
   return (
     <div>
@@ -125,16 +183,46 @@ export default function UploadDetailPage() {
           <span className="text-sm">{STATUS_META[document.status].label}</span>
         </div>
 
-        {isVoidable && (
-          <div className="mt-5 pt-5" style={{ borderTop: '1px dashed hsl(var(--color-rule))' }}>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-negative border-negative/30 hover:bg-negative/8"
-              onClick={() => setShowVoidModal(true)}
-            >
-              Void this upload
-            </Button>
+        {(isReplaceable || isVoidable) && (
+          <div className="mt-5 pt-5 space-y-4" style={{ borderTop: '1px dashed hsl(var(--color-rule))' }}>
+            {isReplaceable && (
+              <div>
+                <input
+                  ref={replaceFileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    e.target.value = ''
+                    if (file) handleReplaceFile(file)
+                  }}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => replaceFileInputRef.current?.click()}
+                  disabled={replacing}
+                >
+                  {replacing ? 'Replacing…' : 'Replace with corrected version'}
+                </Button>
+                <p className="text-[10px] leading-snug text-foreground-muted mt-1.5">
+                  For a single wrong value, correct it from the property page instead of replacing the whole statement.
+                </p>
+              </div>
+            )}
+            {isVoidable && (
+              <div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-negative border-negative/30 hover:bg-negative/8"
+                  onClick={() => setShowVoidModal(true)}
+                  disabled={replacing}
+                >
+                  Void this upload
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
