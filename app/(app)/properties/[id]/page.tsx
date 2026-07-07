@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
@@ -138,6 +138,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   other_expense:       'hsl(32 6% 50%)',
   loan_payment:        'hsl(32 6% 38%)',
 }
+
+const PROPERTY_TABS = ['overview', 'insights', 'management', 'loans', 'transactions'] as const
+type PropertyTab = typeof PROPERTY_TABS[number]
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -421,6 +424,7 @@ function EntrySelectCell({
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -442,7 +446,11 @@ export default function PropertyDetailPage() {
   const [mgmtLoaded, setMgmtLoaded] = useState(false)
 
   // Active tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'insights' | 'management' | 'loans' | 'transactions'>('overview')
+  const requestedTab = searchParams.get('tab')
+  const initialTab: PropertyTab = PROPERTY_TABS.includes(requestedTab as PropertyTab)
+    ? (requestedTab as PropertyTab)
+    : 'overview'
+  const [activeTab, setActiveTab] = useState<PropertyTab>(initialTab)
 
   // Inline per-field editing (Overview tab)
   const [editingField, setEditingField] = useState<string | null>(null)
@@ -1189,7 +1197,7 @@ export default function PropertyDetailPage() {
       {/* Tabs */}
       <div>
         <div className="flex items-end gap-8 border-b border-border mb-7">
-          {(['overview', 'insights', 'management', 'loans', 'transactions'] as const).map(tab => (
+          {PROPERTY_TABS.map(tab => (
             <button
               key={tab}
               type="button"
