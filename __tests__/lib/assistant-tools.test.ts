@@ -270,6 +270,15 @@ describe('buildTools', () => {
       expect(loans).toHaveLength(1)
       expect(loans[0]).not.toHaveProperty('accountReference')
     })
+
+    it('getPropertyLifecycleState strips accountReference from each loan', async () => {
+      mocks.listInstallmentLoans.mockResolvedValue([loanFixture({ accountReference: 'SECRET-REF-9999' })])
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPropertyLifecycleState.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const loans = result.loans as Array<Record<string, unknown>>
+      expect(loans).toHaveLength(1)
+      expect(loans[0]).not.toHaveProperty('accountReference')
+    })
   })
 
   describe('Test 4 — each tool returns non-empty source and statusLabel (not the function name)', () => {
@@ -476,7 +485,8 @@ describe('buildTools', () => {
       expect(result.tenancies).toEqual(tenancyFixture)
       expect(result.managementAgents).toEqual([activeAgentFixture])
       expect(result.activeManagementAgent).toEqual(activeAgentFixture)
-      expect(result.loans).toEqual([loanFixture()])
+      const { accountReference: _accountReference, ...expectedLoan } = loanFixture()
+      expect(result.loans).toEqual([expectedLoan])
       expect(result.source).toBe(`/properties/${PROP_ID}`)
       expect(result.label).toBe('Test')
     })

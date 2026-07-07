@@ -28,13 +28,15 @@ export function buildPropertyLifecycleTool(userId: string) {
           findActiveAgent(userId, propertyId),
           listInstallmentLoans(userId, propertyId),
         ])
+        // Strip accountReference — sensitive field, not for model output (mirrors getPortfolioSummary)
+        const safeLoans = loans.map(({ accountReference: _, ...rest }) => rest)
 
         return {
           found: true,
           tenancies,
           managementAgents,
           activeManagementAgent: activeAgent ?? null,
-          loans,
+          loans: safeLoans,
           source: `/properties/${propertyId}`,
           label: property.nickname ?? property.address,
           statusLabel: 'Looking up property status…',
