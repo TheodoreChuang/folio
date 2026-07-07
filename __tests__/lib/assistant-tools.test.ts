@@ -57,14 +57,47 @@ const ledgerEntries = [
   { id: 'entry-1', userId: USER_ID, propertyId: PROP_ID, sourceDocumentId: null, installmentLoanId: null, lineItemDate: '2026-03-15', amountCents: 200000, category: 'rent' as const, description: null, userNotes: null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
 ]
 
+const entitiesFixture = [
+  { id: 'entity-1', userId: USER_ID, name: 'Smith Family Trust', type: 'trust' as const, createdAt: new Date() },
+  { id: 'entity-2', userId: USER_ID, name: 'Personal', type: 'individual' as const, createdAt: new Date() },
+]
+
+const propertyFixture = {
+  id: PROP_ID, address: '1 Test St', nickname: 'Test', userId: USER_ID, startDate: '2020-01-01', endDate: null, entityId: null, createdAt: new Date(), propertyType: null, purchasePriceCents: null, saleDate: null, salePriceCents: null, saleSettlementDate: null,
+}
+
+const tenancyFixture = [
+  { id: 'tenancy-1', userId: USER_ID, propertyId: PROP_ID, tenants: 'J. Doe', leaseType: 'periodic' as const, leaseStart: '2024-01-01', leaseEnd: null, weeklyRentCents: 50000, bondCents: 200000, createdAt: new Date(), deletedAt: null },
+]
+
+const activeAgentFixture = {
+  id: 'agent-1', userId: USER_ID, propertyId: PROP_ID, agencyName: 'Ray White', contactName: null, phone: null, email: null, feePercent: null, statementCadence: 'monthly' as const, effectiveFrom: '2024-01-01', effectiveTo: null, createdAt: new Date(), deletedAt: null,
+}
+
+const lapsedAgentFixture = {
+  id: 'agent-0', userId: USER_ID, propertyId: PROP_ID, agencyName: 'Old Agency', contactName: null, phone: null, email: null, feePercent: null, statementCadence: 'monthly' as const, effectiveFrom: '2020-01-01', effectiveTo: '2021-01-01', createdAt: new Date(), deletedAt: null,
+}
+
+const LOAN_CREATED_AT = new Date('2020-01-01T00:00:00.000Z')
+
+const loanFixture = (overrides: Partial<Record<string, unknown>> = {}) => ({
+  id: LOAN_ID, userId: USER_ID, propertyId: PROP_ID, lender: 'ANZ', nickname: null, accountReference: 'SECRET-REF', startDate: '2020-01-01', endDate: null, entityId: null, loanType: null, ioEndDate: null, interestRate: '5.5', rateType: null, loanTermYears: 30, originalAmountCents: 50000000, createdAt: LOAN_CREATED_AT, latestBalance: null, recentBalances: [], ...overrides,
+})
+
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 const mocks = vi.hoisted(() => ({
   getPortfolioData: vi.fn(),
   getPropertyWithStats: vi.fn(),
+  findPropertyById: vi.fn(),
+  listTenancies: vi.fn(),
+  listManagementAgents: vi.fn(),
+  findActiveAgent: vi.fn(),
   findInstallmentLoanDetail: vi.fn(),
+  listInstallmentLoans: vi.fn(),
   getCashflowSummary: vi.fn(),
   listLedgerEntriesInRange: vi.fn(),
+  listEntities: vi.fn(),
 }))
 
 vi.mock('@/lib/aggregate', () => ({
@@ -76,10 +109,19 @@ vi.mock('@/lib/aggregate', () => ({
 
 vi.mock('@/lib/property', () => ({
   getPropertyWithStats: mocks.getPropertyWithStats,
+  findPropertyById: mocks.findPropertyById,
+  listTenancies: mocks.listTenancies,
+  listManagementAgents: mocks.listManagementAgents,
+  findActiveAgent: mocks.findActiveAgent,
 }))
 
 vi.mock('@/lib/borrowings', () => ({
   findInstallmentLoanDetail: mocks.findInstallmentLoanDetail,
+  listInstallmentLoans: mocks.listInstallmentLoans,
+}))
+
+vi.mock('@/lib/entities', () => ({
+  listEntities: mocks.listEntities,
 }))
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -92,6 +134,12 @@ describe('buildTools', () => {
     mocks.findInstallmentLoanDetail.mockResolvedValue(loanDetail)
     mocks.getCashflowSummary.mockResolvedValue(cashflowResult)
     mocks.listLedgerEntriesInRange.mockResolvedValue(ledgerEntries)
+    mocks.listEntities.mockResolvedValue(entitiesFixture)
+    mocks.findPropertyById.mockResolvedValue(propertyFixture)
+    mocks.listTenancies.mockResolvedValue(tenancyFixture)
+    mocks.listManagementAgents.mockResolvedValue([activeAgentFixture])
+    mocks.findActiveAgent.mockResolvedValue(activeAgentFixture)
+    mocks.listInstallmentLoans.mockResolvedValue([loanFixture()])
   })
 
   describe('Test 1 — no userId in any tool\'s model-facing input schema', () => {
@@ -130,6 +178,13 @@ describe('buildTools', () => {
       expect('from' in schema.shape).toBe(true)
       expect('to' in schema.shape).toBe(true)
     })
+
+    it('getPropertyLifecycleState schema has no userId field', () => {
+      const tools = buildTools(USER_ID)
+      const schema = tools.getPropertyLifecycleState.inputSchema as z.ZodObject<z.ZodRawShape>
+      expect('userId' in schema.shape).toBe(false)
+      expect('propertyId' in schema.shape).toBe(true)
+    })
   })
 
   describe('Test 2 — buildTools(userId) invokes underlying service with that exact userId', () => {
@@ -162,6 +217,16 @@ describe('buildTools', () => {
       const tools = buildTools(USER_ID)
       await tools.lookupLedgerEntries.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't5', messages: [], abortSignal: undefined })
       expect(mocks.listLedgerEntriesInRange).toHaveBeenCalledWith(USER_ID, '2026-01-01', '2026-03-31', undefined, undefined)
+    })
+
+    it('getPropertyLifecycleState calls findPropertyById with closure userId', async () => {
+      const tools = buildTools(USER_ID)
+      await tools.getPropertyLifecycleState.execute!({ propertyId: PROP_ID }, { toolCallId: 't6', messages: [], abortSignal: undefined })
+      expect(mocks.findPropertyById).toHaveBeenCalledWith(USER_ID, PROP_ID)
+      expect(mocks.listTenancies).toHaveBeenCalledWith(USER_ID, PROP_ID)
+      expect(mocks.listManagementAgents).toHaveBeenCalledWith(USER_ID, PROP_ID)
+      expect(mocks.findActiveAgent).toHaveBeenCalledWith(USER_ID, PROP_ID)
+      expect(mocks.listInstallmentLoans).toHaveBeenCalledWith(USER_ID, PROP_ID)
     })
 
     it('uses the userId from the specific buildTools call, not a shared global', async () => {
@@ -201,6 +266,15 @@ describe('buildTools', () => {
       const tools = buildTools(USER_ID)
       const result = await tools.getPortfolioSummary.execute!({}, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).not.toHaveProperty('accountReference')
+      const loans = result.loans as Array<Record<string, unknown>>
+      expect(loans).toHaveLength(1)
+      expect(loans[0]).not.toHaveProperty('accountReference')
+    })
+
+    it('getPropertyLifecycleState strips accountReference from each loan', async () => {
+      mocks.listInstallmentLoans.mockResolvedValue([loanFixture({ accountReference: 'SECRET-REF-9999' })])
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPropertyLifecycleState.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       const loans = result.loans as Array<Record<string, unknown>>
       expect(loans).toHaveLength(1)
       expect(loans[0]).not.toHaveProperty('accountReference')
@@ -371,6 +445,84 @@ describe('buildTools', () => {
       const result = await tools.lookupLedgerEntries.execute!({ from: '2026-01-01', to: '2026-03-31' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toHaveProperty('error')
       expect(result.source).toBe('/dashboard')
+    })
+
+    it('getPropertyLifecycleState returns error payload when a downstream call throws', async () => {
+      mocks.findPropertyById.mockRejectedValue(new Error('DB connection failed'))
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPropertyLifecycleState.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result).toHaveProperty('error')
+      expect(result.error).toBe('Unable to retrieve data. Please try again.')
+      expect(JSON.stringify(result)).not.toContain('DB connection failed')
+      expect(result.source).toBe(`/properties/${PROP_ID}`)
+      expect(result).toHaveProperty('statusLabel')
+    })
+  })
+
+  describe('Test 8 — getPortfolioSummary includes entities', () => {
+    it('returns both entities alongside the existing return fields for a user with 2 entities', async () => {
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPortfolioSummary.execute!({}, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result.entities).toEqual(entitiesFixture)
+      expect(result).toHaveProperty('properties')
+      expect(result).toHaveProperty('loans')
+    })
+
+    it('returns entities: [] for a user with zero entities, not an omitted field', async () => {
+      mocks.listEntities.mockResolvedValue([])
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPortfolioSummary.execute!({}, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result).toHaveProperty('entities')
+      expect(result.entities).toEqual([])
+    })
+  })
+
+  describe('Test 9 — getPropertyLifecycleState', () => {
+    it('returns tenancies, management agents, active agent, and loans for a property with all three', async () => {
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPropertyLifecycleState.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result.found).toBe(true)
+      expect(result.tenancies).toEqual(tenancyFixture)
+      expect(result.managementAgents).toEqual([activeAgentFixture])
+      expect(result.activeManagementAgent).toEqual(activeAgentFixture)
+      const { accountReference: _accountReference, ...expectedLoan } = loanFixture()
+      expect(result.loans).toEqual([expectedLoan])
+      expect(result.source).toBe(`/properties/${PROP_ID}`)
+      expect(result.label).toBe('Test')
+    })
+
+    it('returns a lapsed management agent in managementAgents but activeManagementAgent is null', async () => {
+      mocks.listManagementAgents.mockResolvedValue([lapsedAgentFixture])
+      mocks.findActiveAgent.mockResolvedValue(undefined)
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPropertyLifecycleState.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result.managementAgents).toEqual([lapsedAgentFixture])
+      expect(result.activeManagementAgent).toBeNull()
+    })
+
+    it('returns two loans, each carrying lender and endDate', async () => {
+      const loans = [
+        loanFixture({ id: 'loan-001', lender: 'ANZ', endDate: '2050-01-01' }),
+        loanFixture({ id: 'loan-002', lender: 'Westpac', endDate: null }),
+      ]
+      mocks.listInstallmentLoans.mockResolvedValue(loans)
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPropertyLifecycleState.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      const returnedLoans = result.loans as Array<Record<string, unknown>>
+      expect(returnedLoans).toHaveLength(2)
+      expect(returnedLoans[0]).toMatchObject({ lender: 'ANZ', endDate: '2050-01-01' })
+      expect(returnedLoans[1]).toMatchObject({ lender: 'Westpac', endDate: null })
+    })
+
+    it('returns found: false and does not call downstream lookups for a non-owned or missing property', async () => {
+      mocks.findPropertyById.mockResolvedValue(undefined)
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPropertyLifecycleState.execute!({ propertyId: 'not-owned' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result).toEqual({ found: false, statusLabel: expect.any(String) })
+      expect(mocks.listTenancies).not.toHaveBeenCalled()
+      expect(mocks.listManagementAgents).not.toHaveBeenCalled()
+      expect(mocks.findActiveAgent).not.toHaveBeenCalled()
+      expect(mocks.listInstallmentLoans).not.toHaveBeenCalled()
     })
   })
 })

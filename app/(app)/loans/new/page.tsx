@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
@@ -108,7 +108,16 @@ function SectionHead({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function NewLoanPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewLoanForm />
+    </Suspense>
+  )
+}
+
+function NewLoanForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { refresh: refreshSidebar } = useSidebar()
 
   // Data
@@ -153,12 +162,23 @@ export default function NewLoanPage() {
       .then(([propsData, entData]) => {
         const props = propsData?.properties ?? []
         setProperties(props)
-        if (props.length === 1) setSelectedPropertyId(props[0].id)
         setEntities(entData?.entities ?? [])
+
+        const requestedPropertyId = searchParams.get('propertyId')
+        const requestedProperty = requestedPropertyId
+          ? props.find(p => p.id === requestedPropertyId)
+          : undefined
+
+        if (requestedProperty) {
+          setSelectedPropertyId(requestedProperty.id)
+          if (requestedProperty.entityId) setSelectedEntityId(requestedProperty.entityId)
+        } else if (props.length === 1) {
+          setSelectedPropertyId(props[0].id)
+        }
       })
       .catch(() => toast.error('Failed to load data'))
       .finally(() => setLoadingProps(false))
-  }, [router])
+  }, [router, searchParams])
 
   const lenderValue = selectedLender === 'Other' ? customLender.trim() : (selectedLender ?? '')
   const isValid = lenderValue.length > 0 && (securityMode === 'unsecured' || selectedPropertyId !== null)
