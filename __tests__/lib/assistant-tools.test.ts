@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { z } from 'zod'
+import fs from 'node:fs'
+import path from 'node:path'
 import { buildTools } from '@/lib/assistant/tools/index'
 
 const USER_ID = 'user-abc'
@@ -94,6 +96,7 @@ const mocks = vi.hoisted(() => ({
   listManagementAgents: vi.fn(),
   findActiveAgent: vi.fn(),
   findInstallmentLoanDetail: vi.fn(),
+  findInstallmentLoanById: vi.fn(),
   listInstallmentLoans: vi.fn(),
   getCashflowSummary: vi.fn(),
   listLedgerEntriesInRange: vi.fn(),
@@ -117,6 +120,7 @@ vi.mock('@/lib/property', () => ({
 
 vi.mock('@/lib/borrowings', () => ({
   findInstallmentLoanDetail: mocks.findInstallmentLoanDetail,
+  findInstallmentLoanById: mocks.findInstallmentLoanById,
   listInstallmentLoans: mocks.listInstallmentLoans,
 }))
 
@@ -140,6 +144,7 @@ describe('buildTools', () => {
     mocks.listManagementAgents.mockResolvedValue([activeAgentFixture])
     mocks.findActiveAgent.mockResolvedValue(activeAgentFixture)
     mocks.listInstallmentLoans.mockResolvedValue([loanFixture()])
+    mocks.findInstallmentLoanById.mockResolvedValue(loanFixture())
   })
 
   describe('Test 1 — no userId in any tool\'s model-facing input schema', () => {
@@ -185,6 +190,13 @@ describe('buildTools', () => {
       expect('userId' in schema.shape).toBe(false)
       expect('propertyId' in schema.shape).toBe(true)
     })
+
+    it('buildActionChecklist schema has no userId field', () => {
+      const tools = buildTools(USER_ID)
+      const schema = tools.buildActionChecklist.inputSchema as z.ZodObject<z.ZodRawShape>
+      expect('userId' in schema.shape).toBe(false)
+      expect('steps' in schema.shape).toBe(true)
+    })
   })
 
   describe('Test 2 — buildTools(userId) invokes underlying service with that exact userId', () => {
@@ -227,6 +239,18 @@ describe('buildTools', () => {
       expect(mocks.listManagementAgents).toHaveBeenCalledWith(USER_ID, PROP_ID)
       expect(mocks.findActiveAgent).toHaveBeenCalledWith(USER_ID, PROP_ID)
       expect(mocks.listInstallmentLoans).toHaveBeenCalledWith(USER_ID, PROP_ID)
+    })
+
+    it('buildActionChecklist calls findPropertyById and findInstallmentLoanById with closure userId', async () => {
+      const tools = buildTools(USER_ID)
+      await tools.buildActionChecklist.execute!({
+        steps: [
+          { type: 'ASSIGN_PROPERTY_MANAGER', propertyId: PROP_ID },
+          { type: 'CLOSE_LOAN', loanId: LOAN_ID },
+        ],
+      }, { toolCallId: 't7', messages: [], abortSignal: undefined })
+      expect(mocks.findPropertyById).toHaveBeenCalledWith(USER_ID, PROP_ID)
+      expect(mocks.findInstallmentLoanById).toHaveBeenCalledWith(USER_ID, LOAN_ID)
     })
 
     it('uses the userId from the specific buildTools call, not a shared global', async () => {
@@ -523,6 +547,114 @@ describe('buildTools', () => {
       expect(mocks.listManagementAgents).not.toHaveBeenCalled()
       expect(mocks.findActiveAgent).not.toHaveBeenCalled()
       expect(mocks.listInstallmentLoans).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Test 10 — buildActionChecklist', () => {
+    it('resolves CREATE_PROPERTY and ASSIGN_PROPERTY_MANAGER into two ordered steps with no errors', async () => {
+      const tools = buildTools(USER_ID)
+      const result = await tools.buildActionChecklist.execute!({
+        steps: [
+          { type: 'CREATE_PROPERTY' },
+          { type: 'ASSIGN_PROPERTY_MANAGER', propertyId: PROP_ID },
+        ],
+      }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+
+      expect(result.errors).toBeUndefined()
+      expect(result.steps).toEqual([
+        { label: 'Add property', href: '/properties/new', order: 1 },
+        { label: 'Assign property manager', href: `/properties/${PROP_ID}?tab=management`, order: 2 },
+      ])
+    })
+
+    it('rejects an unknown step type into errors while still resolving the valid one, without throwing', async () => {
+      const tools = buildTools(USER_ID)
+      const result = await tools.buildActionChecklist.execute!({
+        steps: [
+          { type: 'CREATE_PROPERTY' },
+          { type: 'NOT_A_REAL_STEP' },
+        ],
+      }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+
+      expect(result.steps).toEqual([{ label: 'Add property', href: '/properties/new', order: 1 }])
+      expect(result.errors).toEqual([{ stepType: 'NOT_A_REAL_STEP', reason: expect.any(String) }])
+    })
+
+    it('rejects CLOSE_LOAN into errors when the loan is not owned by the user (cross-user isolation)', async () => {
+      mocks.findInstallmentLoanById.mockResolvedValue(undefined)
+      const tools = buildTools(USER_ID)
+      const result = await tools.buildActionChecklist.execute!({
+        steps: [{ type: 'CLOSE_LOAN', loanId: LOAN_ID }],
+      }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+
+      expect(result.steps).toEqual([])
+      expect(result.errors).toEqual([{ stepType: 'CLOSE_LOAN', reason: expect.any(String) }])
+    })
+
+    it('rejects CREATE_LOAN, ASSIGN_PROPERTY_MANAGER, and MARK_PROPERTY_SOLD into errors when the propertyId is not owned by the user (cross-user isolation)', async () => {
+      mocks.findPropertyById.mockResolvedValue(undefined)
+      const tools = buildTools(USER_ID)
+      const result = await tools.buildActionChecklist.execute!({
+        steps: [
+          { type: 'CREATE_LOAN', propertyId: PROP_ID },
+          { type: 'ASSIGN_PROPERTY_MANAGER', propertyId: PROP_ID },
+          { type: 'MARK_PROPERTY_SOLD', propertyId: PROP_ID },
+        ],
+      }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+
+      expect(result.steps).toEqual([])
+      const errors = result.errors as Array<Record<string, unknown>>
+      expect(errors).toHaveLength(3)
+      expect(errors.map((e) => e.stepType)).toEqual(['CREATE_LOAN', 'ASSIGN_PROPERTY_MANAGER', 'MARK_PROPERTY_SOLD'])
+    })
+
+    it('rejects CREATE_LOAN with no propertyId into errors, without fabricating a partially-resolved href', async () => {
+      const tools = buildTools(USER_ID)
+      const result = await tools.buildActionChecklist.execute!({
+        steps: [{ type: 'CREATE_LOAN' }],
+      }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+
+      expect(result.steps).toEqual([])
+      expect(result.errors).toEqual([{ stepType: 'CREATE_LOAN', reason: expect.any(String) }])
+      expect(JSON.stringify(result)).not.toContain('propertyId=undefined')
+      expect(mocks.findPropertyById).not.toHaveBeenCalled()
+    })
+
+    it('never includes a top-level source field (must not be picked up by CitationChips)', async () => {
+      const tools = buildTools(USER_ID)
+      const result = await tools.buildActionChecklist.execute!({
+        steps: [{ type: 'CREATE_PROPERTY' }],
+      }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+
+      expect(result).not.toHaveProperty('source')
+    })
+  })
+
+  describe('Test 11 — structural audit: assistant tools ship no write-capable tool (AE3/R4/R9)', () => {
+    it('no lib/assistant/tools/*.ts file references a write-repository function', () => {
+      const WRITE_FUNCTION_NAMES = [
+        'createEntity', 'updateEntity', 'deleteEntity',
+        'createProperty', 'updateProperty', 'deleteProperty',
+        'createInstallmentLoan', 'updateInstallmentLoan', 'updateInstallmentLoanById', 'endInstallmentLoan',
+        'createTenancy', 'updateTenancy', 'deleteTenancy',
+        'createManagementAgent', 'updateManagementAgent', 'deleteManagementAgent',
+        'createValuation', 'deleteValuation',
+        'upsertLoanPaymentEntry', 'createLedgerEntry',
+      ]
+
+      const toolsDir = path.join(process.cwd(), 'lib', 'assistant', 'tools')
+      const files = fs.readdirSync(toolsDir).filter((file) => file.endsWith('.ts'))
+      expect(files.length).toBeGreaterThan(0)
+
+      for (const file of files) {
+        const source = fs.readFileSync(path.join(toolsDir, file), 'utf-8')
+        for (const fnName of WRITE_FUNCTION_NAMES) {
+          expect(
+            source.includes(fnName),
+            `${file} references write-capable function "${fnName}" — assistant tools must never call write repositories`,
+          ).toBe(false)
+        }
+      }
     })
   })
 })

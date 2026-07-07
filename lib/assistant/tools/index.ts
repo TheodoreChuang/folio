@@ -4,6 +4,7 @@ import { buildPropertyLifecycleTool } from './property-lifecycle'
 import { buildLoanTool } from './loan'
 import { buildCashflowTool } from './cashflow'
 import { buildLedgerTool } from './ledger'
+import { buildChecklistTool } from './checklist'
 
 export function buildTools(userId: string) {
   return {
@@ -13,5 +14,6 @@ export function buildTools(userId: string) {
     getLoanDetail: buildLoanTool(userId),
     getCashflowByPeriod: buildCashflowTool(userId),
     lookupLedgerEntries: buildLedgerTool(userId),
+    buildActionChecklist: buildChecklistTool(userId),
   }
 }
