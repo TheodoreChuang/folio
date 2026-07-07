@@ -100,6 +100,72 @@ function CitationChips({ parts }: { parts: UIMessage['parts'] }) {
   )
 }
 
+type ChecklistStep = { order: number; label: string; href: string }
+type ChecklistOutput = { steps?: ChecklistStep[] }
+
+function isChecklistOutput(value: unknown): value is ChecklistOutput {
+  return typeof value === 'object' && value !== null
+}
+
+function getChecklistSteps(part: ToolUIPart | DynamicToolUIPart): ChecklistStep[] {
+  if (part.state !== 'output-available') return []
+  if (getToolOrDynamicToolName(part) !== 'buildActionChecklist') return []
+  if (!isChecklistOutput(part.output)) return []
+  return Array.isArray(part.output.steps) ? part.output.steps : []
+}
+
+function ActionChecklist({ parts }: { parts: UIMessage['parts'] }) {
+  const steps = parts
+    .filter(isToolOrDynamicToolUIPart)
+    .flatMap(getChecklistSteps)
+    .slice()
+    .sort((a, b) => a.order - b.order)
+  if (steps.length === 0) return null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+      {steps.map(step => (
+        <a
+          key={`${step.order}-${step.href}`}
+          href={step.href}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '8px 12px',
+            border: '1px solid rgba(55, 101, 108, 0.24)',
+            borderRadius: '8px',
+            background: 'var(--background)',
+            color: 'var(--foreground)',
+            textDecoration: 'none',
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+          }}
+        >
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              background: 'var(--accent)',
+              color: 'var(--accent-foreground)',
+              fontSize: '0.6875rem',
+              fontWeight: 600,
+            }}
+          >
+            {step.order}
+          </span>
+          <span>{step.label}</span>
+        </a>
+      ))}
+    </div>
+  )
+}
+
 function resolveErrorMessage(error: Error): string {
   try {
     const body = JSON.parse(error.message) as { code?: string }
@@ -218,6 +284,7 @@ export function AssistantMessage({ message, isLast, error, status }: AssistantMe
           </div>
         )}
 
+        <ActionChecklist parts={message.parts} />
         <CitationChips parts={message.parts} />
       </div>
 
