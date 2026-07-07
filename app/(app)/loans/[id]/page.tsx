@@ -230,6 +230,9 @@ export default function LoanDetailPage() {
       updates = { startDate: value }
     } else if (field === 'endDate') {
       if (!value || value === loan.endDate) return
+      // Server's startDate/endDate ordering check only fires when both fields are in
+      // the same PATCH; this page sends one field per commit, so validate here too.
+      if (loan.startDate && value < loan.startDate) { toast.error('End date must be on or after start date'); return }
       updates = { endDate: value }
     } else if (field === 'ioEndDate') {
       const d = value || null
@@ -569,6 +572,19 @@ export default function LoanDetailPage() {
                   onCancel={() => setEditingField(null)}
                 />
               )}
+              <FieldRow
+                label="End date"
+                fieldKey="endDate"
+                editingField={editingField}
+                editValue={editValue}
+                fieldSaving={fieldSaving}
+                displayValue={loan.endDate ? formatDate(loan.endDate) : null}
+                inputType="date"
+                onStartEdit={() => startEdit('endDate', loan.endDate ?? '')}
+                onValueChange={setEditValue}
+                onCommit={v => commitField('endDate', v)}
+                onCancel={() => setEditingField(null)}
+              />
               {/* Security — read only */}
               <div
                 className="grid items-center py-3"
