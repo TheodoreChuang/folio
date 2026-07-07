@@ -628,6 +628,50 @@ describe('buildTools', () => {
 
       expect(result).not.toHaveProperty('source')
     })
+
+    it('resolves CLOSE_LOAN when the loan has no endDate set', async () => {
+      mocks.findInstallmentLoanById.mockResolvedValue(loanFixture({ endDate: null }))
+      const tools = buildTools(USER_ID)
+      const result = await tools.buildActionChecklist.execute!({
+        steps: [{ type: 'CLOSE_LOAN', loanId: LOAN_ID }],
+      }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+
+      expect(result.errors).toBeUndefined()
+      expect(result.steps).toEqual([{ label: 'Close loan', href: `/loans/${LOAN_ID}`, order: 1 }])
+    })
+
+    it('rejects CLOSE_LOAN into errors when the loan already has an endDate set (R11 state precondition, enforced structurally not just via prompt)', async () => {
+      mocks.findInstallmentLoanById.mockResolvedValue(loanFixture({ endDate: '2055-05-26' }))
+      const tools = buildTools(USER_ID)
+      const result = await tools.buildActionChecklist.execute!({
+        steps: [{ type: 'CLOSE_LOAN', loanId: LOAN_ID }],
+      }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+
+      expect(result.steps).toEqual([])
+      expect(result.errors).toEqual([{ stepType: 'CLOSE_LOAN', reason: expect.any(String) }])
+    })
+
+    it('resolves MARK_PROPERTY_SOLD when the property has no saleDate set', async () => {
+      mocks.findPropertyById.mockResolvedValue({ ...propertyFixture, saleDate: null })
+      const tools = buildTools(USER_ID)
+      const result = await tools.buildActionChecklist.execute!({
+        steps: [{ type: 'MARK_PROPERTY_SOLD', propertyId: PROP_ID }],
+      }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+
+      expect(result.errors).toBeUndefined()
+      expect(result.steps).toEqual([{ label: 'Mark as sold', href: `/properties/${PROP_ID}`, order: 1 }])
+    })
+
+    it('rejects MARK_PROPERTY_SOLD into errors when the property already has a saleDate set (R3 state precondition, enforced structurally not just via prompt)', async () => {
+      mocks.findPropertyById.mockResolvedValue({ ...propertyFixture, saleDate: '2026-06-01' })
+      const tools = buildTools(USER_ID)
+      const result = await tools.buildActionChecklist.execute!({
+        steps: [{ type: 'MARK_PROPERTY_SOLD', propertyId: PROP_ID }],
+      }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+
+      expect(result.steps).toEqual([])
+      expect(result.errors).toEqual([{ stepType: 'MARK_PROPERTY_SOLD', reason: expect.any(String) }])
+    })
   })
 
   describe('Test 11 — structural audit: assistant tools ship no write-capable tool (AE3/R4/R9)', () => {

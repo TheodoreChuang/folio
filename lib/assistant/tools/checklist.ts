@@ -5,9 +5,17 @@ import { findInstallmentLoanById } from '@/lib/borrowings'
 import { logger } from '@/lib/logger'
 import { CHECKLIST_CATALOG, type ChecklistStepType } from '@/lib/assistant/catalog'
 
+const STEP_TYPE_DESCRIPTION = (Object.keys(CHECKLIST_CATALOG) as ChecklistStepType[])
+  .map((type) => {
+    const entry = CHECKLIST_CATALOG[type]
+    const idNote = entry.requiredId ? `, requires ${entry.requiredId}` : ''
+    return `${type} (${entry.whenToUse}${idNote})`
+  })
+  .join('; ')
+
 const inputSchema = z.object({
   steps: z.array(z.object({
-    type: z.string().describe('One of the catalog step types.'),
+    type: z.string().describe(`One of these exact catalog step types: ${STEP_TYPE_DESCRIPTION}. Any other value is rejected for that entry.`),
     propertyId: z.string().optional(),
     loanId: z.string().optional(),
   })).describe('Ordered list of checklist steps to resolve, in the order they should appear.'),
@@ -48,6 +56,17 @@ export function buildChecklistTool(userId: string) {
             : await findInstallmentLoanById(userId, id)
           if (!owned) {
             errors.push({ stepType: step.type, reason: 'Not found or not owned by user' })
+            continue
+          }
+
+          // State preconditions enforced here, not just in the prompt, so R11/R3 hold
+          // regardless of model routing quality (KTD1: structural guarantees, not prompt discipline).
+          if (step.type === 'CLOSE_LOAN' && 'endDate' in owned && owned.endDate) {
+            errors.push({ stepType: step.type, reason: 'Loan already has an end date set' })
+            continue
+          }
+          if (step.type === 'MARK_PROPERTY_SOLD' && 'saleDate' in owned && owned.saleDate) {
+            errors.push({ stepType: step.type, reason: 'Property is already marked as sold' })
             continue
           }
 
