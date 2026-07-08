@@ -4,5 +4,6 @@
   "security": 1.0,
   "no-data": 0.5,
   "calculation": 1.0,
-  "personalization": 0.67
+  "personalization": 0.67,
+  "checklist": 1.0
 }
