@@ -1,9 +1,9 @@
 import { config } from 'dotenv'
 config({ path: '.env.local' })
 
-import { runEval, gradeGrounding, gradeToolSelection, gradeSecurity, gradeRefusal, gradeCalculation, gradePersonalization, compareToBaseline } from './harness'
+import { runEval, gradeGrounding, gradeToolSelection, gradeSecurity, gradeRefusal, gradeCalculation, gradePersonalization, gradeChecklist, compareToBaseline } from './harness'
 import { STANDARD_PORTFOLIO, EMPTY_PORTFOLIO } from './fixtures'
-import { GROUNDING_CASES, TOOL_SELECTION_CASES, SECURITY_CASES, NO_DATA_CASES, CALCULATION_CASES, PERSONALIZATION_CASES } from './cases'
+import { GROUNDING_CASES, TOOL_SELECTION_CASES, SECURITY_CASES, NO_DATA_CASES, CALCULATION_CASES, PERSONALIZATION_CASES, CHECKLIST_CASES } from './cases'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
@@ -82,6 +82,19 @@ async function main() {
     const reason = !grade.passed ? grade.reason : (!toolGrade.passed ? toolGrade.reason : grade.reason)
     console.log(`[personalization] ${c.id}: ${passed ? 'PASS' : 'FAIL'} — ${reason}`)
     record('personalization', passed)
+    await delay()
+  }
+
+  for (const c of CHECKLIST_CASES) {
+    const portfolio = c.portfolio ?? STANDARD_PORTFOLIO
+    const result = await runEval({ question: c.question, category: c.category, portfolio })
+    const grade = gradeChecklist(result, {
+      expectedStepCount: c.expectedChecklistStepCount,
+      expectedHrefs: c.expectedChecklistHrefs,
+      expectNoToolCall: c.expectNoChecklistCall,
+    })
+    console.log(`[checklist] ${c.id}: ${grade.passed ? 'PASS' : 'FAIL'} — ${grade.reason}`)
+    record('checklist', grade.passed)
     await delay()
   }
 
