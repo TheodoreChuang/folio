@@ -1,6 +1,6 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { findPropertyById, listTenancies, listManagementAgents, findActiveAgent } from '@/lib/property'
+import { findPropertyById, findActiveAgent } from '@/lib/property'
 import { listInstallmentLoans } from '@/lib/borrowings'
 import { logger } from '@/lib/logger'
 
@@ -22,20 +22,22 @@ export function buildPropertyLifecycleTool(userId: string) {
           }
         }
 
-        const [tenancies, managementAgents, activeAgent, loans] = await Promise.all([
-          listTenancies(userId, propertyId),
-          listManagementAgents(userId, propertyId),
+        const [activeAgent, loans] = await Promise.all([
           findActiveAgent(userId, propertyId),
           listInstallmentLoans(userId, propertyId),
         ])
         // Strip accountReference — sensitive field, not for model output (mirrors getPortfolioSummary)
         const safeLoans = loans.map(({ accountReference: _, ...rest }) => rest)
+        // No catalog step precondition needs anything beyond "does an active agent exist"
+        // (see ASSIGN_PROPERTY_MANAGER's whenToUse in catalog.ts) — tenant names and PM
+        // contact details (contactName/phone/email) never need to reach the model.
+        const safeActiveAgent = activeAgent
+          ? { id: activeAgent.id, agencyName: activeAgent.agencyName }
+          : null
 
         return {
           found: true,
-          tenancies,
-          managementAgents,
-          activeManagementAgent: activeAgent ?? null,
+          activeManagementAgent: safeActiveAgent,
           loans: safeLoans,
           source: `/properties/${propertyId}`,
           label: property.nickname ?? property.address,

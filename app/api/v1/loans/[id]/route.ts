@@ -140,8 +140,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
     }
 
-    if (updates.startDate && updates.endDate && updates.endDate < updates.startDate) {
-      return NextResponse.json({ error: 'endDate must be on or after startDate' }, { status: 400 })
+    if ('startDate' in updates || 'endDate' in updates) {
+      // Merge against the stored row, not just the request body — a PATCH that only
+      // sends one of the two dates must still be validated against whichever date
+      // isn't in this request, or a single-field update can silently persist
+      // endDate < startDate.
+      const existing = await findInstallmentLoanDetail(user.id, id)
+      if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      const effectiveStartDate = updates.startDate ?? existing.startDate
+      const effectiveEndDate = 'endDate' in updates ? updates.endDate : existing.endDate
+      if (effectiveStartDate && effectiveEndDate && effectiveEndDate < effectiveStartDate) {
+        return NextResponse.json({ error: 'endDate must be on or after startDate' }, { status: 400 })
+      }
     }
 
     if (updates.loanType === 'principal_and_interest' && 'ioEndDate' in updates && updates.ioEndDate !== null) {

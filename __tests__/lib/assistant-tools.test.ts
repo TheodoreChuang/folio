@@ -68,16 +68,8 @@ const propertyFixture = {
   id: PROP_ID, address: '1 Test St', nickname: 'Test', userId: USER_ID, startDate: '2020-01-01', endDate: null, entityId: null, createdAt: new Date(), propertyType: null, purchasePriceCents: null, saleDate: null, salePriceCents: null, saleSettlementDate: null,
 }
 
-const tenancyFixture = [
-  { id: 'tenancy-1', userId: USER_ID, propertyId: PROP_ID, tenants: 'J. Doe', leaseType: 'periodic' as const, leaseStart: '2024-01-01', leaseEnd: null, weeklyRentCents: 50000, bondCents: 200000, createdAt: new Date(), deletedAt: null },
-]
-
 const activeAgentFixture = {
-  id: 'agent-1', userId: USER_ID, propertyId: PROP_ID, agencyName: 'Ray White', contactName: null, phone: null, email: null, feePercent: null, statementCadence: 'monthly' as const, effectiveFrom: '2024-01-01', effectiveTo: null, createdAt: new Date(), deletedAt: null,
-}
-
-const lapsedAgentFixture = {
-  id: 'agent-0', userId: USER_ID, propertyId: PROP_ID, agencyName: 'Old Agency', contactName: null, phone: null, email: null, feePercent: null, statementCadence: 'monthly' as const, effectiveFrom: '2020-01-01', effectiveTo: '2021-01-01', createdAt: new Date(), deletedAt: null,
+  id: 'agent-1', userId: USER_ID, propertyId: PROP_ID, agencyName: 'Ray White', contactName: 'Jane PM', phone: '0400 000 000', email: 'jane@raywhite.example', feePercent: null, statementCadence: 'monthly' as const, effectiveFrom: '2024-01-01', effectiveTo: null, createdAt: new Date(), deletedAt: null,
 }
 
 const LOAN_CREATED_AT = new Date('2020-01-01T00:00:00.000Z')
@@ -92,8 +84,6 @@ const mocks = vi.hoisted(() => ({
   getPortfolioData: vi.fn(),
   getPropertyWithStats: vi.fn(),
   findPropertyById: vi.fn(),
-  listTenancies: vi.fn(),
-  listManagementAgents: vi.fn(),
   findActiveAgent: vi.fn(),
   findInstallmentLoanDetail: vi.fn(),
   findInstallmentLoanById: vi.fn(),
@@ -113,8 +103,6 @@ vi.mock('@/lib/aggregate', () => ({
 vi.mock('@/lib/property', () => ({
   getPropertyWithStats: mocks.getPropertyWithStats,
   findPropertyById: mocks.findPropertyById,
-  listTenancies: mocks.listTenancies,
-  listManagementAgents: mocks.listManagementAgents,
   findActiveAgent: mocks.findActiveAgent,
 }))
 
@@ -140,8 +128,6 @@ describe('buildTools', () => {
     mocks.listLedgerEntriesInRange.mockResolvedValue(ledgerEntries)
     mocks.listEntities.mockResolvedValue(entitiesFixture)
     mocks.findPropertyById.mockResolvedValue(propertyFixture)
-    mocks.listTenancies.mockResolvedValue(tenancyFixture)
-    mocks.listManagementAgents.mockResolvedValue([activeAgentFixture])
     mocks.findActiveAgent.mockResolvedValue(activeAgentFixture)
     mocks.listInstallmentLoans.mockResolvedValue([loanFixture()])
     mocks.findInstallmentLoanById.mockResolvedValue(loanFixture())
@@ -235,8 +221,6 @@ describe('buildTools', () => {
       const tools = buildTools(USER_ID)
       await tools.getPropertyLifecycleState.execute!({ propertyId: PROP_ID }, { toolCallId: 't6', messages: [], abortSignal: undefined })
       expect(mocks.findPropertyById).toHaveBeenCalledWith(USER_ID, PROP_ID)
-      expect(mocks.listTenancies).toHaveBeenCalledWith(USER_ID, PROP_ID)
-      expect(mocks.listManagementAgents).toHaveBeenCalledWith(USER_ID, PROP_ID)
       expect(mocks.findActiveAgent).toHaveBeenCalledWith(USER_ID, PROP_ID)
       expect(mocks.listInstallmentLoans).toHaveBeenCalledWith(USER_ID, PROP_ID)
     })
@@ -502,25 +486,35 @@ describe('buildTools', () => {
   })
 
   describe('Test 9 — getPropertyLifecycleState', () => {
-    it('returns tenancies, management agents, active agent, and loans for a property with all three', async () => {
+    it('returns a trimmed active agent (id, agencyName only) and loans for a property with an active PM', async () => {
       const tools = buildTools(USER_ID)
       const result = await tools.getPropertyLifecycleState.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result.found).toBe(true)
-      expect(result.tenancies).toEqual(tenancyFixture)
-      expect(result.managementAgents).toEqual([activeAgentFixture])
-      expect(result.activeManagementAgent).toEqual(activeAgentFixture)
+      expect(result.activeManagementAgent).toEqual({ id: activeAgentFixture.id, agencyName: activeAgentFixture.agencyName })
       const { accountReference: _accountReference, ...expectedLoan } = loanFixture()
       expect(result.loans).toEqual([expectedLoan])
       expect(result.source).toBe(`/properties/${PROP_ID}`)
       expect(result.label).toBe('Test')
     })
 
-    it('returns a lapsed management agent in managementAgents but activeManagementAgent is null', async () => {
-      mocks.listManagementAgents.mockResolvedValue([lapsedAgentFixture])
+    it('does not leak PM contact details or tenant names — only id/agencyName reach the model', async () => {
+      // Preconditions only ever check whether an active agent exists (see ASSIGN_PROPERTY_MANAGER's
+      // whenToUse in catalog.ts) — contactName/phone/email and tenant identity are never needed.
+      const tools = buildTools(USER_ID)
+      const result = await tools.getPropertyLifecycleState.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result).not.toHaveProperty('tenancies')
+      expect(result).not.toHaveProperty('managementAgents')
+      const serialized = JSON.stringify(result)
+      expect(serialized).not.toContain('J. Doe')
+      expect(serialized).not.toContain('contactName')
+      expect(serialized).not.toContain('phone')
+      expect(serialized).not.toContain('email')
+    })
+
+    it('returns activeManagementAgent: null when there is no active agent, regardless of lapsed history', async () => {
       mocks.findActiveAgent.mockResolvedValue(undefined)
       const tools = buildTools(USER_ID)
       const result = await tools.getPropertyLifecycleState.execute!({ propertyId: PROP_ID }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
-      expect(result.managementAgents).toEqual([lapsedAgentFixture])
       expect(result.activeManagementAgent).toBeNull()
     })
 
@@ -543,8 +537,6 @@ describe('buildTools', () => {
       const tools = buildTools(USER_ID)
       const result = await tools.getPropertyLifecycleState.execute!({ propertyId: 'not-owned' }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
       expect(result).toEqual({ found: false, statusLabel: expect.any(String) })
-      expect(mocks.listTenancies).not.toHaveBeenCalled()
-      expect(mocks.listManagementAgents).not.toHaveBeenCalled()
       expect(mocks.findActiveAgent).not.toHaveBeenCalled()
       expect(mocks.listInstallmentLoans).not.toHaveBeenCalled()
     })
