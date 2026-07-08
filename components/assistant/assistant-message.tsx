@@ -2,6 +2,7 @@
 
 import type { UIMessage, ToolUIPart, DynamicToolUIPart } from 'ai'
 import { isToolOrDynamicToolUIPart, getToolOrDynamicToolName } from 'ai'
+import type { ChecklistStepResult } from '@/lib/assistant/catalog'
 
 const TOOL_LABELS: Record<string, string> = {
   getPortfolioSummary: 'Reading portfolio summary…',
@@ -100,18 +101,19 @@ function CitationChips({ parts }: { parts: UIMessage['parts'] }) {
   )
 }
 
-type ChecklistStep = { order: number; label: string; href: string }
-type ChecklistOutput = { steps?: ChecklistStep[] }
-
-function isChecklistOutput(value: unknown): value is ChecklistOutput {
-  return typeof value === 'object' && value !== null
+function isChecklistStepResult(value: unknown): value is ChecklistStepResult {
+  if (typeof value !== 'object' || value === null) return false
+  const step = value as Record<string, unknown>
+  return typeof step.order === 'number' && typeof step.label === 'string' && typeof step.href === 'string'
 }
 
-function getChecklistSteps(part: ToolUIPart | DynamicToolUIPart): ChecklistStep[] {
+function getChecklistSteps(part: ToolUIPart | DynamicToolUIPart): ChecklistStepResult[] {
   if (part.state !== 'output-available') return []
   if (getToolOrDynamicToolName(part) !== 'buildActionChecklist') return []
-  if (!isChecklistOutput(part.output)) return []
-  return Array.isArray(part.output.steps) ? part.output.steps : []
+  const output = part.output
+  if (typeof output !== 'object' || output === null || !('steps' in output)) return []
+  const steps = (output as { steps?: unknown }).steps
+  return Array.isArray(steps) ? steps.filter(isChecklistStepResult) : []
 }
 
 function ActionChecklist({ parts }: { parts: UIMessage['parts'] }) {

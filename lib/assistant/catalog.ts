@@ -19,6 +19,15 @@ type CatalogEntry = {
   whenToUse: string
 }
 
+// The buildActionChecklist wire shape — shared by the producer (checklist.ts) and every
+// consumer (assistant-message.tsx's chip renderer, the eval harness's grader) so the
+// contract can't silently drift between them.
+export type ChecklistStepResult = {
+  order: number
+  label: string
+  href: string
+}
+
 export const CHECKLIST_CATALOG: Record<ChecklistStepType, CatalogEntry> = {
   CREATE_ENTITY: {
     label: 'Add entity',

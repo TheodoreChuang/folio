@@ -465,6 +465,17 @@ describe('buildTools', () => {
       expect(result.source).toBe(`/properties/${PROP_ID}`)
       expect(result).toHaveProperty('statusLabel')
     })
+
+    it('buildActionChecklist returns error payload when a downstream call throws', async () => {
+      mocks.findPropertyById.mockRejectedValue(new Error('DB connection failed'))
+      const tools = buildTools(USER_ID)
+      const result = await tools.buildActionChecklist.execute!({
+        steps: [{ type: 'ASSIGN_PROPERTY_MANAGER', propertyId: PROP_ID }],
+      }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
+      expect(result).toHaveProperty('error')
+      expect(result.error).toBe('Unable to build checklist. Please try again.')
+      expect(JSON.stringify(result)).not.toContain('DB connection failed')
+    })
   })
 
   describe('Test 8 — getPortfolioSummary includes entities', () => {

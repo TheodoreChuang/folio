@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { findPropertyById } from '@/lib/property'
 import { findInstallmentLoanById } from '@/lib/borrowings'
 import { logger } from '@/lib/logger'
-import { CHECKLIST_CATALOG, type ChecklistStepType } from '@/lib/assistant/catalog'
+import { CHECKLIST_CATALOG, type ChecklistStepType, type ChecklistStepResult } from '@/lib/assistant/catalog'
 
 const STEP_TYPE_DESCRIPTION = (Object.keys(CHECKLIST_CATALOG) as ChecklistStepType[])
   .map((type) => {
@@ -23,12 +23,15 @@ const inputSchema = z.object({
 
 type ResolvedStep = { label: string; href: string }
 type StepError = { stepType: string; reason: string }
+type ChecklistToolResult =
+  | { steps: ChecklistStepResult[]; errors?: StepError[] }
+  | { error: string }
 
 export function buildChecklistTool(userId: string) {
   return tool({
     description: 'Resolve a set of requested checklist step types into validated, ordered navigation chips from a fixed catalog. Only ever call this with step types and IDs already confirmed to exist for the user.',
     inputSchema,
-    execute: async ({ steps }) => {
+    execute: async ({ steps }): Promise<ChecklistToolResult> => {
       try {
         const resolved: ResolvedStep[] = []
         const errors: StepError[] = []
