@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { useSidebar } from '@/components/sidebar-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -441,6 +442,7 @@ function EntityCard({
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export default function EntitiesPage() {
+  const { refresh: refreshSidebar } = useSidebar()
   const [entities, setEntities] = useState<Entity[]>([])
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
@@ -501,12 +503,14 @@ export default function EntitiesPage() {
       throw new Error(err.error ?? 'Failed to delete entity')
     }
     setEntities(prev => prev.filter(e => e.id !== id))
+    refreshSidebar()
     toast.success('Entity deleted')
   }
 
   function handleAddEntity(entity: Entity) {
     setEntities(prev => [...prev, entity])
     setShowAdd(false)
+    refreshSidebar()
   }
 
   return (

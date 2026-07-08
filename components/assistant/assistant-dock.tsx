@@ -10,9 +10,20 @@ import { AssistantThread } from './assistant-thread'
 import { AssistantComposer } from './assistant-composer'
 import { getStarterPrompts } from './starter-prompts'
 
-const SK = { open: 'folio.agent.open', thread: 'folio.agent.thread' }
+const SK = {
+  open: 'folio.agent.open',
+  thread: 'folio.agent.thread',
+  firstRunTriggered: 'folio.agent.firstRunTriggered',
+  setupSignature: 'folio.agent.setupSignature',
+}
 
 const TRANSPORT = new DefaultChatTransport({ api: '/api/assistant/chat' })
+
+const FIXED_FIRST_RUN_PROMPT = 'Help me finish setting up my portfolio.'
+
+function computeSetupSignature(entityCount: number, propertyCount: number, loanCount: number): string {
+  return `${entityCount}:${propertyCount}:${loanCount}`
+}
 
 const FA_EASE = 'cubic-bezier(0.22, 0.61, 0.36, 1)'
 
@@ -26,8 +37,13 @@ const SparkIcon = ({ size }: { size: number }) => (
 
 export function AssistantDock() {
   const pathname = usePathname()
-  const { properties } = useSidebar()
+  const { properties, loans, entities, loaded } = useSidebar()
   const hasData = properties.length > 0
+  // Every authenticated user has an auto-created "Personal" entity from their first
+  // auth callback (app/auth/callback/route.ts) — entities.length is never 0 in practice,
+  // so "needs setup" is defined by zero properties/loans, matching that same route's own
+  // redirect condition.
+  const isEmptyPortfolio = loaded && properties.length === 0 && loans.length === 0
 
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -57,6 +73,42 @@ export function AssistantDock() {
       setIsOpen(sessionStorage.getItem(SK.open) === 'true')
     } catch { /* ignore */ }
   }, [setMessages])
+
+  // First-run: proactively open and send the setup prompt for a genuinely empty portfolio,
+  // once per browser session. Gated on `loaded` (not just mounted) since properties/loans/entities
+  // all start as [] before their fetch resolves — an ungated check would misfire for existing
+  // users on every fresh session.
+  useEffect(() => {
+    if (!mounted || !isEmptyPortfolio) return
+    try {
+      if (sessionStorage.getItem(SK.firstRunTriggered) === 'true') return
+      sessionStorage.setItem(SK.firstRunTriggered, 'true')
+      sessionStorage.setItem(SK.setupSignature, computeSetupSignature(entities.length, properties.length, loans.length))
+    } catch { /* ignore */ }
+    setIsOpen(true)
+    try { sessionStorage.setItem(SK.open, 'true') } catch { /* ignore */ }
+    sendMessage({ text: FIXED_FIRST_RUN_PROMPT })
+  }, [mounted, isEmptyPortfolio, entities.length, properties.length, loans.length, sendMessage])
+
+  // Re-prompt with the next resolvable step once the setup-chain state changes (e.g. the user
+  // created an entity on /entities and came back). Driven by the portfolio signature, not by the
+  // dock's open/close state — the FAB is inert while the dock is open, and action chips are plain
+  // <a> links that either full-reload the page or leave the dock exactly as it was, so nothing
+  // else would ever re-trigger this. Only fires for sessions where the first-run flow already
+  // started, so returning users asking one-off questions never get an unsolicited nudge.
+  useEffect(() => {
+    if (!mounted || !loaded || status !== 'ready') return
+    try {
+      if (sessionStorage.getItem(SK.firstRunTriggered) !== 'true') return
+      const signature = computeSetupSignature(entities.length, properties.length, loans.length)
+      const lastSignature = sessionStorage.getItem(SK.setupSignature)
+      if (lastSignature === null || signature === lastSignature) return
+      sessionStorage.setItem(SK.setupSignature, signature)
+      setIsOpen(true)
+      sessionStorage.setItem(SK.open, 'true')
+      sendMessage({ text: FIXED_FIRST_RUN_PROMPT })
+    } catch { /* ignore */ }
+  }, [mounted, loaded, status, entities.length, properties.length, loans.length, sendMessage])
 
   useEffect(() => {
     if (messages.length > 0) {
