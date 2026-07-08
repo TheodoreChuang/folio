@@ -96,6 +96,13 @@ export function AssistantDock() {
   // <a> links that either full-reload the page or leave the dock exactly as it was, so nothing
   // else would ever re-trigger this. Only fires for sessions where the first-run flow already
   // started, so returning users asking one-off questions never get an unsolicited nudge.
+  //
+  // Fires at most once, on the transition into having a first property: that's the flow's
+  // "complete enough" point — the assistant's own reply already describes the remaining steps
+  // (upload statements, add a loan, assign a PM) in prose, and further portfolio edits by an
+  // established user (this app targets 2-10 properties) must never re-trigger an unsolicited
+  // "finish setting up" nudge. The flag is cleared right after firing so later property/loan
+  // changes don't retrigger it.
   useEffect(() => {
     if (!mounted || !loaded || status !== 'ready') return
     try {
@@ -104,6 +111,10 @@ export function AssistantDock() {
       const lastSignature = sessionStorage.getItem(SK.setupSignature)
       if (lastSignature === null || signature === lastSignature) return
       sessionStorage.setItem(SK.setupSignature, signature)
+      if (properties.length > 0) {
+        sessionStorage.removeItem(SK.firstRunTriggered)
+        sessionStorage.removeItem(SK.setupSignature)
+      }
       setIsOpen(true)
       sessionStorage.setItem(SK.open, 'true')
       sendMessage({ text: FIXED_FIRST_RUN_PROMPT })
