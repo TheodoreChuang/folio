@@ -46,3 +46,7 @@ jobs:
         run: pnpm tsx evals/assistant/run.ts
         env:
           EVAL_WRITE_RESULTS: 'true'
+          # Vercel AI Gateway free tier rate-limits per minute; 8s spacing was the
+          # smallest interval that ran the full suite clean in local testing after
+          # the checklist category (10 cases) raised total request volume.
+          EVAL_DELAY_MS: '8000'
