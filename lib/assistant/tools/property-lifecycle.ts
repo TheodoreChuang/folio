@@ -10,7 +10,7 @@ const inputSchema = z.object({
 
 export function buildPropertyLifecycleTool(userId: string) {
   return tool({
-    description: 'Get tenancy, management agent, and loan state for a specific property, to help decide which action-checklist steps are needed.',
+    description: 'Get management agent and loan state for a specific property, to help decide which action-checklist steps are needed.',
     inputSchema,
     execute: async ({ propertyId }) => {
       try {

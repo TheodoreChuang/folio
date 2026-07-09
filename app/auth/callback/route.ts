@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { properties, entities } from '@/db/schema'
+import { entities } from '@/db/schema'
 import { and, eq } from 'drizzle-orm'
 
 export async function GET(request: Request) {
@@ -23,14 +23,6 @@ export async function GET(request: Request) {
       if (!existing.length) {
         await db.insert(entities).values({ userId: user.id, name: 'Personal', type: 'individual' })
       }
-
-      const rows = await db
-        .select({ id: properties.id })
-        .from(properties)
-        .where(eq(properties.userId, user.id))
-        .limit(1)
-      const destination = rows.length === 0 ? '/onboarding' : '/dashboard'
-      return NextResponse.redirect(new URL(destination, origin))
     }
   }
 

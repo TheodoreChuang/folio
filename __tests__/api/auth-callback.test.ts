@@ -1,13 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GET } from '@/app/auth/callback/route'
 
-let limitCallCount = 0
-
 const mocks = vi.hoisted(() => ({
   mockExchangeCode: vi.fn(),
   mockGetUser: vi.fn(),
-  mockEntityCheck: vi.fn(),  // 1st limit() — entity existence check
-  mockPropertiesCheck: vi.fn(), // 2nd limit() — properties check
+  mockEntityCheck: vi.fn(),
   mockInsertValues: vi.fn(),
 }))
 
@@ -27,10 +24,7 @@ vi.mock('@/lib/db', () => ({
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockImplementation(() => {
-            limitCallCount++
-            return limitCallCount === 1 ? mocks.mockEntityCheck() : mocks.mockPropertiesCheck()
-          }),
+          limit: mocks.mockEntityCheck,
         }),
       }),
     }),
@@ -50,22 +44,13 @@ function makeRequest(code?: string) {
 describe('GET /auth/callback', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    limitCallCount = 0
     mocks.mockExchangeCode.mockResolvedValue({})
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
     mocks.mockEntityCheck.mockResolvedValue([{ id: 'entity-1' }]) // entity exists → no insert
-    mocks.mockPropertiesCheck.mockResolvedValue([{ id: 'prop-1' }])
     mocks.mockInsertValues.mockResolvedValue([{ id: 'entity-1' }])
   })
 
-  it('redirects to /onboarding when user has no properties', async () => {
-    mocks.mockPropertiesCheck.mockResolvedValue([]) // no properties
-    const res = await GET(makeRequest('valid-code'))
-    expect(res.status).toBe(307)
-    expect(res.headers.get('location')).toMatch(/\/onboarding$/)
-  })
-
-  it('redirects to /dashboard when user has at least one property', async () => {
+  it('redirects to /dashboard after a successful code exchange', async () => {
     const res = await GET(makeRequest('valid-code'))
     expect(res.status).toBe(307)
     expect(res.headers.get('location')).toMatch(/\/dashboard$/)

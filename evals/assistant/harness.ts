@@ -5,7 +5,7 @@ import { buildSystemPrompt } from '@/lib/assistant/prompt'
 // Deliberately import the real catalog rather than hand-roll a duplicate — this is the
 // single source of truth for step hrefs/labels, so the eval mirror can never silently
 // drift from what production actually links to.
-import { CHECKLIST_CATALOG, type ChecklistStepType, type ChecklistStepResult } from '@/lib/assistant/catalog'
+import { CHECKLIST_CATALOG, isChecklistStepResult, type ChecklistStepType, type ChecklistStepResult } from '@/lib/assistant/catalog'
 import type { SeededPortfolio } from './fixtures'
 
 // Mirrors checklist.ts's STEP_TYPE_DESCRIPTION exactly — without this, the mocked tool's
@@ -92,7 +92,7 @@ function buildSeededTools(portfolio: SeededPortfolio): ToolSet {
       }),
     }),
     getPropertyLifecycleState: tool({
-      description: 'Get tenancy, management agent, and loan state for a specific property, to help decide which action-checklist steps are needed.',
+      description: 'Get management agent and loan state for a specific property, to help decide which action-checklist steps are needed.',
       inputSchema: z.object({ propertyId: z.string() }),
       execute: async ({ propertyId }) => {
         const property = portfolio.properties.find(p => p.id === propertyId)
@@ -349,12 +349,6 @@ export function gradeRefusal(result: EvalResult): GradeResult {
 }
 
 type ChecklistToolOutput = { steps?: ChecklistStepResult[] }
-
-function isChecklistStepResult(value: unknown): value is ChecklistStepResult {
-  if (typeof value !== 'object' || value === null) return false
-  const step = value as Record<string, unknown>
-  return typeof step.order === 'number' && typeof step.label === 'string' && typeof step.href === 'string'
-}
 
 function isChecklistToolOutput(value: unknown): value is ChecklistToolOutput {
   if (typeof value !== 'object' || value === null) return false

@@ -62,8 +62,10 @@ export function buildChecklistTool(userId: string) {
             continue
           }
 
-          // State preconditions enforced here, not just in the prompt, so R11/R3 hold
-          // regardless of model routing quality (KTD1: structural guarantees, not prompt discipline).
+          // Terminal-state preconditions (already closed/sold) are enforced here structurally,
+          // regardless of model routing quality. Existence preconditions (e.g. CREATE_PROPERTY
+          // needing an entity, UPLOAD_STATEMENTS needing a property) are prompt-only — the model
+          // decides those from getPortfolioSummary/getPropertyLifecycleState output.
           if (step.type === 'CLOSE_LOAN' && 'endDate' in owned && owned.endDate) {
             errors.push({ stepType: step.type, reason: 'Loan already has an end date set' })
             continue

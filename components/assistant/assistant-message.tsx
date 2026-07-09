@@ -2,7 +2,7 @@
 
 import type { UIMessage, ToolUIPart, DynamicToolUIPart } from 'ai'
 import { isToolOrDynamicToolUIPart, getToolOrDynamicToolName } from 'ai'
-import type { ChecklistStepResult } from '@/lib/assistant/catalog'
+import { isChecklistStepResult, type ChecklistStepResult } from '@/lib/assistant/catalog'
 
 const TOOL_LABELS: Record<string, string> = {
   getPortfolioSummary: 'Reading portfolio summary…',
@@ -101,12 +101,6 @@ function CitationChips({ parts }: { parts: UIMessage['parts'] }) {
   )
 }
 
-function isChecklistStepResult(value: unknown): value is ChecklistStepResult {
-  if (typeof value !== 'object' || value === null) return false
-  const step = value as Record<string, unknown>
-  return typeof step.order === 'number' && typeof step.label === 'string' && typeof step.href === 'string'
-}
-
 function getChecklistSteps(part: ToolUIPart | DynamicToolUIPart): ChecklistStepResult[] {
   if (part.state !== 'output-available') return []
   if (getToolOrDynamicToolName(part) !== 'buildActionChecklist') return []
@@ -122,6 +116,10 @@ function ActionChecklist({ parts }: { parts: UIMessage['parts'] }) {
     .flatMap(getChecklistSteps)
     .slice()
     .sort((a, b) => a.order - b.order)
+    // Each buildActionChecklist call restarts its own `order` at 1; if the model
+    // calls the tool more than once in a turn, renumber after merging so badges
+    // stay unique and sequential across the combined list.
+    .map((step, i) => ({ ...step, order: i + 1 }))
   if (steps.length === 0) return null
 
   return (

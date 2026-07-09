@@ -227,11 +227,14 @@ export default function LoanDetailPage() {
       updates = { interestRate: rate }
     } else if (field === 'startDate') {
       if (!value || value === loan.startDate) return
+      // Client-side check for instant feedback; the server also validates ordering
+      // on single-field PATCHes by merging against the stored row.
+      if (loan.endDate && value > loan.endDate) { toast.error('Start date must be on or before end date'); return }
       updates = { startDate: value }
     } else if (field === 'endDate') {
       if (!value || value === loan.endDate) return
-      // Server's startDate/endDate ordering check only fires when both fields are in
-      // the same PATCH; this page sends one field per commit, so validate here too.
+      // Client-side check for instant feedback; the server also validates ordering
+      // on single-field PATCHes by merging against the stored row.
       if (loan.startDate && value < loan.startDate) { toast.error('End date must be on or after start date'); return }
       updates = { endDate: value }
     } else if (field === 'ioEndDate') {

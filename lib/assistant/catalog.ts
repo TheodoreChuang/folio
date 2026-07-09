@@ -28,6 +28,12 @@ export type ChecklistStepResult = {
   href: string
 }
 
+export function isChecklistStepResult(value: unknown): value is ChecklistStepResult {
+  if (typeof value !== 'object' || value === null) return false
+  const step = value as Record<string, unknown>
+  return typeof step.order === 'number' && typeof step.label === 'string' && typeof step.href === 'string'
+}
+
 export const CHECKLIST_CATALOG: Record<ChecklistStepType, CatalogEntry> = {
   CREATE_ENTITY: {
     label: 'Add entity',

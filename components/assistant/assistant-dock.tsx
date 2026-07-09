@@ -111,10 +111,9 @@ export function AssistantDock() {
       const lastSignature = sessionStorage.getItem(SK.setupSignature)
       if (lastSignature === null || signature === lastSignature) return
       sessionStorage.setItem(SK.setupSignature, signature)
-      if (properties.length > 0) {
-        sessionStorage.removeItem(SK.firstRunTriggered)
-        sessionStorage.removeItem(SK.setupSignature)
-      }
+      if (properties.length === 0) return
+      sessionStorage.removeItem(SK.firstRunTriggered)
+      sessionStorage.removeItem(SK.setupSignature)
       setIsOpen(true)
       sessionStorage.setItem(SK.open, 'true')
       sendMessage({ text: FIXED_FIRST_RUN_PROMPT })
