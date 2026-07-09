@@ -466,14 +466,14 @@ describe('buildTools', () => {
       expect(result).toHaveProperty('statusLabel')
     })
 
-    it('buildActionChecklist returns error payload when a downstream call throws', async () => {
+    it('buildActionChecklist isolates a downstream throw to a per-step error, not the whole batch', async () => {
       mocks.findPropertyById.mockRejectedValue(new Error('DB connection failed'))
       const tools = buildTools(USER_ID)
       const result = await tools.buildActionChecklist.execute!({
         steps: [{ type: 'ASSIGN_PROPERTY_MANAGER', propertyId: PROP_ID }],
       }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
-      expect(result).toHaveProperty('error')
-      expect(result.error).toBe('Unable to build checklist. Please try again.')
+      expect(result.steps).toEqual([])
+      expect(result.errors).toEqual([{ stepType: 'ASSIGN_PROPERTY_MANAGER', reason: 'Unable to resolve this step' }])
       expect(JSON.stringify(result)).not.toContain('DB connection failed')
     })
   })
@@ -485,6 +485,7 @@ describe('buildTools', () => {
       expect(result.entities).toEqual(entitiesFixture)
       expect(result).toHaveProperty('properties')
       expect(result).toHaveProperty('loans')
+      expect(mocks.listEntities).toHaveBeenCalledWith(USER_ID)
     })
 
     it('returns entities: [] for a user with zero entities, not an omitted field', async () => {
@@ -640,7 +641,7 @@ describe('buildTools', () => {
       }, { toolCallId: 't', messages: [], abortSignal: undefined }) as Record<string, unknown>
 
       expect(result.errors).toBeUndefined()
-      expect(result.steps).toEqual([{ label: 'Close loan', href: `/loans/${LOAN_ID}`, order: 1 }])
+      expect(result.steps).toEqual([{ label: 'Set loan end date', href: `/loans/${LOAN_ID}`, order: 1 }])
     })
 
     it('rejects CLOSE_LOAN into errors when the loan already has an endDate set (R11 state precondition, enforced structurally not just via prompt)', async () => {
@@ -683,10 +684,12 @@ describe('buildTools', () => {
         'createEntity', 'updateEntity', 'deleteEntity',
         'createProperty', 'updateProperty', 'deleteProperty',
         'createInstallmentLoan', 'updateInstallmentLoan', 'updateInstallmentLoanById', 'endInstallmentLoan',
-        'createTenancy', 'updateTenancy', 'deleteTenancy',
+        'createTenancy', 'updateTenancy', 'deleteTenancy', 'addTenancy', 'editTenancy', 'removeTenancy',
         'createManagementAgent', 'updateManagementAgent', 'deleteManagementAgent',
+        'addManagementAgent', 'editManagementAgent', 'removeManagementAgent',
         'createValuation', 'deleteValuation',
-        'upsertLoanPaymentEntry', 'createLedgerEntry',
+        'upsertLoanPaymentEntry', 'createLedgerEntry', 'createLoanLedgerEntry',
+        'createInstallmentLoanBalance', 'deleteInstallmentLoanBalance',
       ]
 
       const toolsDir = path.join(process.cwd(), 'lib', 'assistant', 'tools')

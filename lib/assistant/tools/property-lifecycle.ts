@@ -4,8 +4,10 @@ import { findPropertyById, findActiveAgent } from '@/lib/property'
 import { listInstallmentLoans } from '@/lib/borrowings'
 import { logger } from '@/lib/logger'
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const inputSchema = z.object({
-  propertyId: z.string().describe('The ID of the property to look up lifecycle state for.'),
+  propertyId: z.string().regex(UUID_REGEX, 'propertyId must be a valid UUID').describe('The ID of the property to look up lifecycle state for.'),
 })
 
 export function buildPropertyLifecycleTool(userId: string) {

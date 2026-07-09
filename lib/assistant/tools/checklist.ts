@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { findPropertyById } from '@/lib/property'
 import { findInstallmentLoanById } from '@/lib/borrowings'
 import { logger } from '@/lib/logger'
-import { CHECKLIST_CATALOG, type ChecklistStepType, type ChecklistStepResult } from '@/lib/assistant/catalog'
+import { CHECKLIST_CATALOG, isChecklistStepType, type ChecklistStepType, type ChecklistStepResult } from '@/lib/assistant/catalog'
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const STEP_TYPE_DESCRIPTION = (Object.keys(CHECKLIST_CATALOG) as ChecklistStepType[])
   .map((type) => {
@@ -16,8 +18,8 @@ const STEP_TYPE_DESCRIPTION = (Object.keys(CHECKLIST_CATALOG) as ChecklistStepTy
 const inputSchema = z.object({
   steps: z.array(z.object({
     type: z.string().describe(`One of these exact catalog step types: ${STEP_TYPE_DESCRIPTION}. Any other value is rejected for that entry.`),
-    propertyId: z.string().optional(),
-    loanId: z.string().optional(),
+    propertyId: z.string().regex(UUID_REGEX, 'propertyId must be a valid UUID').optional(),
+    loanId: z.string().regex(UUID_REGEX, 'loanId must be a valid UUID').optional(),
   })).describe('Ordered list of checklist steps to resolve, in the order they should appear.'),
 })
 
@@ -32,18 +34,22 @@ export function buildChecklistTool(userId: string) {
     description: 'Resolve a set of requested checklist step types into validated, ordered navigation chips from a fixed catalog. Only ever call this with step types and IDs already confirmed to exist for the user.',
     inputSchema,
     execute: async ({ steps }): Promise<ChecklistToolResult> => {
-      try {
-        const resolved: ResolvedStep[] = []
-        const errors: StepError[] = []
+      const resolved: ResolvedStep[] = []
+      const errors: StepError[] = []
+      const seen = new Set<string>()
 
-        for (const step of steps) {
-          const entry = CHECKLIST_CATALOG[step.type as ChecklistStepType]
-          if (!entry) {
+      for (const step of steps) {
+        try {
+          if (!isChecklistStepType(step.type)) {
             errors.push({ stepType: step.type, reason: 'Unknown step type' })
             continue
           }
+          const entry = CHECKLIST_CATALOG[step.type]
 
           if (entry.requiredId === null) {
+            const dedupeKey = `${step.type}:`
+            if (seen.has(dedupeKey)) continue
+            seen.add(dedupeKey)
             resolved.push({ label: entry.label, href: entry.buildHref() })
             continue
           }
@@ -53,6 +59,10 @@ export function buildChecklistTool(userId: string) {
             errors.push({ stepType: step.type, reason: `Missing required ${entry.requiredId}` })
             continue
           }
+
+          const dedupeKey = `${step.type}:${id}`
+          if (seen.has(dedupeKey)) continue
+          seen.add(dedupeKey)
 
           const owned = entry.requiredId === 'propertyId'
             ? await findPropertyById(userId, id)
@@ -76,20 +86,18 @@ export function buildChecklistTool(userId: string) {
           }
 
           resolved.push({ label: entry.label, href: entry.buildHref(id) })
+        } catch (err) {
+          logger.error('buildActionChecklist step error', { err, stepType: step.type })
+          errors.push({ stepType: step.type, reason: 'Unable to resolve this step' })
         }
+      }
 
-        // No top-level `source` field: CitationChips (components/assistant/assistant-message.tsx)
-        // renders any completed tool part with a truthy output.source as a citation chip; this
-        // tool's output must stay outside that path so it only renders via the checklist branch.
-        return {
-          steps: resolved.map((step, index) => ({ ...step, order: index + 1 })),
-          errors: errors.length > 0 ? errors : undefined,
-        }
-      } catch (err) {
-        logger.error('buildActionChecklist tool error', { err })
-        return {
-          error: 'Unable to build checklist. Please try again.',
-        }
+      // No top-level `source` field: CitationChips (components/assistant/assistant-message.tsx)
+      // renders any completed tool part with a truthy output.source as a citation chip; this
+      // tool's output must stay outside that path so it only renders via the checklist branch.
+      return {
+        steps: resolved.map((step, index) => ({ ...step, order: index + 1 })),
+        errors: errors.length > 0 ? errors : undefined,
       }
     },
   })

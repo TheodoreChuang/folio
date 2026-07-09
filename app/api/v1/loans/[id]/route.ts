@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
-import { findInstallmentLoanDetail, updateInstallmentLoanById } from '@/lib/borrowings'
+import { findInstallmentLoanDetail, findInstallmentLoanById, updateInstallmentLoanById } from '@/lib/borrowings'
 import { resolveUser } from '@/lib/api-auth'
 import { captureError } from '@/lib/api-error'
 import { findEntityById } from '@/lib/entities'
@@ -145,7 +145,7 @@ export async function PATCH(
       // sends one of the two dates must still be validated against whichever date
       // isn't in this request, or a single-field update can silently persist
       // endDate < startDate.
-      const existing = await findInstallmentLoanDetail(user.id, id)
+      const existing = await findInstallmentLoanById(user.id, id)
       if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       const effectiveStartDate = updates.startDate ?? existing.startDate
       const effectiveEndDate = 'endDate' in updates ? updates.endDate : existing.endDate

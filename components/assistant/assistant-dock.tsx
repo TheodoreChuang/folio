@@ -14,6 +14,7 @@ const SK = {
   open: 'folio.agent.open',
   thread: 'folio.agent.thread',
   firstRunTriggered: 'folio.agent.firstRunTriggered',
+  firstRunCompleted: 'folio.agent.firstRunCompleted',
   setupSignature: 'folio.agent.setupSignature',
 }
 
@@ -75,19 +76,22 @@ export function AssistantDock() {
   }, [setMessages])
 
   // First-run: proactively open and send the setup prompt for a genuinely empty portfolio,
-  // once per browser session. Gated on `loaded` (not just mounted) since properties/loans/entities
-  // all start as [] before their fetch resolves — an ungated check would misfire for existing
-  // users on every fresh session.
+  // once per browser session, and never again once the setup flow has completed (see
+  // SK.firstRunCompleted below) — otherwise deleting a property back down to zero would
+  // re-arm this for an established user. Gated on `loaded` (not just mounted) since
+  // properties/loans/entities all start as [] before their fetch resolves — an ungated
+  // check would misfire for existing users on every fresh session.
   useEffect(() => {
     if (!mounted || !isEmptyPortfolio) return
     try {
+      if (sessionStorage.getItem(SK.firstRunCompleted) === 'true') return
       if (sessionStorage.getItem(SK.firstRunTriggered) === 'true') return
       sessionStorage.setItem(SK.firstRunTriggered, 'true')
       sessionStorage.setItem(SK.setupSignature, computeSetupSignature(entities.length, properties.length, loans.length))
+      setIsOpen(true)
+      sessionStorage.setItem(SK.open, 'true')
+      sendMessage({ text: FIXED_FIRST_RUN_PROMPT })
     } catch { /* ignore */ }
-    setIsOpen(true)
-    try { sessionStorage.setItem(SK.open, 'true') } catch { /* ignore */ }
-    sendMessage({ text: FIXED_FIRST_RUN_PROMPT })
   }, [mounted, isEmptyPortfolio, entities.length, properties.length, loans.length, sendMessage])
 
   // Re-prompt with the next resolvable step once the setup-chain state changes (e.g. the user
@@ -97,12 +101,12 @@ export function AssistantDock() {
   // else would ever re-trigger this. Only fires for sessions where the first-run flow already
   // started, so returning users asking one-off questions never get an unsolicited nudge.
   //
-  // Fires at most once, on the transition into having a first property: that's the flow's
+  // Fires at most once ever, on the transition into having a first property: that's the flow's
   // "complete enough" point — the assistant's own reply already describes the remaining steps
   // (upload statements, add a loan, assign a PM) in prose, and further portfolio edits by an
   // established user (this app targets 2-10 properties) must never re-trigger an unsolicited
-  // "finish setting up" nudge. The flag is cleared right after firing so later property/loan
-  // changes don't retrigger it.
+  // "finish setting up" nudge. SK.firstRunCompleted is set permanently here (never removed) so
+  // that later deleting properties back down to zero can't re-arm the first-run effect above.
   useEffect(() => {
     if (!mounted || !loaded || status !== 'ready') return
     try {
@@ -114,6 +118,7 @@ export function AssistantDock() {
       if (properties.length === 0) return
       sessionStorage.removeItem(SK.firstRunTriggered)
       sessionStorage.removeItem(SK.setupSignature)
+      sessionStorage.setItem(SK.firstRunCompleted, 'true')
       setIsOpen(true)
       sessionStorage.setItem(SK.open, 'true')
       sendMessage({ text: FIXED_FIRST_RUN_PROMPT })

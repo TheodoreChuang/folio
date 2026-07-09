@@ -25,10 +25,11 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const fetchOnce = useCallback(async () => {
     let allSucceeded = true
     try {
+      // Bounded so a hung server response can't leave `loaded` unresolved forever.
       const [propsRes, loansRes, entitiesRes] = await Promise.all([
-        fetch('/api/v1/properties'),
-        fetch('/api/v1/loans'),
-        fetch('/api/v1/entities'),
+        fetch('/api/v1/properties', { signal: AbortSignal.timeout(8000) }),
+        fetch('/api/v1/loans', { signal: AbortSignal.timeout(8000) }),
+        fetch('/api/v1/entities', { signal: AbortSignal.timeout(8000) }),
       ])
       if (propsRes.ok) {
         const data = await propsRes.json() as { properties?: SidebarProperty[] }
@@ -60,15 +61,21 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     // trigger gates on `loaded && properties.length === 0 && loans.length === 0` — if we marked
     // `loaded` true on a failed/partial fetch, a transient network error on page load would be
     // indistinguishable from a genuinely empty portfolio and could auto-open the dock with an
-    // unsolicited "finish setting up" message for an established user. One retry after a short
-    // delay absorbs a transient blip (e.g. a cold serverless function) without retrying forever;
-    // a subsequent successful `refresh()` call still flips it once real data arrives.
+    // unsolicited "finish setting up" message for an established user. A few retries with
+    // growing delays absorb a transient blip (e.g. a cold serverless function) without retrying
+    // forever; a subsequent successful `refresh()` call still flips it once real data arrives.
+    const RETRY_DELAYS_MS = [2000, 4000]
     if (await fetchOnce()) {
       setLoaded(true)
       return
     }
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    if (await fetchOnce()) setLoaded(true)
+    for (const delay of RETRY_DELAYS_MS) {
+      await new Promise(resolve => setTimeout(resolve, delay))
+      if (await fetchOnce()) {
+        setLoaded(true)
+        return
+      }
+    }
   }, [fetchOnce])
 
   useEffect(() => { fetchData() }, [fetchData])

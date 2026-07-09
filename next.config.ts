@@ -5,6 +5,11 @@ const nextConfig: NextConfig = {
   // unpdf / pdfjs-dist must not be bundled by Turbopack — the worker
   // file path resolution breaks when bundled. Load them from node_modules.
   serverExternalPackages: ['unpdf', 'pdfjs-dist'],
+  async redirects() {
+    return [
+      { source: '/onboarding', destination: '/dashboard', permanent: false },
+    ]
+  },
 }
 
 export default withSentryConfig(nextConfig, {

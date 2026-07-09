@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PROTECTED_ROUTES = ['/dashboard', '/upload', '/properties', '/reports', '/onboarding']
+const PROTECTED_ROUTES = ['/dashboard', '/upload', '/properties', '/reports']
 const AUTH_ROUTES = ['/login', '/signup']
 
 // Per-instance in-memory rate limit — not shared across Vercel function instances.

@@ -34,6 +34,15 @@ export function isChecklistStepResult(value: unknown): value is ChecklistStepRes
   return typeof step.order === 'number' && typeof step.label === 'string' && typeof step.href === 'string'
 }
 
+const CHECKLIST_STEP_TYPES = new Set<string>([
+  'CREATE_ENTITY', 'CREATE_PROPERTY', 'CREATE_LOAN', 'ASSIGN_PROPERTY_MANAGER',
+  'CLOSE_LOAN', 'MARK_PROPERTY_SOLD', 'UPLOAD_STATEMENTS',
+])
+
+export function isChecklistStepType(value: string): value is ChecklistStepType {
+  return CHECKLIST_STEP_TYPES.has(value)
+}
+
 export const CHECKLIST_CATALOG: Record<ChecklistStepType, CatalogEntry> = {
   CREATE_ENTITY: {
     label: 'Add entity',
@@ -57,10 +66,10 @@ export const CHECKLIST_CATALOG: Record<ChecklistStepType, CatalogEntry> = {
     label: 'Assign property manager',
     requiredId: 'propertyId',
     buildHref: (propertyId) => `/properties/${propertyId}?tab=management`,
-    whenToUse: 'a property has no active management agent (activeManagementAgent is null in getPropertyLifecycleState)',
+    whenToUse: 'a property needs a property manager assigned or changed — either it has no active management agent (activeManagementAgent is null in getPropertyLifecycleState), or the user wants to replace an already-active one with a different one',
   },
   CLOSE_LOAN: {
-    label: 'Close loan',
+    label: 'Set loan end date',
     requiredId: 'loanId',
     buildHref: (loanId) => `/loans/${loanId}`,
     whenToUse: 'a loan has no endDate set yet and needs to be closed out (e.g. as part of a refinance or sale)',

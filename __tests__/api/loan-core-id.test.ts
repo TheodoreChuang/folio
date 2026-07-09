@@ -36,6 +36,7 @@ function makePatchRequest(loanId: string, body: unknown) {
 const mocks = vi.hoisted(() => ({
   mockGetUser:                   vi.fn(),
   mockFindInstallmentLoanDetail: vi.fn(),
+  mockFindInstallmentLoanById:   vi.fn(),
   mockUpdateInstallmentLoanById: vi.fn(),
   mockFindEntityById:            vi.fn(),
 }))
@@ -48,6 +49,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('@/lib/borrowings', () => ({
   findInstallmentLoanDetail: mocks.mockFindInstallmentLoanDetail,
+  findInstallmentLoanById:   mocks.mockFindInstallmentLoanById,
   updateInstallmentLoanById: mocks.mockUpdateInstallmentLoanById,
 }))
 
@@ -112,6 +114,7 @@ describe('PATCH /api/loans/[id]', () => {
     mocks.mockUpdateInstallmentLoanById.mockResolvedValue(loanDetail)
     mocks.mockFindEntityById.mockResolvedValue({ id: 'entity-1' })
     mocks.mockFindInstallmentLoanDetail.mockResolvedValue(loanDetail)
+    mocks.mockFindInstallmentLoanById.mockResolvedValue(loanDetail)
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -221,7 +224,7 @@ describe('PATCH /api/loans/[id]', () => {
     expect(res.status).toBe(400)
     const json = await res.json() as { error: string }
     expect(json.error).toMatch(/endDate must be on or after startDate/i)
-    expect(mocks.mockFindInstallmentLoanDetail).toHaveBeenCalledWith('user-123', VALID_LOAN_ID)
+    expect(mocks.mockFindInstallmentLoanById).toHaveBeenCalledWith('user-123', VALID_LOAN_ID)
     expect(mocks.mockUpdateInstallmentLoanById).not.toHaveBeenCalled()
   })
 
@@ -253,7 +256,7 @@ describe('PATCH /api/loans/[id]', () => {
   })
 
   it('returns 404 when the loan is not found while merge-validating a single date field', async () => {
-    mocks.mockFindInstallmentLoanDetail.mockResolvedValue(undefined)
+    mocks.mockFindInstallmentLoanById.mockResolvedValue(undefined)
     const res = await PATCH(
       makePatchRequest(VALID_LOAN_ID, { endDate: '2040-01-01' }),
       { params: Promise.resolve({ id: VALID_LOAN_ID }) }
