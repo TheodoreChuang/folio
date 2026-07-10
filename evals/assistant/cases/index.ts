@@ -1,12 +1,27 @@
+import {
+  type SeededPortfolio,
+  STANDARD_PORTFOLIO,
+  ENTITY_ONLY_PORTFOLIO,
+  UNENCUMBERED_PROPERTY_PORTFOLIO,
+  ENCUMBERED_PROPERTY_PORTFOLIO,
+  LOAN_ALREADY_CLOSED_PORTFOLIO,
+  PM_LAPSED_PORTFOLIO,
+  SAME_LENDER_LOANS_PORTFOLIO,
+} from '../fixtures'
+
 export type EvalCase = {
   id: string
   question: string
-  category: 'grounding' | 'tool-selection' | 'security' | 'no-data' | 'calculation' | 'personalization'
+  category: 'grounding' | 'tool-selection' | 'security' | 'no-data' | 'calculation' | 'personalization' | 'checklist'
   expectedTools?: string[]
   expectRefusal?: boolean
   expectedValue?: number
   tolerance?: number
   expectedIdentifiers?: string[]
+  portfolio?: SeededPortfolio
+  expectedChecklistStepCount?: number
+  expectedChecklistHrefs?: string[]
+  expectNoChecklistCall?: boolean
 }
 
 export const GROUNDING_CASES: EvalCase[] = [
@@ -162,5 +177,107 @@ export const PERSONALIZATION_CASES: EvalCase[] = [
     category: 'personalization',
     expectedTools: ['getPortfolioSummary'],
     expectedIdentifiers: ['ANZ', 'CBA'],
+  },
+]
+
+// Checklist cases each carry their own portfolio override (see EvalCase.portfolio) since
+// several of these preconditions (a fully empty portfolio, two same-lender loans) can't
+// share one fixture the way other categories do.
+export const CHECKLIST_CASES: EvalCase[] = [
+  {
+    // AE1 (R3): entity already exists — only CREATE_PROPERTY should be requested, never CREATE_ENTITY.
+    id: 'checklist-001',
+    question: 'I already have my entity set up in Folio. I just bought a new investment property — how do I add it?',
+    category: 'checklist',
+    portfolio: ENTITY_ONLY_PORTFOLIO,
+    expectedChecklistStepCount: 1,
+    expectedChecklistHrefs: ['/properties/new'],
+  },
+  {
+    // AE2 (R1/R2): refinancing an existing loan — close the old loan, then create the new one, in order.
+    id: 'checklist-002',
+    question: 'I\'m refinancing the loan on my Oak property to a new lender. What do I need to do in Folio?',
+    category: 'checklist',
+    portfolio: ENCUMBERED_PROPERTY_PORTFOLIO,
+    expectedChecklistStepCount: 2,
+    expectedChecklistHrefs: ['/loans/loan-201', '/loans/new?propertyId=prop-201'],
+  },
+  {
+    // AE4 loan-free (also covers AE9's "not a modal URL" assertion via the exact href match).
+    id: 'checklist-003',
+    question: 'I just sold my Baker property. How do I update Folio?',
+    category: 'checklist',
+    portfolio: UNENCUMBERED_PROPERTY_PORTFOLIO,
+    expectedChecklistStepCount: 1,
+    expectedChecklistHrefs: ['/properties/prop-101'],
+  },
+  {
+    // AE4 encumbered: mark-as-sold plus a close-loan step for the one attached loan.
+    id: 'checklist-004',
+    question: 'I just sold my Oak property, and it still had a loan on it. What do I need to do in Folio?',
+    category: 'checklist',
+    portfolio: ENCUMBERED_PROPERTY_PORTFOLIO,
+    expectedChecklistStepCount: 2,
+    expectedChecklistHrefs: ['/properties/prop-201', '/loans/loan-201'],
+  },
+  {
+    // Regression case for the manually-found bug: a loan that already has an endDate set
+    // must not get a close-loan step when its property is sold.
+    id: 'checklist-005',
+    question: 'I just sold my Cedar property. What do I need to do in Folio?',
+    category: 'checklist',
+    portfolio: LOAN_ALREADY_CLOSED_PORTFOLIO,
+    expectedChecklistStepCount: 1,
+    expectedChecklistHrefs: ['/properties/prop-301'],
+  },
+  {
+    // AE6 (R1/R2): no currently-active management agent — a PM switch resolves to one step.
+    id: 'checklist-006',
+    question: 'I\'ve switched property managers for my Maple property. What do I need to update in Folio?',
+    category: 'checklist',
+    portfolio: PM_LAPSED_PORTFOLIO,
+    expectedChecklistStepCount: 1,
+    expectedChecklistHrefs: ['/properties/prop-501?tab=management'],
+  },
+  {
+    // AE7 (R1/R2): adding a loan to an existing, unencumbered property.
+    id: 'checklist-007',
+    question: 'I just took out a new loan on my Baker property, which didn\'t have one before. How do I add it in Folio?',
+    category: 'checklist',
+    portfolio: UNENCUMBERED_PROPERTY_PORTFOLIO,
+    expectedChecklistStepCount: 1,
+    expectedChecklistHrefs: ['/loans/new?propertyId=prop-101'],
+  },
+  {
+    // AE10 (R12): two loans from the same lender, nothing in the phrasing disambiguates —
+    // the model must ask a clarifying question instead of guessing.
+    id: 'checklist-008',
+    question: 'I\'m refinancing my Westpac loan. What do I need to do?',
+    category: 'checklist',
+    portfolio: SAME_LENDER_LOANS_PORTFOLIO,
+    expectNoChecklistCall: true,
+  },
+  {
+    // AE11 (R2/R7, KTD8): first-run prompt on a portfolio with only the auto-created
+    // "Personal" entity (app/auth/callback/route.ts creates one for every user on login —
+    // true zero-entity state is unreachable in production) and no properties/loans yet.
+    // Only the first resolvable step (add-property) should be offered, not the full
+    // setup sequence — the entity precondition is already satisfied so create-entity is
+    // correctly omitted.
+    id: 'checklist-009',
+    question: 'Help me finish setting up my portfolio.',
+    category: 'checklist',
+    portfolio: ENTITY_ONLY_PORTFOLIO,
+    expectedChecklistStepCount: 1,
+    expectedChecklistHrefs: ['/properties/new'],
+  },
+  {
+    // Outside-R1: no matching catalog step type — the model should answer in prose,
+    // not fabricate a chip. A zero-step (or no) tool call is acceptable; a chip is not.
+    id: 'checklist-010',
+    question: 'I\'m subdividing one of my properties into two lots — what do I need to do in Folio?',
+    category: 'checklist',
+    portfolio: STANDARD_PORTFOLIO,
+    expectedChecklistStepCount: 0,
   },
 ]

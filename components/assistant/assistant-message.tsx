@@ -2,6 +2,7 @@
 
 import type { UIMessage, ToolUIPart, DynamicToolUIPart } from 'ai'
 import { isToolOrDynamicToolUIPart, getToolOrDynamicToolName } from 'ai'
+import { isChecklistStepResult, type ChecklistStepResult } from '@/lib/assistant/catalog'
 
 const TOOL_LABELS: Record<string, string> = {
   getPortfolioSummary: 'Reading portfolio summary…',
@@ -96,6 +97,71 @@ function CitationChips({ parts }: { parts: UIMessage['parts'] }) {
           </a>
         )
       })}
+    </div>
+  )
+}
+
+function getChecklistSteps(part: ToolUIPart | DynamicToolUIPart): ChecklistStepResult[] {
+  if (part.state !== 'output-available') return []
+  if (getToolOrDynamicToolName(part) !== 'buildActionChecklist') return []
+  const output = part.output
+  if (typeof output !== 'object' || output === null || !('steps' in output)) return []
+  const steps = (output as { steps?: unknown }).steps
+  return Array.isArray(steps) ? steps.filter(isChecklistStepResult) : []
+}
+
+function ActionChecklist({ parts }: { parts: UIMessage['parts'] }) {
+  const steps = parts
+    .filter(isToolOrDynamicToolUIPart)
+    .flatMap(getChecklistSteps)
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    // Each buildActionChecklist call restarts its own `order` at 1; if the model
+    // calls the tool more than once in a turn, renumber after merging so badges
+    // stay unique and sequential across the combined list.
+    .map((step, i) => ({ ...step, order: i + 1 }))
+  if (steps.length === 0) return null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+      {steps.map(step => (
+        <a
+          key={`${step.order}-${step.href}`}
+          href={step.href}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '8px 12px',
+            border: '1px solid rgba(55, 101, 108, 0.24)',
+            borderRadius: '8px',
+            background: 'var(--background)',
+            color: 'var(--foreground)',
+            textDecoration: 'none',
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+          }}
+        >
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              background: 'var(--accent)',
+              color: 'var(--accent-foreground)',
+              fontSize: '0.6875rem',
+              fontWeight: 600,
+            }}
+          >
+            {step.order}
+          </span>
+          <span>{step.label}</span>
+        </a>
+      ))}
     </div>
   )
 }
@@ -218,6 +284,7 @@ export function AssistantMessage({ message, isLast, error, status }: AssistantMe
           </div>
         )}
 
+        <ActionChecklist parts={message.parts} />
         <CitationChips parts={message.parts} />
       </div>
 

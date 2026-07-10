@@ -36,6 +36,7 @@ function makePatchRequest(loanId: string, body: unknown) {
 const mocks = vi.hoisted(() => ({
   mockGetUser:                   vi.fn(),
   mockFindInstallmentLoanDetail: vi.fn(),
+  mockFindInstallmentLoanById:   vi.fn(),
   mockUpdateInstallmentLoanById: vi.fn(),
   mockFindEntityById:            vi.fn(),
 }))
@@ -48,6 +49,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('@/lib/borrowings', () => ({
   findInstallmentLoanDetail: mocks.mockFindInstallmentLoanDetail,
+  findInstallmentLoanById:   mocks.mockFindInstallmentLoanById,
   updateInstallmentLoanById: mocks.mockUpdateInstallmentLoanById,
 }))
 
@@ -111,6 +113,8 @@ describe('PATCH /api/loans/[id]', () => {
     mocks.mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } } })
     mocks.mockUpdateInstallmentLoanById.mockResolvedValue(loanDetail)
     mocks.mockFindEntityById.mockResolvedValue({ id: 'entity-1' })
+    mocks.mockFindInstallmentLoanDetail.mockResolvedValue(loanDetail)
+    mocks.mockFindInstallmentLoanById.mockResolvedValue(loanDetail)
   })
 
   it('returns 401 when unauthenticated', async () => {
@@ -197,5 +201,67 @@ describe('PATCH /api/loans/[id]', () => {
     const json = await res.json() as { loan: { loanType: string; ioEndDate: null } }
     expect(json.loan.loanType).toBe('interest_only')
     expect(json.loan.ioEndDate).toBeNull()
+  })
+
+  it('returns 400 when both startDate and endDate are provided out of order', async () => {
+    const res = await PATCH(
+      makePatchRequest(VALID_LOAN_ID, { startDate: '2050-01-01', endDate: '2020-01-01' }),
+      { params: Promise.resolve({ id: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(400)
+    const json = await res.json() as { error: string }
+    expect(json.error).toMatch(/endDate must be on or after startDate/i)
+    expect(mocks.mockUpdateInstallmentLoanById).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when a single-field endDate update would precede the stored startDate', async () => {
+    // loanDetail.startDate is 2020-01-01 — an endDate-only PATCH must still be checked
+    // against the stored startDate, not just the fields present in this request body.
+    const res = await PATCH(
+      makePatchRequest(VALID_LOAN_ID, { endDate: '2019-01-01' }),
+      { params: Promise.resolve({ id: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(400)
+    const json = await res.json() as { error: string }
+    expect(json.error).toMatch(/endDate must be on or after startDate/i)
+    expect(mocks.mockFindInstallmentLoanById).toHaveBeenCalledWith('user-123', VALID_LOAN_ID)
+    expect(mocks.mockUpdateInstallmentLoanById).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when a single-field startDate update would follow the stored endDate', async () => {
+    // loanDetail.endDate is 2050-01-01 — a startDate-only PATCH must still be checked
+    // against the stored endDate.
+    const res = await PATCH(
+      makePatchRequest(VALID_LOAN_ID, { startDate: '2051-01-01' }),
+      { params: Promise.resolve({ id: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(400)
+    const json = await res.json() as { error: string }
+    expect(json.error).toMatch(/endDate must be on or after startDate/i)
+    expect(mocks.mockUpdateInstallmentLoanById).not.toHaveBeenCalled()
+  })
+
+  it('allows a single-field endDate update that is consistent with the stored startDate', async () => {
+    mocks.mockUpdateInstallmentLoanById.mockResolvedValue({ ...loanDetail, endDate: '2040-01-01' })
+    const res = await PATCH(
+      makePatchRequest(VALID_LOAN_ID, { endDate: '2040-01-01' }),
+      { params: Promise.resolve({ id: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(200)
+    expect(mocks.mockUpdateInstallmentLoanById).toHaveBeenCalledWith(
+      'user-123',
+      VALID_LOAN_ID,
+      expect.objectContaining({ endDate: '2040-01-01' }),
+    )
+  })
+
+  it('returns 404 when the loan is not found while merge-validating a single date field', async () => {
+    mocks.mockFindInstallmentLoanById.mockResolvedValue(undefined)
+    const res = await PATCH(
+      makePatchRequest(VALID_LOAN_ID, { endDate: '2040-01-01' }),
+      { params: Promise.resolve({ id: VALID_LOAN_ID }) }
+    )
+    expect(res.status).toBe(404)
+    expect(mocks.mockUpdateInstallmentLoanById).not.toHaveBeenCalled()
   })
 })

@@ -227,9 +227,15 @@ export default function LoanDetailPage() {
       updates = { interestRate: rate }
     } else if (field === 'startDate') {
       if (!value || value === loan.startDate) return
+      // Client-side check for instant feedback; the server also validates ordering
+      // on single-field PATCHes by merging against the stored row.
+      if (loan.endDate && value > loan.endDate) { toast.error('Start date must be on or before end date'); return }
       updates = { startDate: value }
     } else if (field === 'endDate') {
       if (!value || value === loan.endDate) return
+      // Client-side check for instant feedback; the server also validates ordering
+      // on single-field PATCHes by merging against the stored row.
+      if (loan.startDate && value < loan.startDate) { toast.error('End date must be on or after start date'); return }
       updates = { endDate: value }
     } else if (field === 'ioEndDate') {
       const d = value || null
@@ -569,6 +575,19 @@ export default function LoanDetailPage() {
                   onCancel={() => setEditingField(null)}
                 />
               )}
+              <FieldRow
+                label="End date"
+                fieldKey="endDate"
+                editingField={editingField}
+                editValue={editValue}
+                fieldSaving={fieldSaving}
+                displayValue={loan.endDate ? formatDate(loan.endDate) : null}
+                inputType="date"
+                onStartEdit={() => startEdit('endDate', loan.endDate ?? '')}
+                onValueChange={setEditValue}
+                onCommit={v => commitField('endDate', v)}
+                onCancel={() => setEditingField(null)}
+              />
               {/* Security — read only */}
               <div
                 className="grid items-center py-3"
