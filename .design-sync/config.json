@@ -1,0 +1,25 @@
+{
+  "projectId": "f58e6c35-9779-49dd-83cd-4c53afab1ede",
+  "shape": "package",
+  "pkg": "..",
+  "globalName": "FolioUI",
+  "srcDir": "components/ui",
+  "tsconfig": "tsconfig.json",
+  "readmeHeader": ".design-sync/conventions.md",
+  "cssEntry": ".design-sync/.cache/compiled-globals.css",
+  "buildCmd": "node .design-sync/compile-css.mjs",
+  "overrides": {
+    "Dialog": { "cardMode": "single", "viewport": "480x420" },
+    "DropdownMenu": { "cardMode": "single", "viewport": "320x420" },
+    "Select": { "cardMode": "single", "viewport": "320x360" },
+    "Popover": { "cardMode": "single", "viewport": "360x320" },
+    "Tooltip": { "cardMode": "single", "viewport": "320x160" },
+    "DataTable": { "cardMode": "column" },
+    "Table": { "cardMode": "column" },
+    "Toaster": { "cardMode": "single", "primaryStory": "Default", "viewport": "500x340" },
+    "DropdownMenuLabel": { "cardMode": "single", "primaryStory": "Default", "viewport": "320x240" }
+  },
+  "storyImports": {
+    "bundle": [".."]
+  }
+}
