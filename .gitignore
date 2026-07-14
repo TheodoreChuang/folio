@@ -27,3 +27,10 @@ playwright-report/
 
 # Screenshots (committed intentionally on PR branches via pnpm pr:create)
 screenshots/.compound-engineering/*.local.yaml
+
+# Design-sync: staged converter + build output, not durable
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules/
