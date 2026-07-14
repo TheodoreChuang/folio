@@ -93,6 +93,33 @@
 }
 
 /*
+  ── SHADCN COLOR ALIASES (@theme) ────────────────────────────────────────────
+  Tailwind v4 only generates bg-X/text-X/border-X utilities from --color-X
+  variables declared in an @theme block. The bridge above defines the raw
+  values but was never wired into @theme, so bg-primary, bg-popover,
+  border-input, ring-ring, etc. silently never existed. `@theme inline`
+  resolves through var() so this doesn't duplicate the color values above.
+*/
+@theme inline {
+  --color-card:                   var(--card);
+  --color-card-foreground:        var(--card-foreground);
+  --color-popover:                var(--popover);
+  --color-popover-foreground:     var(--popover-foreground);
+  --color-primary:                var(--primary);
+  --color-primary-foreground:     var(--primary-foreground);
+  --color-secondary:              var(--secondary);
+  --color-secondary-foreground:   var(--secondary-foreground);
+  --color-muted:                  var(--muted);
+  --color-muted-foreground:       var(--muted-foreground);
+  --color-accent-foreground:      var(--accent-foreground);
+  --color-destructive:            var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning-foreground:     var(--warning-foreground);
+  --color-input:                  var(--input);
+  --color-ring:                   var(--ring);
+}
+
+/*
   ── DESIGN SYSTEM SCALE OVERRIDES ──────────────────────────────────────────
   Tailwind v4's default type scale diverges from folio.css at several sizes.
   Override here so text-sm / text-lg / etc. match the design tokens exactly.
