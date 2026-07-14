@@ -20,8 +20,8 @@ export function Toaster() {
           title: 'font-semibold',
           description: 'text-foreground-muted text-xs',
           success: 'border-l-4 border-l-accent',
-          error:   'border-l-4 border-l-warn',
-          warning: 'border-l-4 border-l-warn',
+          error:   'border-l-4 border-l-warning',
+          warning: 'border-l-4 border-l-warning',
         },
       }}
     />
